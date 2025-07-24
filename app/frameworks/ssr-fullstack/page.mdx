@@ -1536,8 +1536,482 @@ function ArticlePage({ article }) {
 }
 ```
 
+## 部署和运维
+
+<Callout type="info">
+现代全栈框架的部署和运维需要考虑性能、可扩展性、监控等多个方面，选择合适的部署策略至关重要。
+</Callout>
+
+### Next.js部署策略
+
+```javascript
+// 1. Vercel部署配置
+// vercel.json
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "NEXTAUTH_SECRET": "@nextauth-secret"
+  },
+  "functions": {
+    "pages/api/**/*.js": {
+      "maxDuration": 30
+    }
+  }
+}
+
+// 2. Docker部署
+// Dockerfile
+FROM node:18-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+RUN \
+  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i --frozen-lockfile; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED 1
+
+RUN yarn build
+
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+
+# Set the correct permission for prerender cache
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["node", "server.js"]
+
+// 3. 自动化部署脚本
+// scripts/deploy.js
+const { execSync } = require('child_process');
+const fs = require('fs');
+
+class DeploymentManager {
+  constructor(environment = 'production') {
+    this.environment = environment;
+    this.config = this.loadConfig();
+  }
+
+  loadConfig() {
+    const configPath = `./config/${this.environment}.json`;
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+    throw new Error(`Configuration file not found: ${configPath}`);
+  }
+
+  async deploy() {
+    console.log(`开始部署到 ${this.environment} 环境...`);
+
+    try {
+      // 1. 运行测试
+      await this.runTests();
+
+      // 2. 构建应用
+      await this.buildApplication();
+
+      // 3. 部署到服务器
+      await this.deployToServer();
+
+      // 4. 健康检查
+      await this.healthCheck();
+
+      console.log('部署成功！');
+    } catch (error) {
+      console.error('部署失败:', error);
+      await this.rollback();
+      throw error;
+    }
+  }
+
+  async runTests() {
+    console.log('运行测试...');
+    execSync('npm run test:ci', { stdio: 'inherit' });
+  }
+
+  async buildApplication() {
+    console.log('构建应用...');
+    execSync('npm run build', { stdio: 'inherit' });
+  }
+
+  async deployToServer() {
+    console.log('部署到服务器...');
+
+    if (this.config.platform === 'vercel') {
+      execSync('vercel --prod', { stdio: 'inherit' });
+    } else if (this.config.platform === 'docker') {
+      this.deployWithDocker();
+    } else if (this.config.platform === 'aws') {
+      this.deployToAWS();
+    }
+  }
+
+  deployWithDocker() {
+    const { registry, image, tag } = this.config.docker;
+
+    // 构建镜像
+    execSync(`docker build -t ${image}:${tag} .`, { stdio: 'inherit' });
+
+    // 推送到镜像仓库
+    execSync(`docker tag ${image}:${tag} ${registry}/${image}:${tag}`, { stdio: 'inherit' });
+    execSync(`docker push ${registry}/${image}:${tag}`, { stdio: 'inherit' });
+
+    // 部署到服务器
+    execSync(`docker-compose -f docker-compose.${this.environment}.yml up -d`, { stdio: 'inherit' });
+  }
+
+  deployToAWS() {
+    const { region, functionName } = this.config.aws;
+
+    // 使用AWS CLI部署
+    execSync(`aws lambda update-function-code --region ${region} --function-name ${functionName} --zip-file fileb://function.zip`, { stdio: 'inherit' });
+  }
+
+  async healthCheck() {
+    console.log('执行健康检查...');
+
+    const { healthCheckUrl } = this.config;
+    const maxRetries = 5;
+    let retries = 0;
+
+    while (retries < maxRetries) {
+      try {
+        const response = await fetch(healthCheckUrl);
+        if (response.ok) {
+          console.log('健康检查通过');
+          return;
+        }
+      } catch (error) {
+        console.log(`健康检查失败，重试 ${retries + 1}/${maxRetries}`);
+      }
+
+      retries++;
+      await new Promise(resolve => setTimeout(resolve, 10000)); // 等待10秒
+    }
+
+    throw new Error('健康检查失败');
+  }
+
+  async rollback() {
+    console.log('执行回滚...');
+
+    if (this.config.platform === 'vercel') {
+      // Vercel回滚到上一个部署
+      execSync('vercel rollback', { stdio: 'inherit' });
+    } else if (this.config.platform === 'docker') {
+      // Docker回滚到上一个版本
+      const { image, previousTag } = this.config.docker;
+      execSync(`docker-compose -f docker-compose.${this.environment}.yml down`, { stdio: 'inherit' });
+      execSync(`docker tag ${image}:${previousTag} ${image}:latest`, { stdio: 'inherit' });
+      execSync(`docker-compose -f docker-compose.${this.environment}.yml up -d`, { stdio: 'inherit' });
+    }
+  }
+}
+
+// 使用示例
+const environment = process.argv[2] || 'production';
+const deploymentManager = new DeploymentManager(environment);
+deploymentManager.deploy().catch(console.error);
+```
+
+### 性能监控和日志
+
+```javascript
+// 1. 性能监控配置
+// lib/monitoring.js
+import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
+
+class PerformanceMonitor {
+  constructor() {
+    this.metrics = {};
+    this.setupWebVitals();
+    this.setupErrorTracking();
+  }
+
+  setupWebVitals() {
+    getCLS(this.handleMetric.bind(this, 'CLS'));
+    getFID(this.handleMetric.bind(this, 'FID'));
+    getFCP(this.handleMetric.bind(this, 'FCP'));
+    getLCP(this.handleMetric.bind(this, 'LCP'));
+    getTTFB(this.handleMetric.bind(this, 'TTFB'));
+  }
+
+  handleMetric(name, metric) {
+    this.metrics[name] = metric;
+
+    // 发送到监控服务
+    this.sendToAnalytics({
+      name,
+      value: metric.value,
+      id: metric.id,
+      delta: metric.delta,
+      rating: this.getRating(name, metric.value)
+    });
+  }
+
+  getRating(name, value) {
+    const thresholds = {
+      CLS: { good: 0.1, poor: 0.25 },
+      FID: { good: 100, poor: 300 },
+      FCP: { good: 1800, poor: 3000 },
+      LCP: { good: 2500, poor: 4000 },
+      TTFB: { good: 800, poor: 1800 }
+    };
+
+    const threshold = thresholds[name];
+    if (value <= threshold.good) return 'good';
+    if (value <= threshold.poor) return 'needs-improvement';
+    return 'poor';
+  }
+
+  setupErrorTracking() {
+    window.addEventListener('error', (event) => {
+      this.trackError({
+        type: 'javascript',
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error?.stack
+      });
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+      this.trackError({
+        type: 'promise',
+        message: event.reason?.message || 'Unhandled Promise Rejection',
+        stack: event.reason?.stack
+      });
+    });
+  }
+
+  trackError(error) {
+    console.error('Error tracked:', error);
+
+    // 发送到错误监控服务
+    this.sendToErrorService(error);
+  }
+
+  async sendToAnalytics(data) {
+    try {
+      await fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+    } catch (error) {
+      console.error('Failed to send analytics:', error);
+    }
+  }
+
+  async sendToErrorService(error) {
+    try {
+      await fetch('/api/errors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...error,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          url: window.location.href
+        })
+      });
+    } catch (err) {
+      console.error('Failed to send error:', err);
+    }
+  }
+}
+
+// 2. 服务端日志配置
+// lib/logger.js
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'nextjs-app' },
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
+
+// 请求日志中间件
+export function requestLogger(req, res, next) {
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info('HTTP Request', {
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip
+    });
+  });
+
+  next();
+}
+
+export default logger;
+
+// 3. 数据库监控
+// lib/database-monitor.js
+class DatabaseMonitor {
+  constructor(db) {
+    this.db = db;
+    this.setupMonitoring();
+  }
+
+  setupMonitoring() {
+    // 监控慢查询
+    this.db.on('query', (query) => {
+      const start = Date.now();
+
+      query.on('end', () => {
+        const duration = Date.now() - start;
+
+        if (duration > 1000) { // 超过1秒的查询
+          logger.warn('Slow Query Detected', {
+            sql: query.sql,
+            duration,
+            bindings: query.bindings
+          });
+        }
+      });
+    });
+
+    // 监控连接池
+    setInterval(() => {
+      const poolStats = this.db.pool.stats();
+
+      logger.info('Database Pool Stats', {
+        total: poolStats.total,
+        idle: poolStats.idle,
+        waiting: poolStats.waiting
+      });
+
+      // 发送到监控服务
+      this.sendPoolMetrics(poolStats);
+    }, 60000); // 每分钟检查一次
+  }
+
+  async sendPoolMetrics(stats) {
+    try {
+      await fetch('/api/metrics/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timestamp: new Date().toISOString(),
+          ...stats
+        })
+      });
+    } catch (error) {
+      logger.error('Failed to send database metrics:', error);
+    }
+  }
+}
+```
+
 ---
 
 <Callout type="success">
 现代全栈框架如Next.js和Nuxt.js提供了完整的解决方案，从开发到部署的全流程支持，大大提升了全栈开发的效率。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [Next.js 官方文档](https://nextjs.org/) - Next.js权威学习资源
+- [Nuxt.js 官方文档](https://nuxt.com/) - Nuxt.js现代化全栈框架
+- [Vercel 部署文档](https://vercel.com/docs) - Vercel部署平台
+- [Netlify 文档](https://docs.netlify.com/) - Netlify静态站点部署
+
+### 🎓 优质教程
+- [Next.js 官方教程](https://nextjs.org/learn) - 官方学习课程
+- [Nuxt.js 指南](https://nuxt.com/docs/guide) - Nuxt.js开发指南
+- [Full Stack Development](https://www.freecodecamp.org/news/nextjs-tutorial/) - 全栈开发教程
+
+### 🛠️ 实践项目
+- [Next.js Examples](https://github.com/vercel/next.js/tree/canary/examples) - Next.js官方示例
+- [Nuxt.js Examples](https://github.com/nuxt/examples) - Nuxt.js示例项目
+- [Awesome Next.js](https://github.com/unicodeveloper/awesome-nextjs) - Next.js资源集合
+
+### 🔧 开发工具
+- [Next.js DevTools](https://nextjs.org/docs/advanced-features/debugging) - Next.js调试工具
+- [Nuxt DevTools](https://devtools.nuxtjs.org/) - Nuxt.js开发工具
+- [Vercel CLI](https://vercel.com/cli) - Vercel命令行工具
+- [Lighthouse](https://developers.google.com/web/tools/lighthouse) - 性能审计工具
+
+### 📝 深入阅读
+- [SSR vs SSG vs ISR](https://vercel.com/blog/nextjs-server-side-rendering-vs-static-generation) - 渲染策略对比
+- [Next.js Performance](https://nextjs.org/docs/advanced-features/measuring-performance) - Next.js性能优化
+- [Full Stack Architecture](https://blog.logrocket.com/modern-full-stack-development/) - 现代全栈架构
+
+<Callout type="tip">
+💡 **学习建议**：建议从Next.js或Nuxt.js中选择一个开始学习，掌握SSR/SSG概念，然后深入全栈开发，最后了解部署和性能优化。
 </Callout>

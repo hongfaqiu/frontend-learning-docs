@@ -695,8 +695,1379 @@ Page({
 });
 ```
 
+## 跨端框架对比
+
+<Callout type="info">
+跨端开发框架让开发者能够用一套代码运行在多个平台上，大大提升了开发效率。
+</Callout>
+
+### 主流跨端框架对比
+
+```javascript
+// 跨端框架特性对比
+const crossPlatformFrameworks = {
+  'uni-app': {
+    技术栈: 'Vue.js',
+    开发语言: 'Vue + JavaScript/TypeScript',
+    支持平台: [
+      '微信小程序', '支付宝小程序', '百度小程序',
+      '字节跳动小程序', 'QQ小程序', 'H5',
+      'Android App', 'iOS App'
+    ],
+    优势: [
+      '学习成本低（Vue开发者）',
+      '平台支持最全面',
+      '丰富的插件市场',
+      '活跃的社区支持'
+    ],
+    劣势: [
+      '部分平台特性支持有限',
+      '性能不如原生开发',
+      '调试相对复杂'
+    ],
+    适用场景: '中小型应用，快速多端部署',
+    市场占有率: '40%+'
+  },
+
+  'Taro': {
+    技术栈: 'React/Vue',
+    开发语言: 'React/Vue + JavaScript/TypeScript',
+    支持平台: [
+      '微信小程序', '支付宝小程序', '百度小程序',
+      '字节跳动小程序', 'QQ小程序', 'H5',
+      'React Native', 'Flutter'
+    ],
+    优势: [
+      '支持React和Vue',
+      '京东团队维护',
+      '编译时优化',
+      '类型安全支持'
+    ],
+    劣势: [
+      '学习曲线相对陡峭',
+      '编译产物较大',
+      '部分API兼容性问题'
+    ],
+    适用场景: '大型应用，React/Vue技术栈团队',
+    市场占有率: '25%+'
+  },
+
+  'Flutter': {
+    技术栈: 'Flutter + Dart',
+    开发语言: 'Dart',
+    支持平台: [
+      'Android App', 'iOS App', 'Web',
+      'Windows', 'macOS', 'Linux'
+    ],
+    优势: [
+      '高性能渲染',
+      '一致的UI体验',
+      'Google官方支持',
+      '热重载开发体验'
+    ],
+    劣势: [
+      '学习成本高',
+      '应用体积较大',
+      '小程序支持有限'
+    ],
+    适用场景: '高性能应用，跨平台一致性要求高',
+    市场占有率: '20%+'
+  },
+
+  'React Native': {
+    技术栈: 'React + JavaScript',
+    开发语言: 'JavaScript/TypeScript',
+    支持平台: [
+      'Android App', 'iOS App', 'Web'
+    ],
+    优势: [
+      'Facebook官方支持',
+      '原生性能',
+      '丰富的第三方库',
+      'React开发者友好'
+    ],
+    劣势: [
+      '不支持小程序',
+      '平台差异处理复杂',
+      '升级成本高'
+    ],
+    适用场景: 'App开发，React技术栈',
+    市场占有率: '15%+'
+  }
+};
+
+// 框架选择决策树
+function chooseFramework(requirements) {
+  const {
+    targetPlatforms,
+    teamSkills,
+    performanceRequirements,
+    developmentTime,
+    maintenanceBudget
+  } = requirements;
+
+  // 需要小程序支持
+  if (targetPlatforms.includes('miniprogram')) {
+    if (teamSkills.includes('vue')) {
+      return {
+        recommendation: 'uni-app',
+        reason: 'Vue技术栈 + 最全面的小程序支持'
+      };
+    } else if (teamSkills.includes('react')) {
+      return {
+        recommendation: 'Taro',
+        reason: 'React技术栈 + 良好的小程序支持'
+      };
+    }
+  }
+
+  // 主要做App开发
+  if (targetPlatforms.every(p => ['ios', 'android', 'web'].includes(p))) {
+    if (performanceRequirements === 'high') {
+      return {
+        recommendation: 'Flutter',
+        reason: '高性能 + 一致的UI体验'
+      };
+    } else if (teamSkills.includes('react')) {
+      return {
+        recommendation: 'React Native',
+        reason: 'React技术栈 + 原生性能'
+      };
+    }
+  }
+
+  // 快速开发需求
+  if (developmentTime === 'short') {
+    return {
+      recommendation: 'uni-app',
+      reason: '开发效率高 + 平台覆盖广'
+    };
+  }
+
+  return {
+    recommendation: 'uni-app',
+    reason: '综合考虑最佳选择'
+  };
+}
+```
+
+## uni-app全平台开发
+
+### uni-app项目结构和配置
+
+```javascript
+// 1. 项目配置 - manifest.json
+{
+  "name": "uni-app-demo",
+  "appid": "__UNI__XXXXXXX",
+  "description": "uni-app跨平台应用",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3,
+    "splashscreen": {
+      "alwaysShowBeforeRender": true,
+      "waiting": true,
+      "autoclose": true,
+      "delay": 0
+    },
+    "modules": {},
+    "distribute": {
+      "android": {
+        "permissions": [
+          "<uses-permission android:name=\"android.permission.CHANGE_NETWORK_STATE\" />",
+          "<uses-permission android:name=\"android.permission.MOUNT_UNMOUNT_FILESYSTEMS\" />",
+          "<uses-permission android:name=\"android.permission.VIBRATE\" />",
+          "<uses-permission android:name=\"android.permission.READ_LOGS\" />",
+          "<uses-permission android:name=\"android.permission.ACCESS_WIFI_STATE\" />",
+          "<uses-feature android:name=\"android.hardware.camera.autofocus\" />",
+          "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" />",
+          "<uses-permission android:name=\"android.permission.CAMERA\" />",
+          "<uses-permission android:name=\"android.permission.GET_ACCOUNTS\" />",
+          "<uses-permission android:name=\"android.permission.READ_PHONE_STATE\" />",
+          "<uses-permission android:name=\"android.permission.CHANGE_WIFI_STATE\" />",
+          "<uses-permission android:name=\"android.permission.WAKE_LOCK\" />",
+          "<uses-permission android:name=\"android.permission.FLASHLIGHT\" />",
+          "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\" />"
+        ]
+      },
+      "ios": {},
+      "sdkConfigs": {
+        "ad": {},
+        "oauth": {},
+        "payment": {},
+        "push": {},
+        "share": {},
+        "statics": {}
+      }
+    }
+  },
+  "quickapp": {},
+  "mp-weixin": {
+    "appid": "wxXXXXXXXXXXXXXXXX",
+    "setting": {
+      "urlCheck": false
+    },
+    "usingComponents": true
+  },
+  "mp-alipay": {
+    "usingComponents": true
+  },
+  "mp-baidu": {
+    "usingComponents": true
+  },
+  "mp-toutiao": {
+    "usingComponents": true
+  },
+  "uniStatistics": {
+    "enable": false
+  },
+  "vueVersion": "3"
+}
+
+// 2. 页面配置 - pages.json
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/list/list",
+      "style": {
+        "navigationBarTitleText": "列表页",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/detail/detail",
+      "style": {
+        "navigationBarTitleText": "详情页"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "uni-app",
+    "navigationBarBackgroundColor": "#F8F8F8",
+    "backgroundColor": "#F8F8F8"
+  },
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#3cc51f",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "iconPath": "static/tab-home.png",
+        "selectedIconPath": "static/tab-home-current.png",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/list/list",
+        "iconPath": "static/tab-list.png",
+        "selectedIconPath": "static/tab-list-current.png",
+        "text": "列表"
+      }
+    ]
+  }
+}
+```
+
+### uni-app组件开发
+
+```vue
+<!-- 3. 自定义组件开发 -->
+<!-- components/custom-list/custom-list.vue -->
+<template>
+  <view class="custom-list">
+    <view class="list-header" v-if="title">
+      <text class="header-title">{{ title }}</text>
+      <view class="header-action" @click="onHeaderAction">
+        <text class="action-text">{{ actionText }}</text>
+      </view>
+    </view>
+
+    <scroll-view
+      class="list-content"
+      scroll-y="true"
+      @scrolltolower="onLoadMore"
+      :refresher-enabled="enableRefresh"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+    >
+      <view
+        class="list-item"
+        v-for="(item, index) in list"
+        :key="item.id || index"
+        @click="onItemClick(item, index)"
+      >
+        <slot name="item" :item="item" :index="index">
+          <!-- 默认列表项 -->
+          <view class="default-item">
+            <image
+              v-if="item.image"
+              class="item-image"
+              :src="item.image"
+              mode="aspectFill"
+            />
+            <view class="item-content">
+              <text class="item-title">{{ item.title }}</text>
+              <text class="item-desc">{{ item.description }}</text>
+            </view>
+          </view>
+        </slot>
+      </view>
+
+      <!-- 加载更多 -->
+      <view class="load-more" v-if="showLoadMore">
+        <uni-load-more :status="loadMoreStatus"></uni-load-more>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script>
+export default {
+  name: 'CustomList',
+  props: {
+    title: {
+      type: String,
+      default: ''
+    },
+    actionText: {
+      type: String,
+      default: '更多'
+    },
+    list: {
+      type: Array,
+      default: () => []
+    },
+    enableRefresh: {
+      type: Boolean,
+      default: true
+    },
+    showLoadMore: {
+      type: Boolean,
+      default: true
+    }
+  },
+  data() {
+    return {
+      refreshing: false,
+      loadMoreStatus: 'more' // more, loading, noMore
+    };
+  },
+  methods: {
+    onHeaderAction() {
+      this.$emit('header-action');
+    },
+
+    onItemClick(item, index) {
+      this.$emit('item-click', { item, index });
+    },
+
+    async onRefresh() {
+      this.refreshing = true;
+      try {
+        await this.$emit('refresh');
+      } finally {
+        this.refreshing = false;
+      }
+    },
+
+    async onLoadMore() {
+      if (this.loadMoreStatus !== 'more') return;
+
+      this.loadMoreStatus = 'loading';
+      try {
+        const hasMore = await this.$emit('load-more');
+        this.loadMoreStatus = hasMore ? 'more' : 'noMore';
+      } catch (error) {
+        this.loadMoreStatus = 'more';
+        uni.showToast({
+          title: '加载失败',
+          icon: 'none'
+        });
+      }
+    }
+  }
+};
+</script>
+
+<style lang="scss" scoped>
+.custom-list {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background-color: #fff;
+  border-bottom: 1rpx solid #eee;
+
+  .header-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .header-action {
+    .action-text {
+      font-size: 28rpx;
+      color: #007aff;
+    }
+  }
+}
+
+.list-content {
+  flex: 1;
+  background-color: #f5f5f5;
+}
+
+.list-item {
+  margin: 20rpx;
+  background-color: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.default-item {
+  display: flex;
+  padding: 30rpx;
+
+  .item-image {
+    width: 120rpx;
+    height: 120rpx;
+    border-radius: 8rpx;
+    margin-right: 20rpx;
+  }
+
+  .item-content {
+    flex: 1;
+
+    .item-title {
+      font-size: 32rpx;
+      color: #333;
+      margin-bottom: 10rpx;
+      display: block;
+    }
+
+    .item-desc {
+      font-size: 28rpx;
+      color: #666;
+      display: block;
+    }
+  }
+}
+
+.load-more {
+  padding: 30rpx;
+}
+</style>
+
+<!-- 4. 页面使用组件 -->
+<!-- pages/list/list.vue -->
+<template>
+  <view class="page">
+    <custom-list
+      title="文章列表"
+      action-text="搜索"
+      :list="articleList"
+      @header-action="onSearch"
+      @item-click="onArticleClick"
+      @refresh="onRefresh"
+      @load-more="onLoadMore"
+    >
+      <template #item="{ item, index }">
+        <view class="article-item">
+          <image class="article-cover" :src="item.cover" mode="aspectFill" />
+          <view class="article-info">
+            <text class="article-title">{{ item.title }}</text>
+            <text class="article-summary">{{ item.summary }}</text>
+            <view class="article-meta">
+              <text class="meta-author">{{ item.author }}</text>
+              <text class="meta-time">{{ formatTime(item.publishTime) }}</text>
+              <text class="meta-views">{{ item.views }}阅读</text>
+            </view>
+          </view>
+        </view>
+      </template>
+    </custom-list>
+  </view>
+</template>
+
+<script>
+import CustomList from '@/components/custom-list/custom-list.vue';
+
+export default {
+  components: {
+    CustomList
+  },
+  data() {
+    return {
+      articleList: [],
+      page: 1,
+      pageSize: 10,
+      hasMore: true
+    };
+  },
+  onLoad() {
+    this.loadArticles();
+  },
+  methods: {
+    async loadArticles(refresh = false) {
+      if (refresh) {
+        this.page = 1;
+        this.hasMore = true;
+      }
+
+      try {
+        const response = await uni.request({
+          url: '/api/articles',
+          data: {
+            page: this.page,
+            pageSize: this.pageSize
+          }
+        });
+
+        const { data } = response[1];
+
+        if (refresh) {
+          this.articleList = data.list;
+        } else {
+          this.articleList.push(...data.list);
+        }
+
+        this.hasMore = data.hasMore;
+        this.page++;
+
+        return this.hasMore;
+      } catch (error) {
+        console.error('加载文章失败:', error);
+        uni.showToast({
+          title: '加载失败',
+          icon: 'none'
+        });
+        return false;
+      }
+    },
+
+    onSearch() {
+      uni.navigateTo({
+        url: '/pages/search/search'
+      });
+    },
+
+    onArticleClick({ item }) {
+      uni.navigateTo({
+        url: `/pages/article/article?id=${item.id}`
+      });
+    },
+
+    async onRefresh() {
+      await this.loadArticles(true);
+    },
+
+    async onLoadMore() {
+      if (!this.hasMore) return false;
+      return await this.loadArticles();
+    },
+
+    formatTime(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now - date;
+
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+      return `${Math.floor(diff / 86400000)}天前`;
+    }
+  }
+};
+</script>
+
+<style lang="scss" scoped>
+.page {
+  height: 100vh;
+}
+
+.article-item {
+  display: flex;
+  padding: 30rpx;
+
+  .article-cover {
+    width: 200rpx;
+    height: 150rpx;
+    border-radius: 8rpx;
+    margin-right: 20rpx;
+  }
+
+  .article-info {
+    flex: 1;
+
+    .article-title {
+      font-size: 32rpx;
+      color: #333;
+      font-weight: bold;
+      margin-bottom: 15rpx;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .article-summary {
+      font-size: 28rpx;
+      color: #666;
+      margin-bottom: 20rpx;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .article-meta {
+      display: flex;
+      font-size: 24rpx;
+      color: #999;
+
+      .meta-author,
+      .meta-time,
+      .meta-views {
+        margin-right: 20rpx;
+      }
+    }
+  }
+}
+</style>
+```
+
+## Taro多端统一开发
+
+<Callout type="info">
+[Taro](https://taro.jd.com/)是京东开源的多端统一开发框架，支持React和Vue语法，能够编译到多个平台。
+</Callout>
+
+### Taro项目配置
+
+```javascript
+// 1. 项目配置 - config/index.js
+const config = {
+  projectName: 'taro-app',
+  date: '2023-12-1',
+  designWidth: 750,
+  deviceRatio: {
+    640: 2.34 / 2,
+    750: 1,
+    828: 1.81 / 2
+  },
+  sourceRoot: 'src',
+  outputRoot: 'dist',
+  plugins: [],
+  defineConstants: {
+    API_BASE_URL: JSON.stringify('https://api.example.com')
+  },
+  copy: {
+    patterns: [
+    ],
+    options: {
+    }
+  },
+  framework: 'react',
+  compiler: 'webpack5',
+  cache: {
+    enable: false // Webpack 持久化缓存配置，建议开启。默认配置请参考：https://docs.taro.zone/docs/config-detail#cache
+  },
+  mini: {
+    postcss: {
+      pxtransform: {
+        enable: true,
+        config: {
+
+        }
+      },
+      url: {
+        enable: true,
+        config: {
+          limit: 1024 // 设定转换尺寸上限
+        }
+      },
+      cssModules: {
+        enable: false, // 默认为 false，如需使用 css modules 功能，则设为 true
+        config: {
+          namingPattern: 'module', // 转换模式，取值为 global/module
+          generateScopedName: '[name]__[local]___[hash:base64:5]'
+        }
+      }
+    }
+  },
+  h5: {
+    publicPath: '/',
+    staticDirectory: 'static',
+    esnextModules: ['taro-ui'],
+    postcss: {
+      autoprefixer: {
+        enable: true,
+        config: {
+        }
+      },
+      cssModules: {
+        enable: false, // 默认为 false，如需使用 css modules 功能，则设为 true
+        config: {
+          namingPattern: 'module', // 转换模式，取值为 global/module
+          generateScopedName: '[name]__[local]___[hash:base64:5]'
+        }
+      }
+    }
+  },
+  rn: {
+    appName: 'taroDemo',
+    postcss: {
+      cssModules: {
+        enable: false, // 默认为 false，如需使用 css modules 功能，则设为 true
+      }
+    }
+  }
+}
+
+module.exports = function (merge) {
+  if (process.env.NODE_ENV === 'development') {
+    return merge({}, config, require('./dev'))
+  }
+  return merge({}, config, require('./prod'))
+}
+
+// 2. Taro React组件开发
+// src/components/ProductCard/index.tsx
+import React, { useState } from 'react';
+import { View, Image, Text, Button } from '@tarojs/components';
+import { navigateTo, showToast } from '@tarojs/taro';
+import './index.scss';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  image: string;
+  description: string;
+  stock: number;
+}
+
+interface ProductCardProps {
+  product: Product;
+  onAddToCart?: (product: Product) => void;
+}
+
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleAddToCart = async () => {
+    if (product.stock <= 0) {
+      showToast({
+        title: '商品已售罄',
+        icon: 'none'
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onAddToCart?.(product);
+      showToast({
+        title: '已加入购物车',
+        icon: 'success'
+      });
+    } catch (error) {
+      showToast({
+        title: '加入购物车失败',
+        icon: 'none'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewDetail = () => {
+    navigateTo({
+      url: `/pages/product/detail?id=${product.id}`
+    });
+  };
+
+  return (
+    <View className="product-card">
+      <View className="product-image-container" onClick={handleViewDetail}>
+        <Image
+          className="product-image"
+          src={product.image}
+          mode="aspectFill"
+        />
+        {product.stock <= 0 && (
+          <View className="sold-out-mask">
+            <Text className="sold-out-text">售罄</Text>
+          </View>
+        )}
+      </View>
+
+      <View className="product-info">
+        <Text className="product-name" onClick={handleViewDetail}>
+          {product.name}
+        </Text>
+        <Text className="product-desc">{product.description}</Text>
+
+        <View className="price-container">
+          <Text className="current-price">¥{product.price}</Text>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <Text className="original-price">¥{product.originalPrice}</Text>
+          )}
+        </View>
+
+        <View className="action-container">
+          <Text className="stock-info">库存: {product.stock}</Text>
+          <Button
+            className="add-cart-btn"
+            size="mini"
+            type="primary"
+            loading={loading}
+            disabled={product.stock <= 0}
+            onClick={handleAddToCart}
+          >
+            {product.stock <= 0 ? '售罄' : '加购物车'}
+          </Button>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+export default ProductCard;
+
+// 3. Taro Hooks使用
+// src/hooks/useRequest.ts
+import { useState, useEffect, useCallback } from 'react';
+import Taro from '@tarojs/taro';
+
+interface RequestOptions {
+  manual?: boolean;
+  onSuccess?: (data: any) => void;
+  onError?: (error: any) => void;
+}
+
+interface RequestResult<T> {
+  data: T | null;
+  loading: boolean;
+  error: any;
+  run: (...args: any[]) => Promise<T>;
+  refresh: () => Promise<T>;
+}
+
+function useRequest<T = any>(
+  service: (...args: any[]) => Promise<T>,
+  options: RequestOptions = {}
+): RequestResult<T> {
+  const { manual = false, onSuccess, onError } = options;
+
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(!manual);
+  const [error, setError] = useState<any>(null);
+  const [params, setParams] = useState<any[]>([]);
+
+  const run = useCallback(async (...args: any[]) => {
+    setLoading(true);
+    setError(null);
+    setParams(args);
+
+    try {
+      const result = await service(...args);
+      setData(result);
+      onSuccess?.(result);
+      return result;
+    } catch (err) {
+      setError(err);
+      onError?.(err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [service, onSuccess, onError]);
+
+  const refresh = useCallback(() => {
+    return run(...params);
+  }, [run, params]);
+
+  useEffect(() => {
+    if (!manual) {
+      run();
+    }
+  }, [manual, run]);
+
+  return {
+    data,
+    loading,
+    error,
+    run,
+    refresh
+  };
+}
+
+// 使用示例
+// src/pages/product/list.tsx
+import React from 'react';
+import { View, ScrollView } from '@tarojs/components';
+import { usePullDownRefresh, stopPullDownRefresh } from '@tarojs/taro';
+import ProductCard from '@/components/ProductCard';
+import useRequest from '@/hooks/useRequest';
+import { getProductList, addToCart } from '@/services/product';
+
+const ProductList: React.FC = () => {
+  const { data: products, loading, refresh } = useRequest(
+    () => getProductList({ page: 1, pageSize: 20 }),
+    {
+      onSuccess: (data) => {
+        console.log('商品列表加载成功:', data);
+      },
+      onError: (error) => {
+        console.error('商品列表加载失败:', error);
+      }
+    }
+  );
+
+  const { run: handleAddToCart } = useRequest(addToCart, {
+    manual: true,
+    onSuccess: () => {
+      // 可以在这里更新购物车数量等
+    }
+  });
+
+  // 下拉刷新
+  usePullDownRefresh(async () => {
+    try {
+      await refresh();
+    } finally {
+      stopPullDownRefresh();
+    }
+  });
+
+  return (
+    <ScrollView className="product-list" scrollY>
+      {products?.map(product => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          onAddToCart={handleAddToCart}
+        />
+      ))}
+    </ScrollView>
+  );
+};
+
+export default ProductList;
+```
+
+## 性能优化和最佳实践
+
+<Callout type="warning">
+跨端开发的性能优化需要考虑不同平台的特性和限制，采用合适的优化策略。
+</Callout>
+
+### 小程序性能优化
+
+```javascript
+// 1. 代码分包和懒加载
+// app.json
+{
+  "pages": [
+    "pages/index/index",
+    "pages/list/list"
+  ],
+  "subPackages": [
+    {
+      "root": "packageA",
+      "name": "pack1",
+      "pages": [
+        "pages/cat/cat",
+        "pages/dog/dog"
+      ]
+    },
+    {
+      "root": "packageB",
+      "name": "pack2",
+      "pages": [
+        "pages/apple/apple",
+        "pages/banana/banana"
+      ],
+      "independent": true
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["pack1"]
+    },
+    "pages/list/list": {
+      "packages": ["pack2"]
+    }
+  }
+}
+
+// 2. 图片优化策略
+class ImageOptimizer {
+  // 图片压缩
+  static compressImage(src, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+      wx.compressImage({
+        src,
+        quality,
+        success: resolve,
+        fail: reject
+      });
+    });
+  }
+
+  // 图片懒加载
+  static setupLazyLoad() {
+    const observer = wx.createIntersectionObserver();
+
+    observer.relativeToViewport({ bottom: 100 });
+    observer.observe('.lazy-image', (res) => {
+      if (res.intersectionRatio > 0) {
+        const dataset = res.target.dataset;
+        const img = res.target;
+
+        // 加载真实图片
+        img.src = dataset.src;
+        img.classList.remove('lazy-image');
+
+        observer.unobserve(img);
+      }
+    });
+  }
+
+  // 图片预加载
+  static preloadImages(urls) {
+    return Promise.all(
+      urls.map(url => new Promise((resolve, reject) => {
+        wx.getImageInfo({
+          src: url,
+          success: resolve,
+          fail: reject
+        });
+      }))
+    );
+  }
+}
+
+// 3. 数据缓存策略
+class CacheManager {
+  constructor() {
+    this.cache = new Map();
+    this.maxSize = 50; // 最大缓存数量
+    this.ttl = 5 * 60 * 1000; // 5分钟过期
+  }
+
+  set(key, data) {
+    // 清理过期缓存
+    this.cleanup();
+
+    // 如果缓存已满，删除最旧的
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+
+    // 同时存储到本地
+    try {
+      wx.setStorageSync(`cache_${key}`, {
+        data,
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.warn('缓存到本地存储失败:', error);
+    }
+  }
+
+  get(key) {
+    let cached = this.cache.get(key);
+
+    // 如果内存中没有，尝试从本地存储获取
+    if (!cached) {
+      try {
+        cached = wx.getStorageSync(`cache_${key}`);
+        if (cached) {
+          this.cache.set(key, cached);
+        }
+      } catch (error) {
+        console.warn('从本地存储读取缓存失败:', error);
+      }
+    }
+
+    if (!cached) return null;
+
+    // 检查是否过期
+    if (Date.now() - cached.timestamp > this.ttl) {
+      this.delete(key);
+      return null;
+    }
+
+    return cached.data;
+  }
+
+  delete(key) {
+    this.cache.delete(key);
+    try {
+      wx.removeStorageSync(`cache_${key}`);
+    } catch (error) {
+      console.warn('删除本地缓存失败:', error);
+    }
+  }
+
+  cleanup() {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now - value.timestamp > this.ttl) {
+        this.delete(key);
+      }
+    }
+  }
+
+  clear() {
+    this.cache.clear();
+    try {
+      const info = wx.getStorageInfoSync();
+      info.keys.forEach(key => {
+        if (key.startsWith('cache_')) {
+          wx.removeStorageSync(key);
+        }
+      });
+    } catch (error) {
+      console.warn('清理本地缓存失败:', error);
+    }
+  }
+}
+
+// 4. 网络请求优化
+class RequestManager {
+  constructor() {
+    this.cache = new CacheManager();
+    this.pendingRequests = new Map();
+  }
+
+  async request(options) {
+    const { url, data, method = 'GET', useCache = true, cacheTime = 5 * 60 * 1000 } = options;
+    const cacheKey = this.getCacheKey(url, data, method);
+
+    // 检查缓存
+    if (useCache && method === 'GET') {
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    // 检查是否有相同的请求正在进行
+    if (this.pendingRequests.has(cacheKey)) {
+      return this.pendingRequests.get(cacheKey);
+    }
+
+    // 发起请求
+    const requestPromise = new Promise((resolve, reject) => {
+      wx.request({
+        url,
+        data,
+        method,
+        success: (res) => {
+          if (res.statusCode === 200) {
+            // 缓存GET请求结果
+            if (useCache && method === 'GET') {
+              this.cache.set(cacheKey, res.data);
+            }
+            resolve(res.data);
+          } else {
+            reject(new Error(`Request failed with status ${res.statusCode}`));
+          }
+        },
+        fail: reject,
+        complete: () => {
+          this.pendingRequests.delete(cacheKey);
+        }
+      });
+    });
+
+    this.pendingRequests.set(cacheKey, requestPromise);
+    return requestPromise;
+  }
+
+  getCacheKey(url, data, method) {
+    return `${method}_${url}_${JSON.stringify(data || {})}`;
+  }
+}
+
+// 5. 性能监控
+class PerformanceMonitor {
+  constructor() {
+    this.metrics = {};
+    this.setupMonitoring();
+  }
+
+  setupMonitoring() {
+    // 监控页面性能
+    const originalPage = Page;
+    Page = (options) => {
+      const originalOnLoad = options.onLoad;
+      const originalOnShow = options.onShow;
+
+      options.onLoad = function(...args) {
+        const startTime = Date.now();
+        this._loadStartTime = startTime;
+
+        if (originalOnLoad) {
+          originalOnLoad.apply(this, args);
+        }
+
+        // 页面加载完成后记录时间
+        wx.nextTick(() => {
+          const loadTime = Date.now() - startTime;
+          console.log(`页面加载时间: ${loadTime}ms`);
+
+          // 上报性能数据
+          this.reportPerformance?.({
+            type: 'pageLoad',
+            page: this.route,
+            duration: loadTime
+          });
+        });
+      };
+
+      options.onShow = function(...args) {
+        this._showStartTime = Date.now();
+
+        if (originalOnShow) {
+          originalOnShow.apply(this, args);
+        }
+      };
+
+      return originalPage(options);
+    };
+
+    // 监控网络请求
+    const originalRequest = wx.request;
+    wx.request = (options) => {
+      const startTime = Date.now();
+      const originalSuccess = options.success;
+      const originalFail = options.fail;
+
+      options.success = function(res) {
+        const duration = Date.now() - startTime;
+        console.log(`请求耗时: ${options.url} - ${duration}ms`);
+
+        if (originalSuccess) {
+          originalSuccess(res);
+        }
+      };
+
+      options.fail = function(error) {
+        const duration = Date.now() - startTime;
+        console.log(`请求失败: ${options.url} - ${duration}ms`, error);
+
+        if (originalFail) {
+          originalFail(error);
+        }
+      };
+
+      return originalRequest(options);
+    };
+  }
+
+  reportPerformance(data) {
+    // 上报性能数据到服务器
+    wx.request({
+      url: '/api/performance',
+      method: 'POST',
+      data: {
+        ...data,
+        timestamp: Date.now(),
+        platform: 'miniprogram'
+      }
+    });
+  }
+}
+
+// 使用示例
+const cacheManager = new CacheManager();
+const requestManager = new RequestManager();
+const performanceMonitor = new PerformanceMonitor();
+
+// 在应用启动时初始化
+App({
+  onLaunch() {
+    // 初始化性能监控
+    performanceMonitor.setupMonitoring();
+
+    // 预加载关键图片
+    ImageOptimizer.preloadImages([
+      '/images/logo.png',
+      '/images/default-avatar.png'
+    ]);
+  }
+});
+```
+
 ---
 
 <Callout type="success">
 小程序和跨端开发为前端开发者提供了更广阔的应用场景，掌握这些技术能够让你的应用覆盖更多平台和用户。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [微信小程序官方文档](https://developers.weixin.qq.com/miniprogram/dev/framework/) - 微信小程序权威文档
+- [uni-app 官方文档](https://uniapp.dcloud.net.cn/) - uni-app跨端开发框架
+- [Taro 官方文档](https://taro.jd.com/) - 京东Taro多端统一开发框架
+- [支付宝小程序文档](https://opendocs.alipay.com/mini) - 支付宝小程序开发指南
+
+### 🎓 优质教程
+- [微信小程序开发教程](https://developers.weixin.qq.com/miniprogram/dev/framework/quickstart/) - 官方快速入门
+- [uni-app 从入门到实战](https://uniapp.dcloud.net.cn/tutorial/) - uni-app官方教程
+- [Taro 实战教程](https://taro-docs.jd.com/taro/docs/tutorial) - Taro开发实战
+
+### 🛠️ 实践项目
+- [微信小程序示例](https://github.com/wechat-miniprogram/miniprogram-demo) - 官方示例项目
+- [uni-app 插件市场](https://ext.dcloud.net.cn/) - uni-app插件和模板
+- [Taro 物料市场](https://taro-ext.jd.com/) - Taro组件和模板
+
+### 🔧 开发工具
+- [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html) - 微信小程序IDE
+- [HBuilderX](https://www.dcloud.io/hbuilderx.html) - uni-app官方IDE
+- [Taro CLI](https://taro-docs.jd.com/taro/docs/GETTING-STARTED) - Taro命令行工具
+- [小程序开发助手](https://developers.weixin.qq.com/miniprogram/dev/devtools/ext.html) - 开发辅助工具
+
+### 📝 深入阅读
+- [小程序性能优化](https://developers.weixin.qq.com/miniprogram/dev/framework/performance/) - 微信小程序性能指南
+- [跨端开发最佳实践](https://uniapp.dcloud.net.cn/tutorial/best-practices.html) - uni-app最佳实践
+- [多端统一开发思考](https://aotu.io/notes/2018/06/25/the-birth-of-taro/index.html) - Taro设计思想
+
+<Callout type="tip">
+💡 **学习建议**：建议从微信小程序开始学习小程序开发基础，然后选择uni-app或Taro学习跨端开发，重点掌握性能优化和平台差异处理。
 </Callout>

@@ -649,8 +649,1171 @@ communicationBridge.on('user-login', (event) => {
 });
 ```
 
+## 组件化架构模式
+
+<Callout type="info">
+组件化架构是现代前端开发的核心思想，通过将UI拆分为独立、可复用的组件来提高开发效率和代码质量。
+</Callout>
+
+### 组件设计原则
+
+```javascript
+// 1. 单一职责原则
+// 好的组件设计 - 职责单一
+const UserAvatar = ({ user, size = 'medium', onClick }) => {
+  const sizeClasses = {
+    small: 'w-8 h-8',
+    medium: 'w-12 h-12',
+    large: 'w-16 h-16'
+  };
+
+  return (
+    <div
+      className={`rounded-full overflow-hidden ${sizeClasses[size]} cursor-pointer`}
+      onClick={onClick}
+    >
+      <img
+        src={user.avatar || '/default-avatar.png'}
+        alt={user.name}
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
+};
+
+// 2. 组合优于继承
+const Card = ({ children, className = '', ...props }) => (
+  <div className={`bg-white rounded-lg shadow-md p-4 ${className}`} {...props}>
+    {children}
+  </div>
+);
+
+const CardHeader = ({ children, className = '' }) => (
+  <div className={`border-b pb-2 mb-4 ${className}`}>
+    {children}
+  </div>
+);
+
+const CardBody = ({ children, className = '' }) => (
+  <div className={className}>
+    {children}
+  </div>
+);
+
+const CardFooter = ({ children, className = '' }) => (
+  <div className={`border-t pt-2 mt-4 ${className}`}>
+    {children}
+  </div>
+);
+
+// 使用组合
+const UserCard = ({ user }) => (
+  <Card>
+    <CardHeader>
+      <div className="flex items-center space-x-3">
+        <UserAvatar user={user} />
+        <h3 className="text-lg font-semibold">{user.name}</h3>
+      </div>
+    </CardHeader>
+    <CardBody>
+      <p className="text-gray-600">{user.bio}</p>
+    </CardBody>
+    <CardFooter>
+      <button className="btn-primary">Follow</button>
+    </CardFooter>
+  </Card>
+);
+
+// 3. 高阶组件模式
+const withLoading = (WrappedComponent) => {
+  return function WithLoadingComponent({ isLoading, ...props }) {
+    if (isLoading) {
+      return <div className="spinner">Loading...</div>;
+    }
+    return <WrappedComponent {...props} />;
+  };
+};
+
+const withErrorBoundary = (WrappedComponent) => {
+  return class extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error) {
+      return { hasError: true };
+    }
+
+    componentDidCatch(error, errorInfo) {
+      console.error('Component error:', error, errorInfo);
+    }
+
+    render() {
+      if (this.state.hasError) {
+        return <div className="error">Something went wrong.</div>;
+      }
+      return <WrappedComponent {...this.props} />;
+    }
+  };
+};
+
+// 4. Render Props模式
+const DataFetcher = ({ url, children }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        setData(data);
+        setLoading(false);
+      })
+      .catch(error => {
+        setError(error);
+        setLoading(false);
+      });
+  }, [url]);
+
+  return children({ data, loading, error });
+};
+
+// 使用Render Props
+const UserList = () => (
+  <DataFetcher url="/api/users">
+    {({ data, loading, error }) => {
+      if (loading) return <div>Loading...</div>;
+      if (error) return <div>Error: {error.message}</div>;
+      return (
+        <div>
+          {data.map(user => (
+            <UserCard key={user.id} user={user} />
+          ))}
+        </div>
+      );
+    }}
+  </DataFetcher>
+);
+
+// 5. 复合组件模式
+const Tabs = ({ children, defaultTab = 0 }) => {
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  const tabs = React.Children.toArray(children);
+
+  return (
+    <div className="tabs">
+      <div className="tab-list">
+        {tabs.map((tab, index) => (
+          <button
+            key={index}
+            className={`tab ${index === activeTab ? 'active' : ''}`}
+            onClick={() => setActiveTab(index)}
+          >
+            {tab.props.label}
+          </button>
+        ))}
+      </div>
+      <div className="tab-content">
+        {tabs[activeTab]}
+      </div>
+    </div>
+  );
+};
+
+const TabPanel = ({ children, label }) => (
+  <div className="tab-panel">
+    {children}
+  </div>
+);
+
+// 使用复合组件
+const App = () => (
+  <Tabs defaultTab={0}>
+    <TabPanel label="Home">
+      <h2>Home Content</h2>
+    </TabPanel>
+    <TabPanel label="About">
+      <h2>About Content</h2>
+    </TabPanel>
+    <TabPanel label="Contact">
+      <h2>Contact Content</h2>
+    </TabPanel>
+  </Tabs>
+);
+```
+
+## 模块化和依赖管理
+
+<Callout type="warning">
+良好的模块化设计和依赖管理是大型前端应用可维护性的关键，需要合理的模块划分和依赖关系设计。
+</Callout>
+
+### 模块化架构设计
+
+```javascript
+// 1. 分层架构模式
+// 表现层 (Presentation Layer)
+// components/UserProfile.jsx
+import { useUser } from '../hooks/useUser';
+import { userService } from '../services/userService';
+
+export const UserProfile = ({ userId }) => {
+  const { user, loading, error, updateUser } = useUser(userId);
+
+  const handleUpdate = async (userData) => {
+    try {
+      await updateUser(userData);
+    } catch (error) {
+      console.error('Update failed:', error);
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <div className="user-profile">
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+      <button onClick={() => handleUpdate({ ...user, lastSeen: new Date() })}>
+        Update Last Seen
+      </button>
+    </div>
+  );
+};
+
+// 业务逻辑层 (Business Logic Layer)
+// hooks/useUser.js
+import { useState, useEffect } from 'react';
+import { userService } from '../services/userService';
+
+export const useUser = (userId) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadUser();
+  }, [userId]);
+
+  const loadUser = async () => {
+    try {
+      setLoading(true);
+      const userData = await userService.getUser(userId);
+      setUser(userData);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateUser = async (userData) => {
+    const updatedUser = await userService.updateUser(userId, userData);
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
+  return { user, loading, error, updateUser, reload: loadUser };
+};
+
+// 服务层 (Service Layer)
+// services/userService.js
+import { apiClient } from './apiClient';
+import { cacheManager } from '../utils/cacheManager';
+
+class UserService {
+  async getUser(userId) {
+    const cacheKey = `user:${userId}`;
+    const cached = cacheManager.get(cacheKey);
+
+    if (cached) {
+      return cached;
+    }
+
+    const user = await apiClient.get(`/users/${userId}`);
+    cacheManager.set(cacheKey, user, 5 * 60 * 1000); // 5分钟缓存
+    return user;
+  }
+
+  async updateUser(userId, userData) {
+    const updatedUser = await apiClient.put(`/users/${userId}`, userData);
+    cacheManager.delete(`user:${userId}`);
+    return updatedUser;
+  }
+
+  async createUser(userData) {
+    return apiClient.post('/users', userData);
+  }
+
+  async deleteUser(userId) {
+    await apiClient.delete(`/users/${userId}`);
+    cacheManager.delete(`user:${userId}`);
+  }
+}
+
+export const userService = new UserService();
+
+// 数据访问层 (Data Access Layer)
+// services/apiClient.js
+class APIClient {
+  constructor(baseURL) {
+    this.baseURL = baseURL;
+    this.interceptors = {
+      request: [],
+      response: []
+    };
+  }
+
+  addRequestInterceptor(interceptor) {
+    this.interceptors.request.push(interceptor);
+  }
+
+  addResponseInterceptor(interceptor) {
+    this.interceptors.response.push(interceptor);
+  }
+
+  async request(url, options = {}) {
+    let config = {
+      ...options,
+      url: `${this.baseURL}${url}`,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    };
+
+    // 应用请求拦截器
+    for (const interceptor of this.interceptors.request) {
+      config = await interceptor(config);
+    }
+
+    let response = await fetch(config.url, config);
+
+    // 应用响应拦截器
+    for (const interceptor of this.interceptors.response) {
+      response = await interceptor(response);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  get(url, options = {}) {
+    return this.request(url, { ...options, method: 'GET' });
+  }
+
+  post(url, data, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  put(url, data, options = {}) {
+    return this.request(url, {
+      ...options,
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  delete(url, options = {}) {
+    return this.request(url, { ...options, method: 'DELETE' });
+  }
+}
+
+export const apiClient = new APIClient(process.env.REACT_APP_API_URL);
+
+// 2. 依赖注入模式
+class DIContainer {
+  constructor() {
+    this.services = new Map();
+    this.singletons = new Map();
+  }
+
+  register(name, factory, options = {}) {
+    this.services.set(name, {
+      factory,
+      singleton: options.singleton || false,
+      dependencies: options.dependencies || []
+    });
+  }
+
+  resolve(name) {
+    const service = this.services.get(name);
+    if (!service) {
+      throw new Error(`Service ${name} not found`);
+    }
+
+    if (service.singleton && this.singletons.has(name)) {
+      return this.singletons.get(name);
+    }
+
+    const dependencies = service.dependencies.map(dep => this.resolve(dep));
+    const instance = service.factory(...dependencies);
+
+    if (service.singleton) {
+      this.singletons.set(name, instance);
+    }
+
+    return instance;
+  }
+}
+
+// 使用依赖注入
+const container = new DIContainer();
+
+container.register('logger', () => new Logger(), { singleton: true });
+container.register('apiClient', (logger) => new APIClient('/api', logger), {
+  dependencies: ['logger'],
+  singleton: true
+});
+container.register('userService', (apiClient) => new UserService(apiClient), {
+  dependencies: ['apiClient'],
+  singleton: true
+});
+
+// 3. 模块联邦架构
+// webpack.config.js (主应用)
+const ModuleFederationPlugin = require('@module-federation/webpack');
+
+module.exports = {
+  plugins: [
+    new ModuleFederationPlugin({
+      name: 'shell',
+      remotes: {
+        userModule: 'userModule@http://localhost:3001/remoteEntry.js',
+        productModule: 'productModule@http://localhost:3002/remoteEntry.js'
+      }
+    })
+  ]
+};
+
+// 动态导入远程模块
+const loadUserModule = async () => {
+  const { UserModule } = await import('userModule/UserModule');
+  return UserModule;
+};
+
+const App = () => {
+  const [UserModule, setUserModule] = useState(null);
+
+  useEffect(() => {
+    loadUserModule().then(setUserModule);
+  }, []);
+
+  return (
+    <div>
+      <h1>Main Application</h1>
+      {UserModule && <UserModule />}
+    </div>
+  );
+};
+```
+
+## 可扩展性设计原则
+
+<Callout type="info">
+可扩展性设计确保应用能够随着业务增长而平滑扩展，包括功能扩展、性能扩展和团队扩展。
+</Callout>
+
+### 可扩展架构模式
+
+```javascript
+// 1. 插件化架构
+class PluginManager {
+  constructor() {
+    this.plugins = new Map();
+    this.hooks = new Map();
+  }
+
+  registerPlugin(name, plugin) {
+    if (this.plugins.has(name)) {
+      throw new Error(`Plugin ${name} already registered`);
+    }
+
+    this.plugins.set(name, plugin);
+
+    // 初始化插件
+    if (plugin.init) {
+      plugin.init(this);
+    }
+
+    // 注册插件的钩子
+    if (plugin.hooks) {
+      Object.entries(plugin.hooks).forEach(([hookName, handler]) => {
+        this.addHook(hookName, handler);
+      });
+    }
+  }
+
+  addHook(name, handler) {
+    if (!this.hooks.has(name)) {
+      this.hooks.set(name, []);
+    }
+    this.hooks.get(name).push(handler);
+  }
+
+  async executeHook(name, context = {}) {
+    const handlers = this.hooks.get(name) || [];
+    let result = context;
+
+    for (const handler of handlers) {
+      result = await handler(result);
+    }
+
+    return result;
+  }
+
+  getPlugin(name) {
+    return this.plugins.get(name);
+  }
+
+  removePlugin(name) {
+    const plugin = this.plugins.get(name);
+    if (plugin && plugin.destroy) {
+      plugin.destroy();
+    }
+    this.plugins.delete(name);
+  }
+}
+
+// 示例插件
+const analyticsPlugin = {
+  name: 'analytics',
+
+  init(pluginManager) {
+    console.log('Analytics plugin initialized');
+  },
+
+  hooks: {
+    'page:view': async (context) => {
+      console.log('Page viewed:', context.path);
+      // 发送分析数据
+      await fetch('/api/analytics/pageview', {
+        method: 'POST',
+        body: JSON.stringify({
+          path: context.path,
+          timestamp: Date.now()
+        })
+      });
+      return context;
+    },
+
+    'user:action': async (context) => {
+      console.log('User action:', context.action);
+      return context;
+    }
+  },
+
+  destroy() {
+    console.log('Analytics plugin destroyed');
+  }
+};
+
+// 2. 事件驱动架构
+class EventBus {
+  constructor() {
+    this.events = new Map();
+  }
+
+  on(event, handler) {
+    if (!this.events.has(event)) {
+      this.events.set(event, []);
+    }
+    this.events.get(event).push(handler);
+  }
+
+  off(event, handler) {
+    const handlers = this.events.get(event);
+    if (handlers) {
+      const index = handlers.indexOf(handler);
+      if (index > -1) {
+        handlers.splice(index, 1);
+      }
+    }
+  }
+
+  emit(event, data) {
+    const handlers = this.events.get(event) || [];
+    handlers.forEach(handler => {
+      try {
+        handler(data);
+      } catch (error) {
+        console.error(`Error in event handler for ${event}:`, error);
+      }
+    });
+  }
+
+  once(event, handler) {
+    const onceHandler = (data) => {
+      handler(data);
+      this.off(event, onceHandler);
+    };
+    this.on(event, onceHandler);
+  }
+}
+
+// 使用事件驱动架构
+const eventBus = new EventBus();
+
+// 用户模块
+class UserModule {
+  constructor(eventBus) {
+    this.eventBus = eventBus;
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    this.eventBus.on('user:login', this.handleUserLogin.bind(this));
+    this.eventBus.on('user:logout', this.handleUserLogout.bind(this));
+  }
+
+  handleUserLogin(user) {
+    console.log('User logged in:', user);
+    // 更新用户状态
+    this.eventBus.emit('user:status:changed', { user, status: 'online' });
+  }
+
+  handleUserLogout() {
+    console.log('User logged out');
+    this.eventBus.emit('user:status:changed', { status: 'offline' });
+  }
+
+  login(credentials) {
+    // 登录逻辑
+    const user = { id: 1, name: 'John Doe' };
+    this.eventBus.emit('user:login', user);
+  }
+}
+
+// 3. 微服务前端架构
+class MicroFrontendOrchestrator {
+  constructor() {
+    this.applications = new Map();
+    this.routes = new Map();
+    this.sharedState = new Map();
+  }
+
+  registerApplication(name, config) {
+    this.applications.set(name, {
+      ...config,
+      status: 'registered'
+    });
+
+    // 注册路由
+    if (config.routes) {
+      config.routes.forEach(route => {
+        this.routes.set(route, name);
+      });
+    }
+  }
+
+  async loadApplication(name) {
+    const app = this.applications.get(name);
+    if (!app) {
+      throw new Error(`Application ${name} not found`);
+    }
+
+    if (app.status === 'loaded') {
+      return app.instance;
+    }
+
+    try {
+      app.status = 'loading';
+
+      // 动态导入应用
+      const module = await import(app.url);
+      const instance = module.default || module;
+
+      // 初始化应用
+      if (instance.mount) {
+        await instance.mount({
+          container: app.container,
+          sharedState: this.sharedState,
+          eventBus: this.eventBus
+        });
+      }
+
+      app.instance = instance;
+      app.status = 'loaded';
+
+      return instance;
+    } catch (error) {
+      app.status = 'error';
+      throw error;
+    }
+  }
+
+  async unloadApplication(name) {
+    const app = this.applications.get(name);
+    if (app && app.instance && app.instance.unmount) {
+      await app.instance.unmount();
+      app.status = 'registered';
+      app.instance = null;
+    }
+  }
+
+  async navigateToRoute(path) {
+    const appName = this.routes.get(path);
+    if (appName) {
+      await this.loadApplication(appName);
+    }
+  }
+
+  setSharedState(key, value) {
+    this.sharedState.set(key, value);
+    // 通知所有应用状态变化
+    this.applications.forEach((app, name) => {
+      if (app.instance && app.instance.onSharedStateChange) {
+        app.instance.onSharedStateChange(key, value);
+      }
+    });
+  }
+
+  getSharedState(key) {
+    return this.sharedState.get(key);
+  }
+}
+
+// 4. 配置驱动架构
+class ConfigurableApplication {
+  constructor(config) {
+    this.config = config;
+    this.components = new Map();
+    this.layouts = new Map();
+    this.themes = new Map();
+  }
+
+  registerComponent(name, component) {
+    this.components.set(name, component);
+  }
+
+  registerLayout(name, layout) {
+    this.layouts.set(name, layout);
+  }
+
+  registerTheme(name, theme) {
+    this.themes.set(name, theme);
+  }
+
+  renderPage(pageConfig) {
+    const { layout, components, theme } = pageConfig;
+
+    const LayoutComponent = this.layouts.get(layout);
+    const themeConfig = this.themes.get(theme);
+
+    if (!LayoutComponent) {
+      throw new Error(`Layout ${layout} not found`);
+    }
+
+    const renderedComponents = components.map(componentConfig => {
+      const Component = this.components.get(componentConfig.type);
+      if (!Component) {
+        console.warn(`Component ${componentConfig.type} not found`);
+        return null;
+      }
+
+      return React.createElement(Component, {
+        key: componentConfig.id,
+        ...componentConfig.props
+      });
+    });
+
+    return React.createElement(LayoutComponent, {
+      theme: themeConfig,
+      children: renderedComponents
+    });
+  }
+}
+
+// 页面配置示例
+const pageConfig = {
+  layout: 'main',
+  theme: 'default',
+  components: [
+    {
+      id: 'header',
+      type: 'Header',
+      props: {
+        title: 'Welcome',
+        showNavigation: true
+      }
+    },
+    {
+      id: 'content',
+      type: 'ContentArea',
+      props: {
+        sections: [
+          { type: 'hero', title: 'Hero Section' },
+          { type: 'features', items: ['Feature 1', 'Feature 2'] }
+        ]
+      }
+    },
+    {
+      id: 'footer',
+      type: 'Footer',
+      props: {
+        copyright: '2023 Company Name'
+      }
+    }
+  ]
+};
+```
+
+## 架构决策和权衡
+
+<Callout type="warning">
+架构决策需要在多个因素之间进行权衡，包括性能、可维护性、开发效率、团队技能等。
+</Callout>
+
+### 架构决策框架
+
+```javascript
+// 1. 架构决策记录 (ADR)
+class ArchitectureDecisionRecord {
+  constructor(title, status = 'proposed') {
+    this.title = title;
+    this.status = status; // proposed, accepted, deprecated, superseded
+    this.date = new Date().toISOString();
+    this.context = '';
+    this.decision = '';
+    this.consequences = {
+      positive: [],
+      negative: [],
+      neutral: []
+    };
+    this.alternatives = [];
+  }
+
+  setContext(context) {
+    this.context = context;
+    return this;
+  }
+
+  setDecision(decision) {
+    this.decision = decision;
+    return this;
+  }
+
+  addConsequence(type, consequence) {
+    if (this.consequences[type]) {
+      this.consequences[type].push(consequence);
+    }
+    return this;
+  }
+
+  addAlternative(alternative) {
+    this.alternatives.push(alternative);
+    return this;
+  }
+
+  accept() {
+    this.status = 'accepted';
+    this.acceptedDate = new Date().toISOString();
+    return this;
+  }
+
+  deprecate(reason) {
+    this.status = 'deprecated';
+    this.deprecatedDate = new Date().toISOString();
+    this.deprecationReason = reason;
+    return this;
+  }
+
+  supersede(newADR) {
+    this.status = 'superseded';
+    this.supersededBy = newADR.title;
+    this.supersededDate = new Date().toISOString();
+    return this;
+  }
+
+  toMarkdown() {
+    return `
+# ${this.title}
+
+**Status:** ${this.status}
+**Date:** ${this.date}
+
+## Context
+
+${this.context}
+
+## Decision
+
+${this.decision}
+
+## Consequences
+
+### Positive
+${this.consequences.positive.map(c => `- ${c}`).join('\n')}
+
+### Negative
+${this.consequences.negative.map(c => `- ${c}`).join('\n')}
+
+### Neutral
+${this.consequences.neutral.map(c => `- ${c}`).join('\n')}
+
+## Alternatives Considered
+
+${this.alternatives.map(alt => `- ${alt}`).join('\n')}
+    `.trim();
+  }
+}
+
+// 2. 架构评估矩阵
+class ArchitectureEvaluationMatrix {
+  constructor() {
+    this.criteria = new Map();
+    this.alternatives = [];
+    this.weights = new Map();
+  }
+
+  addCriterion(name, description, weight = 1) {
+    this.criteria.set(name, { description, weight });
+    this.weights.set(name, weight);
+  }
+
+  addAlternative(name, scores = {}) {
+    this.alternatives.push({ name, scores });
+  }
+
+  scoreAlternative(alternativeName, criterion, score) {
+    const alternative = this.alternatives.find(alt => alt.name === alternativeName);
+    if (alternative) {
+      alternative.scores[criterion] = score;
+    }
+  }
+
+  calculateWeightedScores() {
+    return this.alternatives.map(alternative => {
+      let totalScore = 0;
+      let totalWeight = 0;
+
+      for (const [criterion, weight] of this.weights) {
+        const score = alternative.scores[criterion] || 0;
+        totalScore += score * weight;
+        totalWeight += weight;
+      }
+
+      return {
+        name: alternative.name,
+        weightedScore: totalScore / totalWeight,
+        scores: alternative.scores
+      };
+    }).sort((a, b) => b.weightedScore - a.weightedScore);
+  }
+
+  generateReport() {
+    const results = this.calculateWeightedScores();
+
+    return {
+      criteria: Array.from(this.criteria.entries()),
+      alternatives: results,
+      recommendation: results[0]?.name,
+      analysis: this.generateAnalysis(results)
+    };
+  }
+
+  generateAnalysis(results) {
+    const analysis = [];
+
+    // 找出最佳选择
+    if (results.length > 0) {
+      analysis.push(`推荐方案: ${results[0].name} (得分: ${results[0].weightedScore.toFixed(2)})`);
+    }
+
+    // 分析各个标准的表现
+    for (const [criterion] of this.criteria) {
+      const bestInCriterion = this.alternatives.reduce((best, current) => {
+        return (current.scores[criterion] || 0) > (best.scores[criterion] || 0) ? current : best;
+      });
+
+      analysis.push(`${criterion}最佳: ${bestInCriterion.name} (${bestInCriterion.scores[criterion] || 0}分)`);
+    }
+
+    return analysis;
+  }
+}
+
+// 3. 技术债务管理
+class TechnicalDebtTracker {
+  constructor() {
+    this.debts = [];
+    this.categories = ['performance', 'maintainability', 'security', 'scalability'];
+  }
+
+  addDebt(debt) {
+    const debtItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: debt.title,
+      description: debt.description,
+      category: debt.category,
+      severity: debt.severity, // low, medium, high, critical
+      effort: debt.effort, // hours
+      impact: debt.impact, // 1-10
+      createdDate: new Date().toISOString(),
+      status: 'open', // open, in-progress, resolved
+      assignee: debt.assignee,
+      dueDate: debt.dueDate
+    };
+
+    this.debts.push(debtItem);
+    return debtItem;
+  }
+
+  updateDebt(id, updates) {
+    const debt = this.debts.find(d => d.id === id);
+    if (debt) {
+      Object.assign(debt, updates);
+      if (updates.status === 'resolved') {
+        debt.resolvedDate = new Date().toISOString();
+      }
+    }
+    return debt;
+  }
+
+  getDebtsByCategory(category) {
+    return this.debts.filter(debt => debt.category === category);
+  }
+
+  getDebtsBySeverity(severity) {
+    return this.debts.filter(debt => debt.severity === severity);
+  }
+
+  calculateDebtMetrics() {
+    const totalDebts = this.debts.length;
+    const openDebts = this.debts.filter(d => d.status === 'open').length;
+    const totalEffort = this.debts.reduce((sum, debt) => sum + (debt.effort || 0), 0);
+
+    const categoryBreakdown = this.categories.map(category => ({
+      category,
+      count: this.getDebtsByCategory(category).length,
+      effort: this.getDebtsByCategory(category).reduce((sum, debt) => sum + (debt.effort || 0), 0)
+    }));
+
+    const severityBreakdown = ['low', 'medium', 'high', 'critical'].map(severity => ({
+      severity,
+      count: this.getDebtsBySeverity(severity).length
+    }));
+
+    return {
+      totalDebts,
+      openDebts,
+      resolvedDebts: totalDebts - openDebts,
+      totalEffort,
+      categoryBreakdown,
+      severityBreakdown,
+      debtRatio: openDebts / totalDebts
+    };
+  }
+
+  prioritizeDebts() {
+    return this.debts
+      .filter(debt => debt.status === 'open')
+      .map(debt => ({
+        ...debt,
+        priority: this.calculatePriority(debt)
+      }))
+      .sort((a, b) => b.priority - a.priority);
+  }
+
+  calculatePriority(debt) {
+    const severityWeight = {
+      low: 1,
+      medium: 2,
+      high: 3,
+      critical: 4
+    };
+
+    const impactWeight = debt.impact || 5;
+    const effortPenalty = Math.min(debt.effort / 40, 2); // 减少高工作量项目的优先级
+
+    return (severityWeight[debt.severity] * 2 + impactWeight) / (1 + effortPenalty);
+  }
+}
+
+// 使用示例
+// 创建架构决策记录
+const microFrontendADR = new ArchitectureDecisionRecord('采用微前端架构')
+  .setContext('随着团队规模扩大和产品复杂度增加，单体前端应用变得难以维护')
+  .setDecision('采用基于Module Federation的微前端架构')
+  .addConsequence('positive', '团队可以独立开发和部署')
+  .addConsequence('positive', '技术栈可以多样化')
+  .addConsequence('negative', '增加了架构复杂度')
+  .addConsequence('negative', '需要额外的协调机制')
+  .addAlternative('继续使用单体架构')
+  .addAlternative('采用iframe方案')
+  .accept();
+
+// 架构评估
+const evaluationMatrix = new ArchitectureEvaluationMatrix();
+evaluationMatrix.addCriterion('开发效率', '团队开发和维护的效率', 3);
+evaluationMatrix.addCriterion('性能', '应用运行时性能', 2);
+evaluationMatrix.addCriterion('可扩展性', '架构的扩展能力', 3);
+evaluationMatrix.addCriterion('学习成本', '团队学习新架构的成本', 1);
+
+evaluationMatrix.addAlternative('微前端');
+evaluationMatrix.scoreAlternative('微前端', '开发效率', 8);
+evaluationMatrix.scoreAlternative('微前端', '性能', 6);
+evaluationMatrix.scoreAlternative('微前端', '可扩展性', 9);
+evaluationMatrix.scoreAlternative('微前端', '学习成本', 4);
+
+evaluationMatrix.addAlternative('单体应用');
+evaluationMatrix.scoreAlternative('单体应用', '开发效率', 6);
+evaluationMatrix.scoreAlternative('单体应用', '性能', 8);
+evaluationMatrix.scoreAlternative('单体应用', '可扩展性', 4);
+evaluationMatrix.scoreAlternative('单体应用', '学习成本', 8);
+
+const report = evaluationMatrix.generateReport();
+console.log('架构评估报告:', report);
+```
+
 ---
 
 <Callout type="success">
 现代前端架构设计需要平衡复杂性、可维护性和性能。选择合适的架构模式对项目的长期成功至关重要。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [Micro Frontends](https://micro-frontends.org/) - 微前端官方指南
+- [Single-spa](https://single-spa.js.org/) - 微前端框架文档
+- [Module Federation](https://webpack.js.org/concepts/module-federation/) - Webpack模块联邦
+- [qiankun](https://qiankun.umijs.org/) - 蚂蚁金服微前端框架
+
+### 🎓 优质教程
+- [Frontend Architecture](https://frontendmasters.com/courses/frontend-architecture/) - Frontend Masters架构课程
+- [Micro Frontend Architecture](https://martinfowler.com/articles/micro-frontends.html) - Martin Fowler微前端文章
+- [Scalable Frontend Architecture](https://blog.logrocket.com/scalable-frontend-architecture/) - 可扩展前端架构
+
+### 🛠️ 实践项目
+- [Micro Frontend Examples](https://github.com/micro-frontends-demo) - 微前端示例项目
+- [Architecture Patterns](https://github.com/kamranahmedse/developer-roadmap) - 开发者路线图
+- [Frontend Architecture Samples](https://github.com/topics/frontend-architecture) - 前端架构示例
+
+### 🔧 开发工具
+- [Single-spa](https://single-spa.js.org/) - 微前端框架
+- [qiankun](https://qiankun.umijs.org/) - 微前端解决方案
+- [Nx](https://nx.dev/) - 单体仓库工具
+- [Lerna](https://lerna.js.org/) - 多包管理工具
+
+### 📝 深入阅读
+- [Building Micro Frontends](https://www.buildingmicrofrontends.com/) - 微前端构建指南
+- [Frontend Architecture Patterns](https://addyosmani.com/resources/essentialjsdesignpatterns/book/) - 前端架构模式
+- [Scalable JavaScript Architecture](https://www.youtube.com/watch?v=mKouqShWI4o) - 可扩展JavaScript架构
+
+<Callout type="tip">
+💡 **学习建议**：建议从理解单体应用的局限性开始，学习组件化和模块化设计，然后深入微前端架构，最后实践大型项目架构设计。
 </Callout>

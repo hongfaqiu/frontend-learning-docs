@@ -746,8 +746,1250 @@ app.on('before-quit', () => {
 });
 ```
 
+## Tauri现代化方案
+
+<Callout type="info">
+[Tauri](https://tauri.app/)是使用Rust构建的现代桌面应用框架，提供更小的包体积和更好的性能。
+</Callout>
+
+### Tauri项目结构
+
+```rust
+// src-tauri/src/main.rs
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
+
+use tauri::{CustomMenuItem, Menu, MenuItem, Submenu, Manager, Window};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AppConfig {
+    theme: String,
+    language: String,
+    auto_update: bool,
+}
+
+// 命令函数
+#[tauri::command]
+async fn get_system_info() -> Result<SystemInfo, String> {
+    let info = SystemInfo {
+        os: std::env::consts::OS.to_string(),
+        arch: std::env::consts::ARCH.to_string(),
+        version: "1.0.0".to_string(),
+    };
+    Ok(info)
+}
+
+#[tauri::command]
+async fn save_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content)
+        .map_err(|e| format!("Failed to save file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
+#[tauri::command]
+async fn show_notification(title: String, body: String) -> Result<(), String> {
+    use tauri::api::notification::Notification;
+
+    Notification::new("com.example.app")
+        .title(&title)
+        .body(&body)
+        .show()
+        .map_err(|e| format!("Failed to show notification: {}", e))?;
+
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+struct SystemInfo {
+    os: String,
+    arch: String,
+    version: String,
+}
+
+// 窗口事件处理
+fn handle_window_event(event: tauri::WindowEvent) {
+    match event {
+        tauri::WindowEvent::CloseRequested { api, .. } => {
+            // 自定义关闭行为
+            println!("Window close requested");
+            // api.prevent_close(); // 阻止关闭
+        }
+        tauri::WindowEvent::Resized(size) => {
+            println!("Window resized to: {:?}", size);
+        }
+        tauri::WindowEvent::Moved(position) => {
+            println!("Window moved to: {:?}", position);
+        }
+        _ => {}
+    }
+}
+
+// 菜单创建
+fn create_menu() -> Menu {
+    let quit = CustomMenuItem::new("quit".to_string(), "Quit");
+    let close = CustomMenuItem::new("close".to_string(), "Close");
+    let submenu = Submenu::new("File", Menu::new().add_item(close).add_item(quit));
+
+    Menu::new()
+        .add_native_item(MenuItem::Copy)
+        .add_item(CustomMenuItem::new("hide", "Hide"))
+        .add_submenu(submenu)
+}
+
+fn main() {
+    let menu = create_menu();
+
+    tauri::Builder::default()
+        .menu(menu)
+        .on_menu_event(|event| {
+            match event.menu_item_id() {
+                "quit" => {
+                    std::process::exit(0);
+                }
+                "close" => {
+                    event.window().close().unwrap();
+                }
+                "hide" => {
+                    event.window().hide().unwrap();
+                }
+                _ => {}
+            }
+        })
+        .on_window_event(|event| handle_window_event(event.event().clone()))
+        .invoke_handler(tauri::generate_handler![
+            get_system_info,
+            save_file,
+            read_file,
+            show_notification
+        ])
+        .setup(|app| {
+            // 应用初始化
+            let window = app.get_window("main").unwrap();
+
+            // 设置窗口属性
+            window.set_title("Tauri App").unwrap();
+            window.center().unwrap();
+
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
+```toml
+# src-tauri/Cargo.toml
+[package]
+name = "tauri-app"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.60"
+
+[build-dependencies]
+tauri-build = { version = "1.0", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "1.0", features = ["api-all"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+```
+
+### 前端集成
+
+```typescript
+// src/lib/tauri.ts
+import { invoke } from '@tauri-apps/api/tauri';
+import { listen } from '@tauri-apps/api/event';
+import { appWindow } from '@tauri-apps/api/window';
+
+export interface SystemInfo {
+  os: string;
+  arch: string;
+  version: string;
+}
+
+export class TauriAPI {
+  // 系统信息
+  static async getSystemInfo(): Promise<SystemInfo> {
+    return await invoke('get_system_info');
+  }
+
+  // 文件操作
+  static async saveFile(path: string, content: string): Promise<void> {
+    return await invoke('save_file', { path, content });
+  }
+
+  static async readFile(path: string): Promise<string> {
+    return await invoke('read_file', { path });
+  }
+
+  // 通知
+  static async showNotification(title: string, body: string): Promise<void> {
+    return await invoke('show_notification', { title, body });
+  }
+
+  // 窗口操作
+  static async minimizeWindow(): Promise<void> {
+    return await appWindow.minimize();
+  }
+
+  static async maximizeWindow(): Promise<void> {
+    return await appWindow.maximize();
+  }
+
+  static async closeWindow(): Promise<void> {
+    return await appWindow.close();
+  }
+
+  // 事件监听
+  static async listenToEvents() {
+    // 监听窗口事件
+    await listen('tauri://window-resized', (event) => {
+      console.log('Window resized:', event.payload);
+    });
+
+    await listen('tauri://window-moved', (event) => {
+      console.log('Window moved:', event.payload);
+    });
+
+    // 监听自定义事件
+    await listen('app://notification', (event) => {
+      console.log('Notification received:', event.payload);
+    });
+  }
+}
+
+// React Hook
+import { useState, useEffect } from 'react';
+
+export function useTauriAPI() {
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadSystemInfo = async () => {
+      try {
+        const info = await TauriAPI.getSystemInfo();
+        setSystemInfo(info);
+      } catch (error) {
+        console.error('Failed to load system info:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSystemInfo();
+    TauriAPI.listenToEvents();
+  }, []);
+
+  const saveFile = async (path: string, content: string) => {
+    try {
+      await TauriAPI.saveFile(path, content);
+      await TauriAPI.showNotification('成功', '文件保存成功');
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      await TauriAPI.showNotification('错误', '文件保存失败');
+    }
+  };
+
+  const readFile = async (path: string): Promise<string | null> => {
+    try {
+      return await TauriAPI.readFile(path);
+    } catch (error) {
+      console.error('Failed to read file:', error);
+      return null;
+    }
+  };
+
+  return {
+    systemInfo,
+    isLoading,
+    saveFile,
+    readFile,
+    minimizeWindow: TauriAPI.minimizeWindow,
+    maximizeWindow: TauriAPI.maximizeWindow,
+    closeWindow: TauriAPI.closeWindow,
+  };
+}
+```
+
+```jsx
+// src/components/TauriApp.jsx
+import React, { useState } from 'react';
+import { useTauriAPI } from '../lib/tauri';
+
+export function TauriApp() {
+  const {
+    systemInfo,
+    isLoading,
+    saveFile,
+    readFile,
+    minimizeWindow,
+    maximizeWindow,
+    closeWindow,
+  } = useTauriAPI();
+
+  const [fileContent, setFileContent] = useState('');
+  const [filePath, setFilePath] = useState('');
+
+  const handleSaveFile = async () => {
+    if (filePath && fileContent) {
+      await saveFile(filePath, fileContent);
+    }
+  };
+
+  const handleReadFile = async () => {
+    if (filePath) {
+      const content = await readFile(filePath);
+      if (content) {
+        setFileContent(content);
+      }
+    }
+  };
+
+  if (isLoading) {
+    return <div className="loading">加载中...</div>;
+  }
+
+  return (
+    <div className="tauri-app">
+      <header className="app-header">
+        <h1>Tauri 应用</h1>
+        <div className="window-controls">
+          <button onClick={minimizeWindow}>最小化</button>
+          <button onClick={maximizeWindow}>最大化</button>
+          <button onClick={closeWindow}>关闭</button>
+        </div>
+      </header>
+
+      <main className="app-main">
+        <section className="system-info">
+          <h2>系统信息</h2>
+          {systemInfo && (
+            <div>
+              <p>操作系统: {systemInfo.os}</p>
+              <p>架构: {systemInfo.arch}</p>
+              <p>版本: {systemInfo.version}</p>
+            </div>
+          )}
+        </section>
+
+        <section className="file-operations">
+          <h2>文件操作</h2>
+          <div className="file-controls">
+            <input
+              type="text"
+              placeholder="文件路径"
+              value={filePath}
+              onChange={(e) => setFilePath(e.target.value)}
+            />
+            <button onClick={handleReadFile}>读取文件</button>
+            <button onClick={handleSaveFile}>保存文件</button>
+          </div>
+          <textarea
+            placeholder="文件内容"
+            value={fileContent}
+            onChange={(e) => setFileContent(e.target.value)}
+            rows={10}
+            cols={50}
+          />
+        </section>
+      </main>
+    </div>
+  );
+}
+```
+
+## 安全性和最佳实践
+
+<Callout type="warning">
+桌面应用的安全性至关重要，需要从多个层面进行防护，包括代码安全、数据保护、网络安全等。
+</Callout>
+
+### Electron安全最佳实践
+
+```javascript
+// 1. 安全的BrowserWindow配置
+const createSecureWindow = () => {
+  return new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      // 禁用Node.js集成
+      nodeIntegration: false,
+
+      // 启用上下文隔离
+      contextIsolation: true,
+
+      // 禁用远程模块
+      enableRemoteModule: false,
+
+      // 预加载脚本
+      preload: path.join(__dirname, 'preload.js'),
+
+      // 禁用实验性功能
+      experimentalFeatures: false,
+
+      // 启用沙盒模式
+      sandbox: true,
+
+      // 禁用webSecurity（仅开发环境）
+      webSecurity: !isDevelopment,
+
+      // 禁用allowRunningInsecureContent
+      allowRunningInsecureContent: false,
+    }
+  });
+};
+
+// 2. 安全的预加载脚本
+// preload.js
+const { contextBridge, ipcRenderer } = require('electron');
+
+// 白名单API
+const allowedChannels = [
+  'get-app-version',
+  'save-file',
+  'read-file',
+  'show-message-box'
+];
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  // 安全的IPC通信
+  invoke: (channel, data) => {
+    if (allowedChannels.includes(channel)) {
+      return ipcRenderer.invoke(channel, data);
+    }
+    throw new Error(`Channel ${channel} is not allowed`);
+  },
+
+  // 安全的事件监听
+  on: (channel, callback) => {
+    if (allowedChannels.includes(channel)) {
+      ipcRenderer.on(channel, callback);
+    }
+  },
+
+  // 移除监听器
+  removeAllListeners: (channel) => {
+    if (allowedChannels.includes(channel)) {
+      ipcRenderer.removeAllListeners(channel);
+    }
+  }
+});
+
+// 3. 内容安全策略 (CSP)
+const setupCSP = (window) => {
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self'",
+    "connect-src 'self' https://api.example.com",
+    "frame-src 'none'",
+    "object-src 'none'"
+  ].join('; ');
+
+  window.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp]
+      }
+    });
+  });
+};
+
+// 4. 输入验证和清理
+class InputValidator {
+  static validateFilePath(filePath) {
+    // 防止路径遍历攻击
+    const normalizedPath = path.normalize(filePath);
+    const allowedDir = path.resolve('./user-data');
+
+    if (!normalizedPath.startsWith(allowedDir)) {
+      throw new Error('Invalid file path');
+    }
+
+    return normalizedPath;
+  }
+
+  static sanitizeInput(input) {
+    if (typeof input !== 'string') {
+      throw new Error('Input must be a string');
+    }
+
+    // 移除危险字符
+    return input.replace(/[<>\"'&]/g, '');
+  }
+
+  static validateURL(url) {
+    try {
+      const parsedURL = new URL(url);
+      const allowedProtocols = ['https:', 'http:'];
+      const allowedHosts = ['api.example.com', 'cdn.example.com'];
+
+      if (!allowedProtocols.includes(parsedURL.protocol)) {
+        throw new Error('Invalid protocol');
+      }
+
+      if (!allowedHosts.includes(parsedURL.hostname)) {
+        throw new Error('Invalid hostname');
+      }
+
+      return url;
+    } catch (error) {
+      throw new Error('Invalid URL');
+    }
+  }
+}
+
+// 5. 加密存储
+const crypto = require('crypto');
+const fs = require('fs').promises;
+
+class SecureStorage {
+  constructor(password) {
+    this.algorithm = 'aes-256-gcm';
+    this.key = crypto.scryptSync(password, 'salt', 32);
+  }
+
+  encrypt(text) {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipher(this.algorithm, this.key, iv);
+
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+
+    const authTag = cipher.getAuthTag();
+
+    return {
+      encrypted,
+      iv: iv.toString('hex'),
+      authTag: authTag.toString('hex')
+    };
+  }
+
+  decrypt(encryptedData) {
+    const { encrypted, iv, authTag } = encryptedData;
+    const decipher = crypto.createDecipher(
+      this.algorithm,
+      this.key,
+      Buffer.from(iv, 'hex')
+    );
+
+    decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
+  }
+
+  async saveSecureData(filePath, data) {
+    const encryptedData = this.encrypt(JSON.stringify(data));
+    await fs.writeFile(filePath, JSON.stringify(encryptedData));
+  }
+
+  async loadSecureData(filePath) {
+    const encryptedData = JSON.parse(await fs.readFile(filePath, 'utf8'));
+    const decryptedData = this.decrypt(encryptedData);
+    return JSON.parse(decryptedData);
+  }
+}
+
+// 6. 自动更新安全
+const { autoUpdater } = require('electron-updater');
+
+class SecureUpdater {
+  constructor() {
+    // 配置更新服务器
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'your-username',
+      repo: 'your-repo',
+      private: false
+    });
+
+    // 验证更新签名
+    autoUpdater.verifySignature = true;
+
+    this.setupEventHandlers();
+  }
+
+  setupEventHandlers() {
+    autoUpdater.on('checking-for-update', () => {
+      console.log('Checking for update...');
+    });
+
+    autoUpdater.on('update-available', (info) => {
+      console.log('Update available:', info);
+      // 验证更新信息
+      if (this.validateUpdateInfo(info)) {
+        this.downloadUpdate();
+      }
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+      console.log('Update not available:', info);
+    });
+
+    autoUpdater.on('error', (err) => {
+      console.error('Update error:', err);
+    });
+
+    autoUpdater.on('download-progress', (progressObj) => {
+      console.log('Download progress:', progressObj.percent);
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      console.log('Update downloaded:', info);
+      // 提示用户重启应用
+      this.promptUserToRestart();
+    });
+  }
+
+  validateUpdateInfo(info) {
+    // 验证版本号格式
+    const versionRegex = /^\d+\.\d+\.\d+$/;
+    if (!versionRegex.test(info.version)) {
+      return false;
+    }
+
+    // 验证文件大小合理性
+    if (info.files[0].size > 500 * 1024 * 1024) { // 500MB
+      return false;
+    }
+
+    return true;
+  }
+
+  async downloadUpdate() {
+    try {
+      await autoUpdater.downloadUpdate();
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
+  }
+
+  promptUserToRestart() {
+    const { dialog } = require('electron');
+
+    dialog.showMessageBox({
+      type: 'info',
+      title: '更新下载完成',
+      message: '新版本已下载完成，是否立即重启应用？',
+      buttons: ['立即重启', '稍后重启']
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+  }
+
+  checkForUpdates() {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+}
+```
+
+### Tauri安全配置
+
+```rust
+// src-tauri/src/security.rs
+use tauri::{command, Window, State};
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+// 权限管理
+pub struct PermissionManager {
+    permissions: Mutex<HashMap<String, Vec<String>>>,
+}
+
+impl PermissionManager {
+    pub fn new() -> Self {
+        Self {
+            permissions: Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn grant_permission(&self, user: String, permission: String) {
+        let mut perms = self.permissions.lock().unwrap();
+        perms.entry(user).or_insert_with(Vec::new).push(permission);
+    }
+
+    pub fn has_permission(&self, user: &str, permission: &str) -> bool {
+        let perms = self.permissions.lock().unwrap();
+        perms.get(user)
+            .map(|user_perms| user_perms.contains(&permission.to_string()))
+            .unwrap_or(false)
+    }
+}
+
+// 安全的文件操作
+#[command]
+pub async fn secure_read_file(
+    path: String,
+    permission_manager: State<'_, PermissionManager>,
+) -> Result<String, String> {
+    // 验证权限
+    if !permission_manager.has_permission("current_user", "read_file") {
+        return Err("Permission denied".to_string());
+    }
+
+    // 验证路径
+    let safe_path = validate_file_path(&path)?;
+
+    // 读取文件
+    std::fs::read_to_string(safe_path)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
+fn validate_file_path(path: &str) -> Result<std::path::PathBuf, String> {
+    use std::path::Path;
+
+    let path = Path::new(path);
+
+    // 防止路径遍历
+    if path.components().any(|comp| comp == std::path::Component::ParentDir) {
+        return Err("Path traversal not allowed".to_string());
+    }
+
+    // 限制在特定目录
+    let allowed_dir = std::env::current_dir()
+        .map_err(|_| "Failed to get current directory")?
+        .join("user_data");
+
+    let canonical_path = path.canonicalize()
+        .map_err(|_| "Invalid path")?;
+
+    if !canonical_path.starts_with(&allowed_dir) {
+        return Err("Access denied".to_string());
+    }
+
+    Ok(canonical_path)
+}
+```
+
+## 打包和分发
+
+<Callout type="info">
+桌面应用的打包和分发需要考虑不同平台的特性、代码签名、自动更新等多个方面。
+</Callout>
+
+### Electron应用打包
+
+```json
+// package.json配置
+{
+  "name": "my-electron-app",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "npm run build:renderer && npm run build:main",
+    "build:renderer": "webpack --mode production",
+    "build:main": "webpack --config webpack.main.config.js --mode production",
+    "pack": "electron-builder",
+    "pack:win": "electron-builder --win",
+    "pack:mac": "electron-builder --mac",
+    "pack:linux": "electron-builder --linux",
+    "dist": "npm run build && electron-builder",
+    "publish": "npm run build && electron-builder --publish=always"
+  },
+  "build": {
+    "appId": "com.example.myapp",
+    "productName": "My Electron App",
+    "directories": {
+      "output": "dist-packages"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/",
+        "to": "assets/",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "certificateFile": "certificates/cert.p12",
+      "certificatePassword": "password",
+      "publisherName": "Your Company Name"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        },
+        {
+          "target": "rpm",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "My Electron App"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "your-username",
+        "repo": "your-repo",
+        "private": false
+      }
+    ]
+  }
+}
+```
+
+```javascript
+// 自动化构建脚本
+// scripts/build.js
+const builder = require('electron-builder');
+const fs = require('fs');
+const path = require('path');
+
+class BuildManager {
+  constructor() {
+    this.platforms = {
+      win: builder.Platform.WINDOWS,
+      mac: builder.Platform.MAC,
+      linux: builder.Platform.LINUX
+    };
+  }
+
+  async buildForPlatform(platform, arch = 'x64') {
+    console.log(`Building for ${platform} (${arch})...`);
+
+    const config = this.getBuildConfig(platform, arch);
+
+    try {
+      const result = await builder.build({
+        targets: builder.createTargets([this.platforms[platform]], null, arch),
+        config
+      });
+
+      console.log(`Build completed for ${platform}:`, result);
+      return result;
+    } catch (error) {
+      console.error(`Build failed for ${platform}:`, error);
+      throw error;
+    }
+  }
+
+  getBuildConfig(platform, arch) {
+    const baseConfig = require('../package.json').build;
+
+    // 平台特定配置
+    const platformConfig = {
+      win: {
+        ...baseConfig.win,
+        target: [{ target: 'nsis', arch }]
+      },
+      mac: {
+        ...baseConfig.mac,
+        target: [{ target: 'dmg', arch }]
+      },
+      linux: {
+        ...baseConfig.linux,
+        target: [{ target: 'AppImage', arch }]
+      }
+    };
+
+    return {
+      ...baseConfig,
+      [platform]: platformConfig[platform]
+    };
+  }
+
+  async buildAll() {
+    const platforms = ['win', 'mac', 'linux'];
+    const results = [];
+
+    for (const platform of platforms) {
+      try {
+        const result = await this.buildForPlatform(platform);
+        results.push({ platform, success: true, result });
+      } catch (error) {
+        results.push({ platform, success: false, error });
+      }
+    }
+
+    return results;
+  }
+
+  async generateChecksums(outputDir) {
+    const crypto = require('crypto');
+    const files = fs.readdirSync(outputDir);
+    const checksums = {};
+
+    for (const file of files) {
+      if (file.endsWith('.exe') || file.endsWith('.dmg') || file.endsWith('.AppImage')) {
+        const filePath = path.join(outputDir, file);
+        const fileBuffer = fs.readFileSync(filePath);
+        const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+        checksums[file] = hash;
+      }
+    }
+
+    fs.writeFileSync(
+      path.join(outputDir, 'checksums.json'),
+      JSON.stringify(checksums, null, 2)
+    );
+
+    return checksums;
+  }
+}
+
+// 使用示例
+const buildManager = new BuildManager();
+
+async function main() {
+  const platform = process.argv[2];
+
+  if (platform && ['win', 'mac', 'linux'].includes(platform)) {
+    await buildManager.buildForPlatform(platform);
+  } else {
+    console.log('Building for all platforms...');
+    const results = await buildManager.buildAll();
+    console.log('Build results:', results);
+
+    // 生成校验和
+    await buildManager.generateChecksums('./dist-packages');
+  }
+}
+
+main().catch(console.error);
+```
+
+### Tauri应用打包
+
+```toml
+# src-tauri/tauri.conf.json
+{
+  "package": {
+    "productName": "My Tauri App",
+    "version": "1.0.0"
+  },
+  "build": {
+    "distDir": "../dist",
+    "devPath": "http://localhost:3000",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "copyFile": true,
+        "createDir": true,
+        "removeDir": true,
+        "removeFile": true,
+        "renameFile": true
+      },
+      "dialog": {
+        "all": false,
+        "open": true,
+        "save": true,
+        "message": true,
+        "ask": true,
+        "confirm": true
+      },
+      "notification": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.example.myapp",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "resources": ["assets/*"],
+      "externalBin": [],
+      "copyright": "Copyright © 2023 Your Company",
+      "category": "DeveloperTool",
+      "shortDescription": "A Tauri App",
+      "longDescription": "A longer description of the Tauri app",
+      "deb": {
+        "depends": []
+      },
+      "macOS": {
+        "frameworks": [],
+        "minimumSystemVersion": "10.13",
+        "exceptionDomain": "",
+        "signingIdentity": null,
+        "providerShortName": null,
+        "entitlements": null
+      },
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost"
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 600,
+        "resizable": true,
+        "title": "My Tauri App",
+        "width": 800,
+        "minWidth": 400,
+        "minHeight": 300
+      }
+    ]
+  }
+}
+```
+
+```bash
+# Tauri构建脚本
+#!/bin/bash
+
+# build.sh
+set -e
+
+echo "Building Tauri application..."
+
+# 清理之前的构建
+rm -rf src-tauri/target/release/bundle
+
+# 构建前端
+echo "Building frontend..."
+npm run build
+
+# 构建Tauri应用
+echo "Building Tauri app..."
+cd src-tauri
+
+# 为不同平台构建
+if [[ "$1" == "windows" ]]; then
+    cargo tauri build --target x86_64-pc-windows-msvc
+elif [[ "$1" == "macos" ]]; then
+    cargo tauri build --target x86_64-apple-darwin
+    cargo tauri build --target aarch64-apple-darwin
+elif [[ "$1" == "linux" ]]; then
+    cargo tauri build --target x86_64-unknown-linux-gnu
+else
+    # 默认构建当前平台
+    cargo tauri build
+fi
+
+echo "Build completed!"
+
+# 生成校验和
+echo "Generating checksums..."
+cd target/release/bundle
+
+for dir in */; do
+    if [ -d "$dir" ]; then
+        cd "$dir"
+        for file in *; do
+            if [ -f "$file" ]; then
+                sha256sum "$file" >> ../checksums.txt
+            fi
+        done
+        cd ..
+    fi
+done
+
+echo "Checksums generated in target/release/bundle/checksums.txt"
+```
+
+### 持续集成和自动发布
+
+```yaml
+# .github/workflows/build.yml
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build frontend
+      run: npm run build
+
+    - name: Setup Rust (for Tauri)
+      if: matrix.os != 'ubuntu-latest'
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Install Tauri dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+    - name: Build Tauri app
+      run: npm run tauri build
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-${{ matrix.os }}
+        path: |
+          src-tauri/target/release/bundle/
+          !src-tauri/target/release/bundle/**/deps/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          app-ubuntu-latest/**/*
+          app-windows-latest/**/*
+          app-macos-latest/**/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
 ---
 
 <Callout type="success">
 桌面应用开发为Web技术提供了新的应用场景，通过合理的架构设计和性能优化，可以创建出媲美原生应用的桌面软件。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [Electron 官方文档](https://www.electronjs.org/) - Electron权威学习资源
+- [Tauri 官方文档](https://tauri.app/) - Tauri现代桌面应用框架
+- [Electron Builder](https://www.electron.build/) - Electron应用打包工具
+- [Electron Forge](https://www.electronforge.io/) - Electron开发工具链
+
+### 🎓 优质教程
+- [Electron 官方教程](https://www.electronjs.org/docs/latest/tutorial/tutorial-prerequisites) - 官方入门教程
+- [Tauri 指南](https://tauri.app/v1/guides/) - Tauri开发指南
+- [Desktop App Development](https://www.udemy.com/course/electron-react/) - 桌面应用开发课程
+
+### 🛠️ 实践项目
+- [Electron Apps](https://www.electronjs.org/apps) - Electron应用展示
+- [Awesome Electron](https://github.com/sindresorhus/awesome-electron) - Electron资源集合
+- [Tauri Examples](https://github.com/tauri-apps/tauri/tree/dev/examples) - Tauri官方示例
+
+### 🔧 开发工具
+- [Electron DevTools](https://www.electronjs.org/docs/latest/tutorial/devtools-extension) - Electron调试工具
+- [Electron Packager](https://github.com/electron/electron-packager) - 应用打包工具
+- [Tauri CLI](https://tauri.app/v1/guides/getting-started/setup/) - Tauri命令行工具
+- [Electron Updater](https://github.com/electron-userland/electron-updater) - 自动更新工具
+
+### 📝 深入阅读
+- [Electron Security](https://www.electronjs.org/docs/latest/tutorial/security) - Electron安全最佳实践
+- [Desktop App Performance](https://blog.logrocket.com/electron-performance-optimization/) - 桌面应用性能优化
+- [Cross-Platform Development](https://tauri.app/v1/guides/building/cross-platform/) - 跨平台开发指南
+
+<Callout type="tip">
+💡 **学习建议**：建议从Electron开始学习桌面应用开发基础，然后探索Tauri等现代化方案，重点关注安全性和性能优化。
 </Callout>

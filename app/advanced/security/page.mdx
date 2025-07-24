@@ -652,8 +652,998 @@ const rendered = templateRenderer.render(template, {
 console.log('渲染结果:', rendered);
 ```
 
+## CSRF攻击防护
+
+<Callout type="warning">
+CSRF（跨站请求伪造）攻击利用用户的身份执行未授权的操作，需要通过多种手段进行防护。
+</Callout>
+
+### CSRF防护实现
+
+```javascript
+// 1. CSRF Token管理
+class CSRFProtection {
+  constructor() {
+    this.token = null;
+    this.tokenExpiry = null;
+    this.init();
+  }
+
+  init() {
+    this.generateToken();
+    this.setupTokenRefresh();
+  }
+
+  generateToken() {
+    // 生成随机token
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    this.token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    this.tokenExpiry = Date.now() + (30 * 60 * 1000); // 30分钟过期
+
+    // 存储到meta标签
+    this.updateMetaToken();
+  }
+
+  updateMetaToken() {
+    let metaTag = document.querySelector('meta[name="csrf-token"]');
+    if (!metaTag) {
+      metaTag = document.createElement('meta');
+      metaTag.name = 'csrf-token';
+      document.head.appendChild(metaTag);
+    }
+    metaTag.content = this.token;
+  }
+
+  getToken() {
+    if (this.isTokenExpired()) {
+      this.generateToken();
+    }
+    return this.token;
+  }
+
+  isTokenExpired() {
+    return Date.now() > this.tokenExpiry;
+  }
+
+  async refreshToken() {
+    try {
+      const response = await fetch('/api/csrf/refresh', {
+        method: 'POST',
+        credentials: 'same-origin'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.token = data.token;
+        this.tokenExpiry = Date.now() + (30 * 60 * 1000);
+        this.updateMetaToken();
+      }
+    } catch (error) {
+      console.error('Failed to refresh CSRF token:', error);
+    }
+  }
+}
+
+// 2. 安全的HTTP客户端
+class SecureHttpClient {
+  constructor() {
+    this.csrfProtection = new CSRFProtection();
+    this.setupInterceptors();
+  }
+
+  setupInterceptors() {
+    // 拦截所有fetch请求
+    const originalFetch = window.fetch;
+    window.fetch = (url, options = {}) => {
+      return this.secureRequest(url, options, originalFetch);
+    };
+  }
+
+  async secureRequest(url, options, originalFetch) {
+    // 只对同源请求添加CSRF保护
+    if (this.isSameOrigin(url)) {
+      options.headers = {
+        ...options.headers,
+        'X-CSRF-Token': this.csrfProtection.getToken(),
+        'X-Requested-With': 'XMLHttpRequest'
+      };
+
+      options.credentials = options.credentials || 'same-origin';
+    }
+
+    const response = await originalFetch(url, options);
+
+    if (response.status === 403 && response.headers.get('X-CSRF-Error')) {
+      await this.csrfProtection.refreshToken();
+      options.headers['X-CSRF-Token'] = this.csrfProtection.getToken();
+      return originalFetch(url, options);
+    }
+
+    return response;
+  }
+
+  isSameOrigin(url) {
+    try {
+      const requestUrl = new URL(url, window.location.origin);
+      return requestUrl.origin === window.location.origin;
+    } catch {
+      return true;
+    }
+  }
+}
+```
+
+## 内容安全策略CSP
+
+<Callout type="info">
+CSP（Content Security Policy）是一个重要的安全层，帮助检测和缓解某些类型的攻击。
+</Callout>
+
+### CSP配置和实现
+
+```javascript
+// 1. CSP策略生成器
+class CSPPolicyBuilder {
+  constructor() {
+    this.directives = new Map();
+    this.reportUri = null;
+    this.reportOnly = false;
+  }
+
+  // 设置默认源
+  defaultSrc(...sources) {
+    this.directives.set('default-src', sources);
+    return this;
+  }
+
+  // 设置脚本源
+  scriptSrc(...sources) {
+    this.directives.set('script-src', sources);
+    return this;
+  }
+
+  // 设置样式源
+  styleSrc(...sources) {
+    this.directives.set('style-src', sources);
+    return this;
+  }
+
+  // 设置图片源
+  imgSrc(...sources) {
+    this.directives.set('img-src', sources);
+    return this;
+  }
+
+  // 设置连接源
+  connectSrc(...sources) {
+    this.directives.set('connect-src', sources);
+    return this;
+  }
+
+  // 设置字体源
+  fontSrc(...sources) {
+    this.directives.set('font-src', sources);
+    return this;
+  }
+
+  // 设置对象源
+  objectSrc(...sources) {
+    this.directives.set('object-src', sources);
+    return this;
+  }
+
+  // 设置媒体源
+  mediaSrc(...sources) {
+    this.directives.set('media-src', sources);
+    return this;
+  }
+
+  // 设置框架源
+  frameSrc(...sources) {
+    this.directives.set('frame-src', sources);
+    return this;
+  }
+
+  // 设置报告URI
+  setReportUri(uri) {
+    this.reportUri = uri;
+    return this;
+  }
+
+  // 设置为仅报告模式
+  setReportOnly(reportOnly = true) {
+    this.reportOnly = reportOnly;
+    return this;
+  }
+
+  // 生成CSP字符串
+  build() {
+    const policies = [];
+
+    for (const [directive, sources] of this.directives) {
+      policies.push(`${directive} ${sources.join(' ')}`);
+    }
+
+    if (this.reportUri) {
+      policies.push(`report-uri ${this.reportUri}`);
+    }
+
+    return policies.join('; ');
+  }
+
+  // 应用到页面
+  apply() {
+    const policy = this.build();
+    const headerName = this.reportOnly ?
+      'Content-Security-Policy-Report-Only' :
+      'Content-Security-Policy';
+
+    // 创建meta标签
+    const meta = document.createElement('meta');
+    meta.httpEquiv = headerName;
+    meta.content = policy;
+    document.head.appendChild(meta);
+
+    return policy;
+  }
+}
+
+// 2. CSP违规报告处理
+class CSPReportHandler {
+  constructor(reportEndpoint) {
+    this.reportEndpoint = reportEndpoint;
+    this.setupReportListener();
+  }
+
+  setupReportListener() {
+    // 监听CSP违规事件
+    document.addEventListener('securitypolicyviolation', (event) => {
+      this.handleViolation(event);
+    });
+  }
+
+  handleViolation(event) {
+    const report = {
+      'document-uri': event.documentURI,
+      'referrer': event.referrer,
+      'violated-directive': event.violatedDirective,
+      'effective-directive': event.effectiveDirective,
+      'original-policy': event.originalPolicy,
+      'blocked-uri': event.blockedURI,
+      'line-number': event.lineNumber,
+      'column-number': event.columnNumber,
+      'source-file': event.sourceFile,
+      'status-code': event.statusCode,
+      'timestamp': new Date().toISOString(),
+      'user-agent': navigator.userAgent
+    };
+
+    this.sendReport(report);
+  }
+
+  async sendReport(report) {
+    try {
+      await fetch(this.reportEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/csp-report'
+        },
+        body: JSON.stringify({ 'csp-report': report })
+      });
+    } catch (error) {
+      console.error('Failed to send CSP report:', error);
+    }
+  }
+}
+
+// 3. 动态CSP管理
+class DynamicCSP {
+  constructor() {
+    this.nonces = new Set();
+    this.hashes = new Set();
+  }
+
+  // 生成随机nonce
+  generateNonce() {
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
+    const nonce = btoa(String.fromCharCode.apply(null, array));
+    this.nonces.add(nonce);
+    return nonce;
+  }
+
+  // 计算脚本hash
+  calculateHash(script, algorithm = 'sha256') {
+    return crypto.subtle.digest(algorithm, new TextEncoder().encode(script))
+      .then(hashBuffer => {
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        const hash = `${algorithm}-${btoa(hashHex)}`;
+        this.hashes.add(hash);
+        return hash;
+      });
+  }
+
+  // 安全地添加内联脚本
+  addInlineScript(scriptContent, parent = document.head) {
+    const script = document.createElement('script');
+    const nonce = this.generateNonce();
+
+    script.nonce = nonce;
+    script.textContent = scriptContent;
+    parent.appendChild(script);
+
+    return nonce;
+  }
+
+  // 安全地添加内联样式
+  addInlineStyle(styleContent, parent = document.head) {
+    const style = document.createElement('style');
+    const nonce = this.generateNonce();
+
+    style.nonce = nonce;
+    style.textContent = styleContent;
+    parent.appendChild(style);
+
+    return nonce;
+  }
+
+  // 更新CSP策略
+  updateCSP() {
+    const nonceList = Array.from(this.nonces).map(nonce => `'nonce-${nonce}'`);
+    const hashList = Array.from(this.hashes).map(hash => `'${hash}'`);
+
+    const csp = new CSPPolicyBuilder()
+      .defaultSrc("'self'")
+      .scriptSrc("'self'", ...nonceList, ...hashList)
+      .styleSrc("'self'", "'unsafe-inline'", ...nonceList)
+      .imgSrc("'self'", "data:", "https:")
+      .connectSrc("'self'")
+      .fontSrc("'self'", "https://fonts.gstatic.com")
+      .objectSrc("'none'")
+      .frameSrc("'none'")
+      .setReportUri('/api/csp-report');
+
+    return csp.apply();
+  }
+}
+
+// 使用示例
+const csp = new CSPPolicyBuilder()
+  .defaultSrc("'self'")
+  .scriptSrc("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net")
+  .styleSrc("'self'", "'unsafe-inline'", "https://fonts.googleapis.com")
+  .imgSrc("'self'", "data:", "https:")
+  .connectSrc("'self'", "https://api.example.com")
+  .fontSrc("'self'", "https://fonts.gstatic.com")
+  .objectSrc("'none'")
+  .frameSrc("'none'")
+  .setReportUri('/api/csp-report')
+  .apply();
+
+// 设置CSP报告处理
+const reportHandler = new CSPReportHandler('/api/csp-report');
+
+// 动态CSP管理
+const dynamicCSP = new DynamicCSP();
+```
+
+## 数据传输安全
+
+<Callout type="warning">
+数据传输安全确保敏感信息在客户端和服务器之间安全传输，防止数据泄露和篡改。
+</Callout>
+
+### HTTPS和加密传输
+
+```javascript
+// 1. 强制HTTPS重定向
+class HTTPSEnforcer {
+  static enforceHTTPS() {
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      location.replace(`https:${location.href.substring(location.protocol.length)}`);
+    }
+  }
+
+  static setupHSTS() {
+    // 通过meta标签设置HSTS（实际应该在服务器端设置）
+    const meta = document.createElement('meta');
+    meta.httpEquiv = 'Strict-Transport-Security';
+    meta.content = 'max-age=31536000; includeSubDomains; preload';
+    document.head.appendChild(meta);
+  }
+
+  static checkMixedContent() {
+    // 检查混合内容
+    const insecureResources = [];
+
+    document.querySelectorAll('img, script, link, iframe').forEach(element => {
+      const src = element.src || element.href;
+      if (src && src.startsWith('http://')) {
+        insecureResources.push({
+          element: element.tagName,
+          url: src
+        });
+      }
+    });
+
+    if (insecureResources.length > 0) {
+      console.warn('Mixed content detected:', insecureResources);
+    }
+
+    return insecureResources;
+  }
+}
+
+// 2. 客户端加密
+class ClientSideEncryption {
+  constructor() {
+    this.keyPair = null;
+    this.init();
+  }
+
+  async init() {
+    // 生成RSA密钥对
+    this.keyPair = await crypto.subtle.generateKey(
+      {
+        name: 'RSA-OAEP',
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: 'SHA-256'
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async encryptData(data) {
+    const encoder = new TextEncoder();
+    const encodedData = encoder.encode(data);
+
+    const encrypted = await crypto.subtle.encrypt(
+      {
+        name: 'RSA-OAEP'
+      },
+      this.keyPair.publicKey,
+      encodedData
+    );
+
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(encrypted)));
+  }
+
+  async decryptData(encryptedData) {
+    const binaryString = atob(encryptedData);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    const decrypted = await crypto.subtle.decrypt(
+      {
+        name: 'RSA-OAEP'
+      },
+      this.keyPair.privateKey,
+      bytes
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  }
+
+  async exportPublicKey() {
+    const exported = await crypto.subtle.exportKey('spki', this.keyPair.publicKey);
+    const exportedAsString = String.fromCharCode.apply(null, new Uint8Array(exported));
+    return btoa(exportedAsString);
+  }
+}
+
+// 3. 安全的数据存储
+class SecureStorage {
+  constructor(password) {
+    this.password = password;
+    this.salt = new Uint8Array(16);
+    crypto.getRandomValues(this.salt);
+  }
+
+  async deriveKey() {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(this.password),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveBits', 'deriveKey']
+    );
+
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: this.salt,
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async encryptAndStore(key, data) {
+    const encoder = new TextEncoder();
+    const encodedData = encoder.encode(JSON.stringify(data));
+
+    const derivedKey = await this.deriveKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const encrypted = await crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv
+      },
+      derivedKey,
+      encodedData
+    );
+
+    const encryptedData = {
+      data: Array.from(new Uint8Array(encrypted)),
+      iv: Array.from(iv),
+      salt: Array.from(this.salt)
+    };
+
+    localStorage.setItem(key, JSON.stringify(encryptedData));
+  }
+
+  async decryptAndRetrieve(key) {
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+
+    const { data, iv, salt } = JSON.parse(stored);
+    this.salt = new Uint8Array(salt);
+
+    const derivedKey = await this.deriveKey();
+
+    const decrypted = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: new Uint8Array(iv)
+      },
+      derivedKey,
+      new Uint8Array(data)
+    );
+
+    const decoder = new TextDecoder();
+    return JSON.parse(decoder.decode(decrypted));
+  }
+}
+
+// 4. API请求签名
+class APIRequestSigner {
+  constructor(secretKey) {
+    this.secretKey = secretKey;
+  }
+
+  async signRequest(method, url, body = '', timestamp = Date.now()) {
+    const message = `${method}\n${url}\n${body}\n${timestamp}`;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(this.secretKey),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', key, data);
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(signature)));
+  }
+
+  async makeSignedRequest(url, options = {}) {
+    const timestamp = Date.now();
+    const method = options.method || 'GET';
+    const body = options.body || '';
+
+    const signature = await this.signRequest(method, url, body, timestamp);
+
+    const headers = {
+      ...options.headers,
+      'X-Timestamp': timestamp.toString(),
+      'X-Signature': signature
+    };
+
+    return fetch(url, {
+      ...options,
+      headers
+    });
+  }
+}
+```
+
+## 安全开发最佳实践
+
+<Callout type="info">
+安全开发最佳实践帮助开发团队在整个开发生命周期中保持安全意识，构建更安全的应用。
+</Callout>
+
+### 安全开发流程
+
+```javascript
+// 1. 安全代码审查清单
+class SecurityCodeReview {
+  static getChecklist() {
+    return {
+      inputValidation: [
+        '所有用户输入都经过验证',
+        '使用白名单而不是黑名单验证',
+        '对文件上传进行类型和大小限制',
+        '验证URL和重定向目标'
+      ],
+      outputEncoding: [
+        '所有输出都经过适当编码',
+        '使用模板引擎的自动转义',
+        '避免使用innerHTML等危险API',
+        '正确处理JSON输出'
+      ],
+      authentication: [
+        '实现强密码策略',
+        '使用多因素认证',
+        '正确处理会话管理',
+        '实现账户锁定机制'
+      ],
+      authorization: [
+        '实现最小权限原则',
+        '验证用户权限',
+        '避免直接对象引用',
+        '实现RBAC或ABAC'
+      ],
+      dataProtection: [
+        '敏感数据加密存储',
+        '使用HTTPS传输',
+        '实现数据脱敏',
+        '定期备份和恢复测试'
+      ],
+      errorHandling: [
+        '不泄露敏感信息',
+        '记录安全事件',
+        '实现优雅降级',
+        '提供用户友好的错误信息'
+      ]
+    };
+  }
+
+  static reviewCode(codeSnippet, category) {
+    const checklist = this.getChecklist()[category] || [];
+    const issues = [];
+
+    // 简单的静态分析示例
+    if (category === 'inputValidation') {
+      if (codeSnippet.includes('innerHTML') && !codeSnippet.includes('sanitize')) {
+        issues.push('可能存在XSS风险：使用innerHTML但未进行清理');
+      }
+
+      if (codeSnippet.includes('eval(') || codeSnippet.includes('Function(')) {
+        issues.push('代码注入风险：使用eval或Function构造器');
+      }
+    }
+
+    if (category === 'dataProtection') {
+      if (codeSnippet.includes('localStorage') && codeSnippet.includes('password')) {
+        issues.push('敏感数据风险：密码存储在localStorage中');
+      }
+    }
+
+    return {
+      category,
+      checklist,
+      issues,
+      passed: issues.length === 0
+    };
+  }
+}
+
+// 2. 安全测试自动化
+class SecurityTestSuite {
+  constructor() {
+    this.tests = [];
+  }
+
+  addTest(name, testFunction) {
+    this.tests.push({ name, test: testFunction });
+  }
+
+  async runAllTests() {
+    const results = [];
+
+    for (const { name, test } of this.tests) {
+      try {
+        const result = await test();
+        results.push({
+          name,
+          passed: result.passed,
+          message: result.message,
+          details: result.details
+        });
+      } catch (error) {
+        results.push({
+          name,
+          passed: false,
+          message: error.message,
+          error: true
+        });
+      }
+    }
+
+    return results;
+  }
+
+  // XSS测试
+  testXSSProtection() {
+    return new Promise((resolve) => {
+      const testPayloads = [
+        '<script>alert("xss")</script>',
+        'javascript:alert("xss")',
+        '<img src="x" onerror="alert(\'xss\')">'
+      ];
+
+      const vulnerabilities = [];
+
+      testPayloads.forEach(payload => {
+        const div = document.createElement('div');
+        div.innerHTML = payload;
+
+        if (div.querySelector('script') || div.innerHTML.includes('javascript:')) {
+          vulnerabilities.push(payload);
+        }
+      });
+
+      resolve({
+        passed: vulnerabilities.length === 0,
+        message: vulnerabilities.length === 0 ?
+          'XSS protection working' :
+          `Found ${vulnerabilities.length} XSS vulnerabilities`,
+        details: vulnerabilities
+      });
+    });
+  }
+
+  // CSRF测试
+  testCSRFProtection() {
+    return new Promise((resolve) => {
+      const hasCSRFToken = document.querySelector('meta[name="csrf-token"]') !== null;
+      const hasCSRFHeader = fetch.toString().includes('X-CSRF-Token');
+
+      resolve({
+        passed: hasCSRFToken || hasCSRFHeader,
+        message: hasCSRFToken || hasCSRFHeader ?
+          'CSRF protection detected' :
+          'No CSRF protection found',
+        details: {
+          metaToken: hasCSRFToken,
+          headerProtection: hasCSRFHeader
+        }
+      });
+    });
+  }
+
+  // HTTPS测试
+  testHTTPSEnforcement() {
+    return new Promise((resolve) => {
+      const isHTTPS = location.protocol === 'https:';
+      const hasHSTS = document.querySelector('meta[http-equiv="Strict-Transport-Security"]') !== null;
+
+      resolve({
+        passed: isHTTPS,
+        message: isHTTPS ?
+          'HTTPS enforced' :
+          'Not using HTTPS',
+        details: {
+          protocol: location.protocol,
+          hasHSTS
+        }
+      });
+    });
+  }
+}
+
+// 3. 安全监控和告警
+class SecurityMonitor {
+  constructor() {
+    this.alerts = [];
+    this.setupMonitoring();
+  }
+
+  setupMonitoring() {
+    // 监控可疑活动
+    this.monitorSuspiciousActivity();
+
+    // 监控安全头
+    this.monitorSecurityHeaders();
+
+    // 监控CSP违规
+    this.monitorCSPViolations();
+  }
+
+  monitorSuspiciousActivity() {
+    let failedAttempts = 0;
+    const maxAttempts = 5;
+    const timeWindow = 5 * 60 * 1000; // 5分钟
+
+    document.addEventListener('submit', (event) => {
+      const form = event.target;
+      if (form.action.includes('/login') || form.action.includes('/auth')) {
+        // 模拟登录失败检测
+        setTimeout(() => {
+          if (document.querySelector('.error')) {
+            failedAttempts++;
+
+            if (failedAttempts >= maxAttempts) {
+              this.createAlert('security', 'Multiple failed login attempts detected', {
+                attempts: failedAttempts,
+                timeWindow: timeWindow,
+                userAgent: navigator.userAgent,
+                ip: 'client-side' // 实际应该从服务器获取
+              });
+            }
+          }
+        }, 1000);
+      }
+    });
+
+    // 重置计数器
+    setInterval(() => {
+      failedAttempts = 0;
+    }, timeWindow);
+  }
+
+  monitorSecurityHeaders() {
+    const requiredHeaders = [
+      'Content-Security-Policy',
+      'X-Frame-Options',
+      'X-Content-Type-Options',
+      'Strict-Transport-Security'
+    ];
+
+    fetch(window.location.href, { method: 'HEAD' })
+      .then(response => {
+        const missingHeaders = requiredHeaders.filter(header =>
+          !response.headers.has(header)
+        );
+
+        if (missingHeaders.length > 0) {
+          this.createAlert('configuration', 'Missing security headers', {
+            missingHeaders,
+            url: window.location.href
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Failed to check security headers:', error);
+      });
+  }
+
+  monitorCSPViolations() {
+    document.addEventListener('securitypolicyviolation', (event) => {
+      this.createAlert('csp', 'CSP violation detected', {
+        violatedDirective: event.violatedDirective,
+        blockedURI: event.blockedURI,
+        documentURI: event.documentURI,
+        lineNumber: event.lineNumber
+      });
+    });
+  }
+
+  createAlert(type, message, details = {}) {
+    const alert = {
+      id: Math.random().toString(36).substr(2, 9),
+      type,
+      message,
+      details,
+      timestamp: new Date().toISOString(),
+      severity: this.calculateSeverity(type, details)
+    };
+
+    this.alerts.push(alert);
+    this.sendAlert(alert);
+
+    return alert;
+  }
+
+  calculateSeverity(type, details) {
+    switch (type) {
+      case 'security':
+        return details.attempts >= 10 ? 'critical' : 'high';
+      case 'csp':
+        return 'medium';
+      case 'configuration':
+        return 'low';
+      default:
+        return 'info';
+    }
+  }
+
+  async sendAlert(alert) {
+    try {
+      await fetch('/api/security/alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alert)
+      });
+    } catch (error) {
+      console.error('Failed to send security alert:', error);
+    }
+  }
+
+  getAlerts(type = null) {
+    return type ?
+      this.alerts.filter(alert => alert.type === type) :
+      this.alerts;
+  }
+}
+
+// 使用示例
+// 初始化安全监控
+const securityMonitor = new SecurityMonitor();
+
+// 运行安全测试
+const testSuite = new SecurityTestSuite();
+testSuite.addTest('XSS Protection', () => testSuite.testXSSProtection());
+testSuite.addTest('CSRF Protection', () => testSuite.testCSRFProtection());
+testSuite.addTest('HTTPS Enforcement', () => testSuite.testHTTPSEnforcement());
+
+testSuite.runAllTests().then(results => {
+  console.log('Security test results:', results);
+});
+
+// 代码审查
+const codeSnippet = `
+  const userInput = document.getElementById('input').value;
+  document.getElementById('output').innerHTML = userInput;
+`;
+
+const reviewResult = SecurityCodeReview.reviewCode(codeSnippet, 'inputValidation');
+console.log('Code review result:', reviewResult);
+```
+
 ---
 
 <Callout type="success">
 前端安全需要多层防护，包括输入验证、输出编码、CSP配置等。安全是一个持续的过程，需要定期评估和更新防护措施。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/) - Web应用安全风险
+- [MDN Web Security](https://developer.mozilla.org/en-US/docs/Web/Security) - MDN Web安全指南
+- [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) - CSP官方文档
+- [Web.dev Security](https://web.dev/secure/) - Google Web安全指南
+
+### 🎓 优质教程
+- [Frontend Security](https://frontendmasters.com/courses/web-security/) - Frontend Masters安全课程
+- [Web Security Academy](https://portswigger.net/web-security) - PortSwigger安全学院
+- [OWASP WebGoat](https://owasp.org/www-project-webgoat/) - Web安全实践平台
+
+### 🛠️ 实践项目
+- [Security Headers](https://securityheaders.com/) - 安全头检测工具
+- [OWASP ZAP](https://www.zaproxy.org/) - Web应用安全测试工具
+- [Security Checklist](https://github.com/FallibleInc/security-guide-for-developers) - 开发者安全指南
+
+### 🔧 开发工具
+- [ESLint Security](https://github.com/nodesecurity/eslint-plugin-security) - ESLint安全插件
+- [Snyk](https://snyk.io/) - 依赖安全扫描
+- [npm audit](https://docs.npmjs.com/cli/v8/commands/npm-audit) - npm安全审计
+- [Helmet.js](https://helmetjs.github.io/) - Express安全中间件
+
+### 📝 深入阅读
+- [Frontend Security Best Practices](https://blog.logrocket.com/frontend-security-best-practices/) - 前端安全最佳实践
+- [XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html) - XSS防护备忘单
+- [CSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) - CSRF防护指南
+
+<Callout type="tip">
+💡 **学习建议**：建议从OWASP Top 10开始了解常见安全威胁，学习XSS和CSRF防护技术，然后掌握CSP配置，最后建立完整的安全开发流程。
 </Callout>

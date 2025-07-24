@@ -870,8 +870,589 @@ export class UserFormComponent implements OnInit, OnDestroy {
 }
 ```
 
+## Angular企业级开发
+
+<Callout type="info">
+Angular特别适合企业级应用开发，提供了完整的解决方案包括架构模式、代码组织、测试策略等。
+</Callout>
+
+### 企业级架构模式
+
+```typescript
+// 1. 特性模块架构
+// shared/shared.module.ts
+@NgModule({
+  declarations: [
+    LoadingComponent,
+    ConfirmDialogComponent,
+    DataTableComponent
+  ],
+  imports: [
+    CommonModule,
+    MaterialModule,
+    ReactiveFormsModule
+  ],
+  exports: [
+    LoadingComponent,
+    ConfirmDialogComponent,
+    DataTableComponent,
+    MaterialModule,
+    ReactiveFormsModule
+  ]
+})
+export class SharedModule {}
+
+// core/core.module.ts
+@NgModule({
+  providers: [
+    AuthService,
+    ErrorHandlerService,
+    LoggerService,
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: ErrorInterceptor,
+      multi: true
+    }
+  ]
+})
+export class CoreModule {
+  constructor(@Optional() @SkipSelf() parentModule: CoreModule) {
+    if (parentModule) {
+      throw new Error('CoreModule已经加载，只能在AppModule中导入一次');
+    }
+  }
+}
+
+// features/user/user.module.ts
+@NgModule({
+  declarations: [
+    UserListComponent,
+    UserDetailComponent,
+    UserFormComponent
+  ],
+  imports: [
+    CommonModule,
+    SharedModule,
+    UserRoutingModule
+  ]
+})
+export class UserModule {}
+
+// 2. 状态管理架构
+// store/user/user.state.ts
+export interface UserState {
+  users: User[];
+  selectedUser: User | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export const initialUserState: UserState = {
+  users: [],
+  selectedUser: null,
+  loading: false,
+  error: null
+};
+
+// store/user/user.actions.ts
+export const UserActions = createActionGroup({
+  source: 'User',
+  events: {
+    'Load Users': emptyProps(),
+    'Load Users Success': props<{ users: User[] }>(),
+    'Load Users Failure': props<{ error: string }>(),
+    'Select User': props<{ userId: string }>(),
+    'Create User': props<{ user: Partial<User> }>(),
+    'Update User': props<{ user: User }>(),
+    'Delete User': props<{ userId: string }>()
+  }
+});
+
+// store/user/user.reducer.ts
+export const userReducer = createReducer(
+  initialUserState,
+  on(UserActions.loadUsers, (state) => ({
+    ...state,
+    loading: true,
+    error: null
+  })),
+  on(UserActions.loadUsersSuccess, (state, { users }) => ({
+    ...state,
+    users,
+    loading: false
+  })),
+  on(UserActions.loadUsersFailure, (state, { error }) => ({
+    ...state,
+    loading: false,
+    error
+  })),
+  on(UserActions.selectUser, (state, { userId }) => ({
+    ...state,
+    selectedUser: state.users.find(user => user.id === userId) || null
+  }))
+);
+
+// store/user/user.effects.ts
+@Injectable()
+export class UserEffects {
+  loadUsers$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(UserActions.loadUsers),
+      switchMap(() =>
+        this.userService.getUsers().pipe(
+          map(users => UserActions.loadUsersSuccess({ users })),
+          catchError(error => of(UserActions.loadUsersFailure({
+            error: error.message
+          })))
+        )
+      )
+    )
+  );
+
+  createUser$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(UserActions.createUser),
+      switchMap(({ user }) =>
+        this.userService.createUser(user).pipe(
+          map(() => UserActions.loadUsers()),
+          catchError(error => of(UserActions.loadUsersFailure({
+            error: error.message
+          })))
+        )
+      )
+    )
+  );
+
+  constructor(
+    private actions$: Actions,
+    private userService: UserService
+  ) {}
+}
+
+// 3. 企业级表单管理
+@Injectable({
+  providedIn: 'root'
+})
+export class FormBuilderService {
+  createUserForm(): FormGroup {
+    return this.fb.group({
+      personalInfo: this.fb.group({
+        firstName: ['', [Validators.required, Validators.minLength(2)]],
+        lastName: ['', [Validators.required, Validators.minLength(2)]],
+        email: ['', [Validators.required, Validators.email]],
+        phone: ['', [Validators.pattern(/^\d{10,11}$/)]]
+      }),
+      address: this.fb.group({
+        street: ['', Validators.required],
+        city: ['', Validators.required],
+        state: ['', Validators.required],
+        zipCode: ['', [Validators.required, Validators.pattern(/^\d{5}$/)]]
+      }),
+      preferences: this.fb.group({
+        newsletter: [false],
+        notifications: [true],
+        theme: ['light']
+      })
+    });
+  }
+
+  constructor(private fb: FormBuilder) {}
+}
+
+// 4. 权限管理系统
+@Injectable({
+  providedIn: 'root'
+})
+export class PermissionService {
+  private permissions$ = new BehaviorSubject<string[]>([]);
+
+  hasPermission(permission: string): Observable<boolean> {
+    return this.permissions$.pipe(
+      map(permissions => permissions.includes(permission))
+    );
+  }
+
+  hasAnyPermission(permissions: string[]): Observable<boolean> {
+    return this.permissions$.pipe(
+      map(userPermissions =>
+        permissions.some(permission => userPermissions.includes(permission))
+      )
+    );
+  }
+
+  setPermissions(permissions: string[]): void {
+    this.permissions$.next(permissions);
+  }
+}
+
+@Directive({
+  selector: '[appHasPermission]'
+})
+export class HasPermissionDirective implements OnInit, OnDestroy {
+  @Input() appHasPermission!: string;
+
+  private destroy$ = new Subject<void>();
+
+  constructor(
+    private templateRef: TemplateRef<any>,
+    private viewContainer: ViewContainerRef,
+    private permissionService: PermissionService
+  ) {}
+
+  ngOnInit(): void {
+    this.permissionService.hasPermission(this.appHasPermission).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(hasPermission => {
+      if (hasPermission) {
+        this.viewContainer.createEmbeddedView(this.templateRef);
+      } else {
+        this.viewContainer.clear();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+}
+```
+
+## 性能优化和最佳实践
+
+<Callout type="warning">
+Angular应用的性能优化需要从多个维度考虑，包括变更检测、懒加载、预加载策略等。
+</Callout>
+
+### 变更检测优化
+
+```typescript
+// 1. OnPush变更检测策略
+@Component({
+  selector: 'app-user-card',
+  template: `
+    <div class="user-card">
+      <h3>{{ user.name }}</h3>
+      <p>{{ user.email }}</p>
+      <button (click)="onEdit()">编辑</button>
+    </div>
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class UserCardComponent {
+  @Input() user!: User;
+  @Output() edit = new EventEmitter<User>();
+
+  constructor(private cdr: ChangeDetectorRef) {}
+
+  onEdit(): void {
+    this.edit.emit(this.user);
+  }
+
+  // 手动触发变更检测
+  updateUser(user: User): void {
+    this.user = user;
+    this.cdr.markForCheck();
+  }
+}
+
+// 2. TrackBy函数优化
+@Component({
+  selector: 'app-user-list',
+  template: `
+    <div class="user-list">
+      <app-user-card
+        *ngFor="let user of users; trackBy: trackByUserId"
+        [user]="user"
+        (edit)="onEditUser($event)">
+      </app-user-card>
+    </div>
+  `
+})
+export class UserListComponent {
+  @Input() users: User[] = [];
+
+  trackByUserId(index: number, user: User): string {
+    return user.id;
+  }
+
+  onEditUser(user: User): void {
+    // 编辑用户逻辑
+  }
+}
+
+// 3. 异步管道优化
+@Component({
+  selector: 'app-dashboard',
+  template: `
+    <div class="dashboard">
+      <div *ngIf="users$ | async as users">
+        <app-user-list [users]="users"></app-user-list>
+      </div>
+
+      <div *ngIf="loading$ | async" class="loading">
+        加载中...
+      </div>
+    </div>
+  `
+})
+export class DashboardComponent {
+  users$ = this.store.select(selectUsers);
+  loading$ = this.store.select(selectUsersLoading);
+
+  constructor(private store: Store) {}
+}
+
+// 4. 虚拟滚动
+@Component({
+  selector: 'app-virtual-list',
+  template: `
+    <cdk-virtual-scroll-viewport itemSize="50" class="viewport">
+      <div *cdkVirtualFor="let item of items; trackBy: trackByFn">
+        {{ item.name }}
+      </div>
+    </cdk-virtual-scroll-viewport>
+  `,
+  styles: [`
+    .viewport {
+      height: 400px;
+      width: 100%;
+    }
+  `]
+})
+export class VirtualListComponent {
+  @Input() items: any[] = [];
+
+  trackByFn(index: number, item: any): any {
+    return item.id;
+  }
+}
+```
+
+### 懒加载和预加载策略
+
+```typescript
+// 1. 路由懒加载
+const routes: Routes = [
+  {
+    path: 'users',
+    loadChildren: () => import('./features/users/users.module').then(m => m.UsersModule)
+  },
+  {
+    path: 'products',
+    loadChildren: () => import('./features/products/products.module').then(m => m.ProductsModule)
+  },
+  {
+    path: 'orders',
+    loadChildren: () => import('./features/orders/orders.module').then(m => m.OrdersModule)
+  }
+];
+
+// 2. 自定义预加载策略
+@Injectable()
+export class CustomPreloadingStrategy implements PreloadingStrategy {
+  preload(route: Route, load: () => Observable<any>): Observable<any> {
+    // 只预加载标记为preload的路由
+    if (route.data && route.data['preload']) {
+      console.log('预加载路由:', route.path);
+      return load();
+    }
+    return of(null);
+  }
+}
+
+// 路由配置
+const routes: Routes = [
+  {
+    path: 'users',
+    loadChildren: () => import('./features/users/users.module').then(m => m.UsersModule),
+    data: { preload: true }
+  },
+  {
+    path: 'admin',
+    loadChildren: () => import('./features/admin/admin.module').then(m => m.AdminModule),
+    data: { preload: false }
+  }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes, {
+    preloadingStrategy: CustomPreloadingStrategy
+  })],
+  providers: [CustomPreloadingStrategy]
+})
+export class AppRoutingModule {}
+
+// 3. 组件懒加载
+@Component({
+  selector: 'app-lazy-component',
+  template: `
+    <div>
+      <button (click)="loadComponent()" *ngIf="!componentLoaded">
+        加载组件
+      </button>
+      <ng-container #dynamicComponent></ng-container>
+    </div>
+  `
+})
+export class LazyComponentComponent {
+  @ViewChild('dynamicComponent', { read: ViewContainerRef })
+  dynamicComponent!: ViewContainerRef;
+
+  componentLoaded = false;
+
+  constructor(private componentFactoryResolver: ComponentFactoryResolver) {}
+
+  async loadComponent(): Promise<void> {
+    const { HeavyComponent } = await import('./heavy/heavy.component');
+    const componentFactory = this.componentFactoryResolver.resolveComponentFactory(HeavyComponent);
+    this.dynamicComponent.createComponent(componentFactory);
+    this.componentLoaded = true;
+  }
+}
+```
+
+### 内存管理和性能监控
+
+```typescript
+// 1. 内存泄漏防护
+@Component({
+  selector: 'app-memory-safe',
+  template: `<div>{{ data$ | async }}</div>`
+})
+export class MemorySafeComponent implements OnInit, OnDestroy {
+  data$!: Observable<any>;
+  private destroy$ = new Subject<void>();
+
+  ngOnInit(): void {
+    // 使用takeUntil防止内存泄漏
+    this.data$ = this.dataService.getData().pipe(
+      takeUntil(this.destroy$)
+    );
+
+    // 定时器也需要清理
+    interval(1000).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(value => {
+      console.log('定时器值:', value);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+}
+
+// 2. 性能监控服务
+@Injectable({
+  providedIn: 'root'
+})
+export class PerformanceMonitorService {
+  private performanceObserver?: PerformanceObserver;
+
+  startMonitoring(): void {
+    if ('PerformanceObserver' in window) {
+      this.performanceObserver = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => {
+          if (entry.entryType === 'navigation') {
+            this.logNavigationTiming(entry as PerformanceNavigationTiming);
+          } else if (entry.entryType === 'paint') {
+            this.logPaintTiming(entry);
+          }
+        });
+      });
+
+      this.performanceObserver.observe({
+        entryTypes: ['navigation', 'paint', 'largest-contentful-paint']
+      });
+    }
+  }
+
+  private logNavigationTiming(entry: PerformanceNavigationTiming): void {
+    console.log('导航性能指标:', {
+      domContentLoaded: entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart,
+      loadComplete: entry.loadEventEnd - entry.loadEventStart,
+      firstByte: entry.responseStart - entry.requestStart
+    });
+  }
+
+  private logPaintTiming(entry: PerformanceEntry): void {
+    console.log(`${entry.name}: ${entry.startTime}ms`);
+  }
+
+  stopMonitoring(): void {
+    if (this.performanceObserver) {
+      this.performanceObserver.disconnect();
+    }
+  }
+}
+
+// 3. Bundle分析和优化
+// angular.json配置
+{
+  "build": {
+    "builder": "@angular-devkit/build-angular:browser",
+    "options": {
+      "budgets": [
+        {
+          "type": "initial",
+          "maximumWarning": "2mb",
+          "maximumError": "5mb"
+        },
+        {
+          "type": "anyComponentStyle",
+          "maximumWarning": "6kb",
+          "maximumError": "10kb"
+        }
+      ]
+    }
+  }
+}
+```
+
 ---
 
 <Callout type="success">
 Angular提供了完整的企业级开发解决方案，通过TypeScript、依赖注入和RxJS的强大组合，能够构建大型、可维护的前端应用。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [Angular 官方文档](https://angular.io/) - Angular权威学习资源
+- [Angular API 参考](https://angular.io/api) - 完整API文档
+- [TypeScript 官方文档](https://www.typescriptlang.org/) - TypeScript语言文档
+- [RxJS 官方文档](https://rxjs.dev/) - 响应式编程库文档
+
+### 🎓 优质教程
+- [Angular 官方教程](https://angular.io/tutorial) - 官方英雄之旅教程
+- [Angular University](https://angular-university.io/) - Angular专业课程平台
+- [Angular in Depth](https://indepth.dev/angular) - Angular深度技术文章
+
+### 🛠️ 实践项目
+- [Angular CLI](https://angular.io/cli) - 官方脚手架工具
+- [Angular Material](https://material.angular.io/) - 官方UI组件库
+- [NgRx](https://ngrx.io/) - Angular状态管理库
+
+### 🔧 开发工具
+- [Angular DevTools](https://angular.io/guide/devtools) - 官方调试工具
+- [Angular Language Service](https://angular.io/guide/language-service) - VS Code扩展
+- [Nx](https://nx.dev/) - 企业级开发工具
+- [Compodoc](https://compodoc.app/) - 文档生成工具
+
+### 📝 深入阅读
+- [Angular Architecture](https://angular.io/guide/architecture) - 架构指南
+- [Angular Performance](https://angular.io/guide/performance-checklist) - 性能优化清单
+- [Angular Security](https://angular.io/guide/security) - 安全最佳实践
+
+<Callout type="tip">
+💡 **学习建议**：建议从Angular CLI开始创建项目，学习组件和服务的基本概念，然后深入TypeScript和RxJS，最后掌握企业级开发模式。
 </Callout>

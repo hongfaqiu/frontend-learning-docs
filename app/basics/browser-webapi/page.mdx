@@ -1,0 +1,1230 @@
+import { Callout } from 'nextra/components'
+
+# 05. 浏览器原理和Web API
+
+## 📋 目录
+
+- [浏览器架构深入](#浏览器架构深入)
+- [渲染引擎工作原理](#渲染引擎工作原理)
+- [JavaScript引擎和事件循环](#javascript引擎和事件循环)
+- [现代Web API详解](#现代web-api详解)
+- [性能优化策略](#性能优化策略)
+- [浏览器安全机制](#浏览器安全机制)
+
+## 🏗️ 浏览器架构深入
+
+<Callout type="info">
+现代浏览器采用多进程架构，理解其工作原理有助于我们编写更高效的Web应用。
+</Callout>
+
+### 多进程架构
+
+```javascript
+// 浏览器进程架构示意
+/*
+1. 浏览器进程（Browser Process）
+   - 负责浏览器界面显示
+   - 管理其他进程
+   - 处理网络请求
+   - 文件访问等
+
+2. 渲染进程（Renderer Process）
+   - 每个标签页一个进程
+   - 负责页面渲染
+   - JavaScript执行
+   - DOM操作
+
+3. GPU进程（GPU Process）
+   - 处理GPU任务
+   - 3D CSS变换
+   - 视频解码
+
+4. 网络进程（Network Process）
+   - 处理网络请求
+   - 安全检查
+   - 缓存管理
+
+5. 存储进程（Storage Process）
+   - 管理本地存储
+   - IndexedDB
+   - Cache API
+*/
+
+// 进程间通信示例
+// 主进程向渲染进程发送消息
+if (window.electronAPI) {
+  window.electronAPI.sendMessage('main-process', {
+    type: 'GET_USER_DATA',
+    userId: 123
+  });
+  
+  window.electronAPI.onMessage('renderer-process', (data) => {
+    console.log('收到主进程消息:', data);
+  });
+}
+
+// Web Worker进程间通信
+const worker = new Worker('/worker.js');
+
+worker.postMessage({
+  type: 'CALCULATE',
+  data: [1, 2, 3, 4, 5]
+});
+
+worker.onmessage = function(e) {
+  console.log('Worker计算结果:', e.data);
+};
+
+// worker.js
+self.onmessage = function(e) {
+  const { type, data } = e.data;
+  
+  if (type === 'CALCULATE') {
+    const result = data.reduce((sum, num) => sum + num, 0);
+    self.postMessage(result);
+  }
+};
+```
+
+### 浏览器内核对比
+
+| 浏览器 | 内核 | JavaScript引擎 | 特点 |
+|--------|------|----------------|------|
+| **Chrome** | Blink | V8 | 性能优秀，标准支持好 |
+| **Firefox** | Gecko | SpiderMonkey | 隐私保护，开发者友好 |
+| **Safari** | WebKit | JavaScriptCore | 能耗优化，苹果生态 |
+| **Edge** | Blink | V8 | 集成Windows，企业友好 |
+
+## 🎨 渲染引擎工作原理
+
+### 关键渲染路径
+
+<Callout type="warning">
+理解关键渲染路径是前端性能优化的基础，每个步骤都可能成为性能瓶颈。
+</Callout>
+
+```javascript
+// 关键渲染路径的5个步骤
+/*
+1. 构建DOM树（DOM Tree）
+2. 构建CSSOM树（CSS Object Model）
+3. 合并生成渲染树（Render Tree）
+4. 布局计算（Layout/Reflow）
+5. 绘制渲染（Paint/Rasterization）
+*/
+
+// 1. DOM解析过程
+const htmlParser = {
+  parseHTML(html) {
+    // 词法分析：HTML -> Tokens
+    const tokens = this.tokenize(html);
+    
+    // 语法分析：Tokens -> DOM Tree
+    const domTree = this.buildDOMTree(tokens);
+    
+    return domTree;
+  },
+  
+  tokenize(html) {
+    // 简化的HTML词法分析
+    const tokens = [];
+    let i = 0;
+    
+    while (i < html.length) {
+      if (html[i] === '<') {
+        // 解析标签
+        const tagEnd = html.indexOf('>', i);
+        const tagContent = html.slice(i + 1, tagEnd);
+        
+        if (tagContent.startsWith('/')) {
+          tokens.push({ type: 'EndTag', name: tagContent.slice(1) });
+        } else {
+          tokens.push({ type: 'StartTag', name: tagContent });
+        }
+        
+        i = tagEnd + 1;
+      } else {
+        // 解析文本
+        const nextTag = html.indexOf('<', i);
+        const text = html.slice(i, nextTag === -1 ? html.length : nextTag);
+        
+        if (text.trim()) {
+          tokens.push({ type: 'Text', content: text.trim() });
+        }
+        
+        i = nextTag === -1 ? html.length : nextTag;
+      }
+    }
+    
+    return tokens;
+  }
+};
+
+// 2. CSSOM构建
+const cssParser = {
+  parseCSS(css) {
+    // CSS解析：CSS -> CSSOM
+    const rules = [];
+    
+    // 简化的CSS解析逻辑
+    const ruleRegex = /([^{]+)\{([^}]+)\}/g;
+    let match;
+    
+    while ((match = ruleRegex.exec(css)) !== null) {
+      const selector = match[1].trim();
+      const declarations = this.parseDeclarations(match[2]);
+      
+      rules.push({
+        selector,
+        declarations
+      });
+    }
+    
+    return rules;
+  },
+  
+  parseDeclarations(declarationsText) {
+    const declarations = {};
+    const pairs = declarationsText.split(';');
+    
+    pairs.forEach(pair => {
+      const [property, value] = pair.split(':').map(s => s.trim());
+      if (property && value) {
+        declarations[property] = value;
+      }
+    });
+    
+    return declarations;
+  }
+};
+
+// 3. 渲染树构建
+const renderTreeBuilder = {
+  buildRenderTree(domTree, cssom) {
+    const renderTree = [];
+    
+    this.traverseDOM(domTree, cssom, renderTree);
+    
+    return renderTree;
+  },
+  
+  traverseDOM(node, cssom, renderTree) {
+    // 跳过不可见元素
+    if (this.isHidden(node, cssom)) {
+      return;
+    }
+    
+    // 创建渲染节点
+    const renderNode = {
+      element: node,
+      styles: this.computeStyles(node, cssom),
+      children: []
+    };
+    
+    // 递归处理子节点
+    if (node.children) {
+      node.children.forEach(child => {
+        this.traverseDOM(child, cssom, renderNode.children);
+      });
+    }
+    
+    renderTree.push(renderNode);
+  },
+  
+  isHidden(node, cssom) {
+    const styles = this.computeStyles(node, cssom);
+    return styles.display === 'none' || styles.visibility === 'hidden';
+  },
+  
+  computeStyles(node, cssom) {
+    // 样式计算：继承、层叠、特异性
+    let computedStyles = {};
+    
+    // 应用默认样式
+    computedStyles = { ...this.getDefaultStyles(node.tagName) };
+    
+    // 应用CSS规则
+    cssom.forEach(rule => {
+      if (this.matchesSelector(node, rule.selector)) {
+        computedStyles = { ...computedStyles, ...rule.declarations };
+      }
+    });
+    
+    return computedStyles;
+  }
+};
+
+// 4. 布局计算
+const layoutEngine = {
+  calculateLayout(renderTree, viewport) {
+    renderTree.forEach(node => {
+      this.calculateNodeLayout(node, viewport);
+    });
+  },
+  
+  calculateNodeLayout(node, container) {
+    const styles = node.styles;
+    
+    // 计算盒模型
+    const box = {
+      content: this.calculateContentBox(styles, container),
+      padding: this.calculatePadding(styles),
+      border: this.calculateBorder(styles),
+      margin: this.calculateMargin(styles)
+    };
+    
+    // 计算最终位置和尺寸
+    node.layout = {
+      x: box.margin.left + box.border.left + box.padding.left,
+      y: box.margin.top + box.border.top + box.padding.top,
+      width: box.content.width,
+      height: box.content.height,
+      box
+    };
+    
+    // 递归计算子元素
+    if (node.children) {
+      node.children.forEach(child => {
+        this.calculateNodeLayout(child, node.layout);
+      });
+    }
+  }
+};
+
+// 5. 绘制渲染
+const paintEngine = {
+  paint(renderTree, canvas) {
+    const ctx = canvas.getContext('2d');
+    
+    renderTree.forEach(node => {
+      this.paintNode(ctx, node);
+    });
+  },
+  
+  paintNode(ctx, node) {
+    const { layout, styles } = node;
+    
+    // 绘制背景
+    if (styles.backgroundColor) {
+      ctx.fillStyle = styles.backgroundColor;
+      ctx.fillRect(layout.x, layout.y, layout.width, layout.height);
+    }
+    
+    // 绘制边框
+    if (styles.border) {
+      ctx.strokeStyle = styles.borderColor || '#000';
+      ctx.lineWidth = parseInt(styles.borderWidth) || 1;
+      ctx.strokeRect(layout.x, layout.y, layout.width, layout.height);
+    }
+    
+    // 绘制文本
+    if (node.element.textContent) {
+      ctx.fillStyle = styles.color || '#000';
+      ctx.font = `${styles.fontSize || '16px'} ${styles.fontFamily || 'Arial'}`;
+      ctx.fillText(node.element.textContent, layout.x, layout.y + layout.height / 2);
+    }
+    
+    // 递归绘制子元素
+    if (node.children) {
+      node.children.forEach(child => {
+        this.paintNode(ctx, child);
+      });
+    }
+  }
+};
+```
+
+### 重排和重绘优化
+
+```javascript
+// 重排（Reflow）和重绘（Repaint）优化策略
+
+// 1. 批量DOM操作
+function inefficientDOMUpdate() {
+  const element = document.getElementById('container');
+  
+  // 每次操作都会触发重排
+  element.style.width = '200px';    // 重排
+  element.style.height = '200px';   // 重排
+  element.style.margin = '10px';    // 重排
+}
+
+function efficientDOMUpdate() {
+  const element = document.getElementById('container');
+  
+  // 方法1：使用cssText一次性设置
+  element.style.cssText = 'width: 200px; height: 200px; margin: 10px;';
+  
+  // 方法2：使用CSS类
+  element.className = 'optimized-style';
+  
+  // 方法3：使用DocumentFragment
+  const fragment = document.createDocumentFragment();
+  for (let i = 0; i < 100; i++) {
+    const div = document.createElement('div');
+    div.textContent = `Item ${i}`;
+    fragment.appendChild(div);
+  }
+  element.appendChild(fragment); // 只触发一次重排
+}
+
+// 2. 读写分离
+function inefficientReadWrite() {
+  const element = document.getElementById('box');
+  
+  element.style.width = '100px';
+  const width1 = element.offsetWidth; // 强制重排
+  
+  element.style.height = '100px';
+  const height1 = element.offsetHeight; // 强制重排
+}
+
+function efficientReadWrite() {
+  const element = document.getElementById('box');
+  
+  // 先读取所有需要的值
+  const width1 = element.offsetWidth;
+  const height1 = element.offsetHeight;
+  
+  // 再进行所有写操作
+  element.style.width = '100px';
+  element.style.height = '100px';
+}
+
+// 3. 使用transform和opacity进行动画
+function inefficientAnimation() {
+  const element = document.getElementById('animated');
+  
+  // 会触发重排的属性
+  element.animate([
+    { left: '0px', top: '0px' },
+    { left: '100px', top: '100px' }
+  ], {
+    duration: 1000,
+    easing: 'ease-in-out'
+  });
+}
+
+function efficientAnimation() {
+  const element = document.getElementById('animated');
+  
+  // 只触发重绘的属性
+  element.animate([
+    { transform: 'translate(0px, 0px)', opacity: 1 },
+    { transform: 'translate(100px, 100px)', opacity: 0.5 }
+  ], {
+    duration: 1000,
+    easing: 'ease-in-out'
+  });
+}
+
+// 4. 虚拟滚动优化
+class VirtualScrollList {
+  constructor(container, itemHeight, totalItems) {
+    this.container = container;
+    this.itemHeight = itemHeight;
+    this.totalItems = totalItems;
+    this.visibleItems = Math.ceil(container.clientHeight / itemHeight) + 2;
+    this.scrollTop = 0;
+    
+    this.init();
+  }
+  
+  init() {
+    // 创建容器
+    this.viewport = document.createElement('div');
+    this.viewport.style.height = `${this.totalItems * this.itemHeight}px`;
+    this.viewport.style.position = 'relative';
+    
+    this.content = document.createElement('div');
+    this.content.style.position = 'absolute';
+    this.content.style.top = '0';
+    this.content.style.width = '100%';
+    
+    this.viewport.appendChild(this.content);
+    this.container.appendChild(this.viewport);
+    
+    // 监听滚动
+    this.container.addEventListener('scroll', () => {
+      this.handleScroll();
+    });
+    
+    this.render();
+  }
+  
+  handleScroll() {
+    this.scrollTop = this.container.scrollTop;
+    this.render();
+  }
+  
+  render() {
+    const startIndex = Math.floor(this.scrollTop / this.itemHeight);
+    const endIndex = Math.min(startIndex + this.visibleItems, this.totalItems);
+    
+    // 清空现有内容
+    this.content.innerHTML = '';
+    
+    // 设置偏移
+    this.content.style.transform = `translateY(${startIndex * this.itemHeight}px)`;
+    
+    // 渲染可见项
+    for (let i = startIndex; i < endIndex; i++) {
+      const item = document.createElement('div');
+      item.style.height = `${this.itemHeight}px`;
+      item.textContent = `Item ${i}`;
+      this.content.appendChild(item);
+    }
+  }
+}
+
+// 使用示例
+const container = document.getElementById('scroll-container');
+const virtualList = new VirtualScrollList(container, 50, 10000);
+```
+
+## ⚡ JavaScript引擎和事件循环
+
+### 事件循环机制
+
+<Callout type="info">
+事件循环是JavaScript异步编程的核心机制，理解它对于编写高性能的异步代码至关重要。
+</Callout>
+
+```javascript
+// 事件循环详解
+/*
+调用栈（Call Stack）
+  ↓
+Web APIs（浏览器提供的API）
+  ↓
+任务队列（Task Queue）
+  ↓
+微任务队列（Microtask Queue）
+  ↓
+事件循环（Event Loop）
+*/
+
+// 宏任务和微任务执行顺序
+console.log('1'); // 同步任务
+
+setTimeout(() => {
+  console.log('2'); // 宏任务
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log('3'); // 微任务
+});
+
+console.log('4'); // 同步任务
+
+// 输出顺序：1, 4, 3, 2
+
+// 复杂的事件循环示例
+async function complexEventLoop() {
+  console.log('start');
+  
+  setTimeout(() => console.log('timeout1'), 0);
+  
+  Promise.resolve().then(() => {
+    console.log('promise1');
+    return Promise.resolve();
+  }).then(() => {
+    console.log('promise2');
+  });
+  
+  await new Promise(resolve => {
+    console.log('async1');
+    resolve();
+  });
+  
+  console.log('async2');
+  
+  setTimeout(() => console.log('timeout2'), 0);
+  
+  console.log('end');
+}
+
+complexEventLoop();
+// 输出：start, async1, async2, end, promise1, promise2, timeout1, timeout2
+
+// 手动实现简化的事件循环
+class SimpleEventLoop {
+  constructor() {
+    this.callStack = [];
+    this.macroTaskQueue = [];
+    this.microTaskQueue = [];
+    this.isRunning = false;
+  }
+  
+  // 添加宏任务
+  addMacroTask(task) {
+    this.macroTaskQueue.push(task);
+    if (!this.isRunning) {
+      this.run();
+    }
+  }
+  
+  // 添加微任务
+  addMicroTask(task) {
+    this.microTaskQueue.push(task);
+  }
+  
+  // 执行事件循环
+  run() {
+    this.isRunning = true;
+    
+    while (this.macroTaskQueue.length > 0 || this.microTaskQueue.length > 0) {
+      // 执行一个宏任务
+      if (this.macroTaskQueue.length > 0) {
+        const macroTask = this.macroTaskQueue.shift();
+        this.executeTask(macroTask);
+      }
+      
+      // 执行所有微任务
+      while (this.microTaskQueue.length > 0) {
+        const microTask = this.microTaskQueue.shift();
+        this.executeTask(microTask);
+      }
+    }
+    
+    this.isRunning = false;
+  }
+  
+  executeTask(task) {
+    try {
+      task();
+    } catch (error) {
+      console.error('Task execution error:', error);
+    }
+  }
+}
+
+// 使用示例
+const eventLoop = new SimpleEventLoop();
+
+eventLoop.addMacroTask(() => console.log('Macro 1'));
+eventLoop.addMicroTask(() => console.log('Micro 1'));
+eventLoop.addMacroTask(() => console.log('Macro 2'));
+eventLoop.addMicroTask(() => console.log('Micro 2'));
+```
+
+### Web Workers和多线程
+
+```javascript
+// 主线程代码
+class WorkerManager {
+  constructor() {
+    this.workers = new Map();
+    this.taskId = 0;
+  }
+  
+  // 创建Worker
+  createWorker(name, scriptPath) {
+    const worker = new Worker(scriptPath);
+    
+    worker.onmessage = (e) => {
+      this.handleWorkerMessage(name, e.data);
+    };
+    
+    worker.onerror = (error) => {
+      console.error(`Worker ${name} error:`, error);
+    };
+    
+    this.workers.set(name, worker);
+    return worker;
+  }
+  
+  // 发送任务到Worker
+  sendTask(workerName, task) {
+    const worker = this.workers.get(workerName);
+    if (!worker) {
+      throw new Error(`Worker ${workerName} not found`);
+    }
+    
+    const taskId = ++this.taskId;
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Task timeout'));
+      }, 10000);
+      
+      const handleMessage = (e) => {
+        if (e.data.taskId === taskId) {
+          clearTimeout(timeout);
+          worker.removeEventListener('message', handleMessage);
+          
+          if (e.data.error) {
+            reject(new Error(e.data.error));
+          } else {
+            resolve(e.data.result);
+          }
+        }
+      };
+      
+      worker.addEventListener('message', handleMessage);
+      
+      worker.postMessage({
+        taskId,
+        type: task.type,
+        data: task.data
+      });
+    });
+  }
+  
+  handleWorkerMessage(workerName, data) {
+    console.log(`Message from ${workerName}:`, data);
+  }
+  
+  // 终止Worker
+  terminateWorker(name) {
+    const worker = this.workers.get(name);
+    if (worker) {
+      worker.terminate();
+      this.workers.delete(name);
+    }
+  }
+  
+  // 终止所有Worker
+  terminateAll() {
+    for (const [name, worker] of this.workers) {
+      worker.terminate();
+    }
+    this.workers.clear();
+  }
+}
+
+// 使用示例
+const workerManager = new WorkerManager();
+
+// 创建计算Worker
+workerManager.createWorker('calculator', '/workers/calculator.js');
+
+// 发送计算任务
+workerManager.sendTask('calculator', {
+  type: 'FIBONACCI',
+  data: { n: 40 }
+}).then(result => {
+  console.log('斐波那契计算结果:', result);
+}).catch(error => {
+  console.error('计算错误:', error);
+});
+
+// Worker文件：/workers/calculator.js
+self.onmessage = function(e) {
+  const { taskId, type, data } = e.data;
+  
+  try {
+    let result;
+    
+    switch (type) {
+      case 'FIBONACCI':
+        result = fibonacci(data.n);
+        break;
+      case 'PRIME_CHECK':
+        result = isPrime(data.number);
+        break;
+      case 'SORT':
+        result = data.array.sort((a, b) => a - b);
+        break;
+      default:
+        throw new Error(`Unknown task type: ${type}`);
+    }
+    
+    self.postMessage({
+      taskId,
+      result
+    });
+  } catch (error) {
+    self.postMessage({
+      taskId,
+      error: error.message
+    });
+  }
+};
+
+function fibonacci(n) {
+  if (n <= 1) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+function isPrime(num) {
+  if (num <= 1) return false;
+  if (num <= 3) return true;
+  if (num % 2 === 0 || num % 3 === 0) return false;
+  
+  for (let i = 5; i * i <= num; i += 6) {
+    if (num % i === 0 || num % (i + 2) === 0) return false;
+  }
+  
+  return true;
+}
+```
+
+## 🌐 现代Web API详解
+
+### Fetch API和网络请求
+
+```javascript
+// 现代化的网络请求处理
+class ApiClient {
+  constructor(baseURL, options = {}) {
+    this.baseURL = baseURL;
+    this.defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    };
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      ...this.defaultOptions,
+      ...options,
+      headers: {
+        ...this.defaultOptions.headers,
+        ...options.headers
+      }
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else if (contentType && contentType.includes('text/')) {
+        return await response.text();
+      } else {
+        return await response.blob();
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request was aborted');
+      } else if (error.name === 'TypeError') {
+        throw new Error('Network error: Please check your connection');
+      }
+      throw error;
+    }
+  }
+
+  // 带超时的请求
+  async requestWithTimeout(endpoint, options = {}, timeout = 5000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await this.request(endpoint, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
+
+  // 并发请求控制
+  async requestConcurrent(requests, maxConcurrency = 3) {
+    const results = [];
+    const executing = [];
+
+    for (const request of requests) {
+      const promise = this.request(request.endpoint, request.options)
+        .then(result => ({ status: 'fulfilled', value: result }))
+        .catch(error => ({ status: 'rejected', reason: error }));
+
+      results.push(promise);
+
+      if (requests.length >= maxConcurrency) {
+        executing.push(promise);
+
+        if (executing.length >= maxConcurrency) {
+          await Promise.race(executing);
+          executing.splice(executing.findIndex(p => p === promise), 1);
+        }
+      }
+    }
+
+    return Promise.all(results);
+  }
+}
+
+// 使用示例
+const api = new ApiClient('https://api.example.com');
+
+// 基础请求
+const userData = await api.request('/users/123');
+
+// 带超时的请求
+const timeoutData = await api.requestWithTimeout('/slow-endpoint', {}, 3000);
+
+// 并发请求
+const concurrentResults = await api.requestConcurrent([
+  { endpoint: '/users/1' },
+  { endpoint: '/users/2' },
+  { endpoint: '/users/3' }
+], 2);
+```
+
+### Intersection Observer API
+
+```javascript
+// 交叉观察器的高级应用
+class IntersectionManager {
+  constructor() {
+    this.observers = new Map();
+  }
+
+  // 懒加载图片
+  createLazyImageObserver() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          const src = img.dataset.src;
+
+          if (src) {
+            img.src = src;
+            img.removeAttribute('data-src');
+            observer.unobserve(img);
+          }
+        }
+      });
+    }, {
+      rootMargin: '50px 0px',
+      threshold: 0.1
+    });
+
+    this.observers.set('lazyImage', observer);
+    return observer;
+  }
+
+  // 无限滚动
+  createInfiniteScrollObserver(callback) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          callback();
+        }
+      });
+    }, {
+      rootMargin: '100px 0px',
+      threshold: 0.1
+    });
+
+    this.observers.set('infiniteScroll', observer);
+    return observer;
+  }
+
+  // 元素可见性统计
+  createVisibilityTracker(callback) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const element = entry.target;
+        const visibilityRatio = entry.intersectionRatio;
+
+        callback({
+          element,
+          isVisible: entry.isIntersecting,
+          visibilityRatio,
+          boundingRect: entry.boundingClientRect,
+          timestamp: entry.time
+        });
+      });
+    }, {
+      threshold: [0, 0.25, 0.5, 0.75, 1.0]
+    });
+
+    this.observers.set('visibility', observer);
+    return observer;
+  }
+
+  // 动画触发器
+  createAnimationTrigger() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const element = entry.target;
+
+        if (entry.isIntersecting) {
+          element.classList.add('animate-in');
+          element.classList.remove('animate-out');
+        } else {
+          element.classList.add('animate-out');
+          element.classList.remove('animate-in');
+        }
+      });
+    }, {
+      threshold: 0.2
+    });
+
+    this.observers.set('animation', observer);
+    return observer;
+  }
+
+  // 清理观察器
+  cleanup() {
+    this.observers.forEach(observer => {
+      observer.disconnect();
+    });
+    this.observers.clear();
+  }
+}
+
+// 使用示例
+const intersectionManager = new IntersectionManager();
+
+// 懒加载图片
+const lazyImageObserver = intersectionManager.createLazyImageObserver();
+document.querySelectorAll('img[data-src]').forEach(img => {
+  lazyImageObserver.observe(img);
+});
+
+// 无限滚动
+const infiniteScrollObserver = intersectionManager.createInfiniteScrollObserver(() => {
+  console.log('加载更多内容...');
+  loadMoreContent();
+});
+
+const sentinel = document.querySelector('.scroll-sentinel');
+if (sentinel) {
+  infiniteScrollObserver.observe(sentinel);
+}
+```
+
+### Web Storage和缓存策略
+
+```javascript
+// 现代化的存储管理
+class StorageManager {
+  constructor() {
+    this.storage = {
+      local: localStorage,
+      session: sessionStorage
+    };
+  }
+
+  // 带过期时间的存储
+  setWithExpiry(key, value, ttl, storageType = 'local') {
+    const now = new Date();
+    const item = {
+      value: value,
+      expiry: now.getTime() + ttl
+    };
+
+    this.storage[storageType].setItem(key, JSON.stringify(item));
+  }
+
+  getWithExpiry(key, storageType = 'local') {
+    const itemStr = this.storage[storageType].getItem(key);
+
+    if (!itemStr) {
+      return null;
+    }
+
+    try {
+      const item = JSON.parse(itemStr);
+      const now = new Date();
+
+      if (now.getTime() > item.expiry) {
+        this.storage[storageType].removeItem(key);
+        return null;
+      }
+
+      return item.value;
+    } catch (error) {
+      console.error('Error parsing stored item:', error);
+      return null;
+    }
+  }
+
+  // 存储空间管理
+  getStorageInfo(storageType = 'local') {
+    const storage = this.storage[storageType];
+    let totalSize = 0;
+    const items = {};
+
+    for (let key in storage) {
+      if (storage.hasOwnProperty(key)) {
+        const value = storage[key];
+        const size = new Blob([value]).size;
+        items[key] = { size, value };
+        totalSize += size;
+      }
+    }
+
+    return {
+      totalSize,
+      itemCount: Object.keys(items).length,
+      items,
+      quota: this.getStorageQuota()
+    };
+  }
+
+  async getStorageQuota() {
+    if ('storage' in navigator && 'estimate' in navigator.storage) {
+      const estimate = await navigator.storage.estimate();
+      return {
+        quota: estimate.quota,
+        usage: estimate.usage,
+        available: estimate.quota - estimate.usage
+      };
+    }
+    return null;
+  }
+
+  // 清理过期数据
+  cleanExpired(storageType = 'local') {
+    const storage = this.storage[storageType];
+    const keysToRemove = [];
+
+    for (let key in storage) {
+      if (storage.hasOwnProperty(key)) {
+        try {
+          const item = JSON.parse(storage[key]);
+          if (item.expiry && new Date().getTime() > item.expiry) {
+            keysToRemove.push(key);
+          }
+        } catch (error) {
+          // 忽略解析错误
+        }
+      }
+    }
+
+    keysToRemove.forEach(key => storage.removeItem(key));
+    return keysToRemove.length;
+  }
+}
+
+// IndexedDB封装
+class IndexedDBManager {
+  constructor(dbName, version = 1) {
+    this.dbName = dbName;
+    this.version = version;
+    this.db = null;
+  }
+
+  async init(stores = []) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.db = request.result;
+        resolve(this.db);
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+
+        stores.forEach(store => {
+          if (!db.objectStoreNames.contains(store.name)) {
+            const objectStore = db.createObjectStore(store.name, store.options);
+
+            if (store.indexes) {
+              store.indexes.forEach(index => {
+                objectStore.createIndex(index.name, index.keyPath, index.options);
+              });
+            }
+          }
+        });
+      };
+    });
+  }
+
+  async add(storeName, data) {
+    const transaction = this.db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+      const request = store.add(data);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async get(storeName, key) {
+    const transaction = this.db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(key);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getAll(storeName, query = null) {
+    const transaction = this.db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll(query);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async update(storeName, data) {
+    const transaction = this.db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(data);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async delete(storeName, key) {
+    const transaction = this.db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+      const request = store.delete(key);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+}
+
+// 使用示例
+const storageManager = new StorageManager();
+
+// 设置带过期时间的数据
+storageManager.setWithExpiry('user-token', 'abc123', 3600000); // 1小时后过期
+
+// 获取数据
+const token = storageManager.getWithExpiry('user-token');
+
+// IndexedDB使用
+const dbManager = new IndexedDBManager('MyApp', 1);
+
+await dbManager.init([
+  {
+    name: 'users',
+    options: { keyPath: 'id', autoIncrement: true },
+    indexes: [
+      { name: 'email', keyPath: 'email', options: { unique: true } }
+    ]
+  }
+]);
+
+await dbManager.add('users', { name: 'John', email: 'john@example.com' });
+const users = await dbManager.getAll('users');
+```
+
+---
+
+<Callout type="success">
+深入理解浏览器原理能够帮助我们编写更高效的Web应用，优化用户体验，并解决复杂的性能问题。
+</Callout>

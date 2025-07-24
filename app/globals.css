@@ -1,0 +1,184 @@
+/* 自定义样式 */
+
+/* 代码块样式优化 */
+pre {
+  border-radius: 8px !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* 表格样式 */
+table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+table th,
+table td {
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+/* 暗色模式下的表格 */
+.dark table th,
+.dark table td {
+  border-color: #374151;
+}
+
+.dark table th {
+  background-color: #1f2937;
+}
+
+/* Callout组件样式增强 */
+.nextra-callout {
+  margin: 1.5rem 0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* 代码内联样式 */
+code {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  padding: 0.125rem 0.25rem !important;
+  border-radius: 0.25rem !important;
+  font-size: 0.875em !important;
+}
+
+.dark code {
+  background-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+/* 链接样式 */
+a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.dark a {
+  color: #60a5fa;
+}
+
+/* 标题样式 */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 2.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+h2 {
+  font-size: 1.875rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+.dark h1 {
+  border-bottom-color: #374151;
+}
+
+/* 列表样式 */
+ul, ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin: 0.25rem 0;
+}
+
+/* 引用样式 */
+blockquote {
+  border-left: 4px solid #3b82f6;
+  margin: 1.5rem 0;
+  padding-left: 1rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.dark blockquote {
+  color: #9ca3af;
+}
+
+/* 分隔线样式 */
+hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.dark hr {
+  border-top-color: #374151;
+}
+
+/* 响应式图片 */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* 打印样式 */
+@media print {
+  .nextra-nav-container,
+  .nextra-sidebar-container,
+  .nextra-toc {
+    display: none !important;
+  }
+  
+  .nextra-content {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+}

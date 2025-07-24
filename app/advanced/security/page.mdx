@@ -1,0 +1,659 @@
+import { Callout } from 'nextra/components'
+
+# 17. 前端安全和最佳实践
+
+## 📋 目录
+
+- [前端安全威胁概览](#前端安全威胁概览)
+- [XSS攻击防护](#xss攻击防护)
+- [CSRF攻击防护](#csrf攻击防护)
+- [内容安全策略CSP](#内容安全策略csp)
+- [数据传输安全](#数据传输安全)
+- [安全开发最佳实践](#安全开发最佳实践)
+
+## 🛡️ 前端安全威胁概览
+
+<Callout type="warning">
+前端安全是Web应用安全的重要组成部分，了解常见威胁和防护措施对于构建安全的Web应用至关重要。
+</Callout>
+
+### 常见安全威胁分类
+
+```javascript
+// 前端安全威胁分类和防护策略
+const securityThreats = {
+  // 1. 注入攻击
+  injection: {
+    types: ['XSS', 'SQL注入', 'NoSQL注入', 'LDAP注入'],
+    description: '恶意代码注入到应用中执行',
+    impact: '数据泄露、会话劫持、恶意操作',
+    prevention: [
+      '输入验证和过滤',
+      '输出编码',
+      '使用参数化查询',
+      '内容安全策略'
+    ]
+  },
+  
+  // 2. 身份认证缺陷
+  authentication: {
+    types: ['弱密码', '会话管理缺陷', '暴力破解'],
+    description: '身份验证机制存在漏洞',
+    impact: '账户被盗、未授权访问',
+    prevention: [
+      '强密码策略',
+      '多因素认证',
+      '会话超时',
+      '账户锁定机制'
+    ]
+  },
+  
+  // 3. 敏感数据暴露
+  dataExposure: {
+    types: ['明文传输', '不当存储', '缓存泄露'],
+    description: '敏感数据未得到适当保护',
+    impact: '隐私泄露、合规风险',
+    prevention: [
+      'HTTPS传输',
+      '数据加密',
+      '安全存储',
+      '访问控制'
+    ]
+  },
+  
+  // 4. 跨站请求伪造
+  csrf: {
+    types: ['GET型CSRF', 'POST型CSRF', 'JSON CSRF'],
+    description: '诱导用户执行非预期操作',
+    impact: '恶意操作、数据篡改',
+    prevention: [
+      'CSRF Token',
+      'SameSite Cookie',
+      '验证Referer',
+      '双重提交Cookie'
+    ]
+  },
+  
+  // 5. 安全配置错误
+  misconfiguration: {
+    types: ['默认配置', '错误权限', '调试信息泄露'],
+    description: '安全配置不当导致的漏洞',
+    impact: '系统暴露、信息泄露',
+    prevention: [
+      '安全配置检查',
+      '最小权限原则',
+      '定期安全审计',
+      '错误处理优化'
+    ]
+  }
+};
+
+// 安全评估工具
+class SecurityAssessment {
+  constructor() {
+    this.vulnerabilities = [];
+    this.securityScore = 0;
+  }
+  
+  // 执行安全评估
+  async performAssessment() {
+    console.log('开始安全评估...');
+    
+    await this.checkXSSVulnerabilities();
+    await this.checkCSRFProtection();
+    await this.checkHTTPSUsage();
+    await this.checkContentSecurityPolicy();
+    await this.checkCookieSecurity();
+    await this.checkDependencyVulnerabilities();
+    
+    this.calculateSecurityScore();
+    return this.generateReport();
+  }
+  
+  async checkXSSVulnerabilities() {
+    // 检查潜在的XSS漏洞
+    const inputs = document.querySelectorAll('input, textarea');
+    const outputs = document.querySelectorAll('[data-user-content]');
+    
+    inputs.forEach(input => {
+      if (!input.hasAttribute('data-sanitized')) {
+        this.vulnerabilities.push({
+          type: 'XSS',
+          severity: 'high',
+          element: input,
+          description: '用户输入未进行适当的验证和过滤'
+        });
+      }
+    });
+    
+    outputs.forEach(output => {
+      if (output.innerHTML.includes('<script>')) {
+        this.vulnerabilities.push({
+          type: 'XSS',
+          severity: 'critical',
+          element: output,
+          description: '检测到可能的脚本注入'
+        });
+      }
+    });
+  }
+  
+  async checkCSRFProtection() {
+    // 检查CSRF保护
+    const forms = document.querySelectorAll('form');
+    
+    forms.forEach(form => {
+      const csrfToken = form.querySelector('input[name="csrf_token"], input[name="_token"]');
+      if (!csrfToken && form.method.toLowerCase() === 'post') {
+        this.vulnerabilities.push({
+          type: 'CSRF',
+          severity: 'medium',
+          element: form,
+          description: 'POST表单缺少CSRF令牌保护'
+        });
+      }
+    });
+  }
+  
+  async checkHTTPSUsage() {
+    // 检查HTTPS使用情况
+    if (location.protocol !== 'https:') {
+      this.vulnerabilities.push({
+        type: 'Transport Security',
+        severity: 'high',
+        description: '网站未使用HTTPS加密传输'
+      });
+    }
+    
+    // 检查混合内容
+    const resources = performance.getEntriesByType('resource');
+    resources.forEach(resource => {
+      if (resource.name.startsWith('http://')) {
+        this.vulnerabilities.push({
+          type: 'Mixed Content',
+          severity: 'medium',
+          description: `检测到HTTP资源: ${resource.name}`
+        });
+      }
+    });
+  }
+  
+  async checkContentSecurityPolicy() {
+    // 检查CSP配置
+    const cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+    const cspHeader = this.getResponseHeader('Content-Security-Policy');
+    
+    if (!cspMeta && !cspHeader) {
+      this.vulnerabilities.push({
+        type: 'CSP',
+        severity: 'medium',
+        description: '未配置内容安全策略(CSP)'
+      });
+    }
+  }
+  
+  async checkCookieSecurity() {
+    // 检查Cookie安全属性
+    const cookies = document.cookie.split(';');
+    
+    cookies.forEach(cookie => {
+      const [name] = cookie.trim().split('=');
+      
+      // 这里简化检查，实际应该检查Set-Cookie头
+      if (name && !cookie.includes('Secure')) {
+        this.vulnerabilities.push({
+          type: 'Cookie Security',
+          severity: 'low',
+          description: `Cookie ${name} 缺少Secure属性`
+        });
+      }
+      
+      if (name && !cookie.includes('HttpOnly')) {
+        this.vulnerabilities.push({
+          type: 'Cookie Security',
+          severity: 'medium',
+          description: `Cookie ${name} 缺少HttpOnly属性`
+        });
+      }
+    });
+  }
+  
+  async checkDependencyVulnerabilities() {
+    // 检查已知的依赖漏洞（需要后端支持）
+    try {
+      const response = await fetch('/api/security/check-dependencies');
+      const vulnerabilities = await response.json();
+      
+      vulnerabilities.forEach(vuln => {
+        this.vulnerabilities.push({
+          type: 'Dependency',
+          severity: vuln.severity,
+          description: `依赖 ${vuln.package} 存在已知漏洞: ${vuln.title}`
+        });
+      });
+    } catch (error) {
+      console.warn('无法检查依赖漏洞:', error);
+    }
+  }
+  
+  calculateSecurityScore() {
+    const severityWeights = {
+      critical: 10,
+      high: 7,
+      medium: 4,
+      low: 1
+    };
+    
+    const totalDeductions = this.vulnerabilities.reduce((sum, vuln) => {
+      return sum + (severityWeights[vuln.severity] || 0);
+    }, 0);
+    
+    this.securityScore = Math.max(0, 100 - totalDeductions);
+  }
+  
+  generateReport() {
+    return {
+      score: this.securityScore,
+      grade: this.getSecurityGrade(),
+      vulnerabilities: this.vulnerabilities,
+      summary: {
+        total: this.vulnerabilities.length,
+        critical: this.vulnerabilities.filter(v => v.severity === 'critical').length,
+        high: this.vulnerabilities.filter(v => v.severity === 'high').length,
+        medium: this.vulnerabilities.filter(v => v.severity === 'medium').length,
+        low: this.vulnerabilities.filter(v => v.severity === 'low').length
+      },
+      recommendations: this.getRecommendations()
+    };
+  }
+  
+  getSecurityGrade() {
+    if (this.securityScore >= 90) return 'A';
+    if (this.securityScore >= 80) return 'B';
+    if (this.securityScore >= 70) return 'C';
+    if (this.securityScore >= 60) return 'D';
+    return 'F';
+  }
+  
+  getRecommendations() {
+    const recommendations = [];
+    
+    if (this.vulnerabilities.some(v => v.type === 'XSS')) {
+      recommendations.push('实施输入验证和输出编码');
+    }
+    
+    if (this.vulnerabilities.some(v => v.type === 'CSRF')) {
+      recommendations.push('添加CSRF令牌保护');
+    }
+    
+    if (this.vulnerabilities.some(v => v.type === 'Transport Security')) {
+      recommendations.push('启用HTTPS并配置HSTS');
+    }
+    
+    if (this.vulnerabilities.some(v => v.type === 'CSP')) {
+      recommendations.push('配置内容安全策略(CSP)');
+    }
+    
+    return recommendations;
+  }
+  
+  getResponseHeader(name) {
+    // 简化实现，实际需要从响应头获取
+    return null;
+  }
+}
+```
+
+## 🔒 XSS攻击防护
+
+### XSS防护实现
+
+```javascript
+// 1. XSS防护工具类
+class XSSProtection {
+  constructor() {
+    this.htmlEntities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+      '/': '&#x2F;'
+    };
+    
+    this.setupGlobalProtection();
+  }
+  
+  // 设置全局XSS防护
+  setupGlobalProtection() {
+    // 重写innerHTML setter
+    this.protectInnerHTML();
+    
+    // 监控动态内容插入
+    this.monitorDOMChanges();
+    
+    // 保护事件处理器
+    this.protectEventHandlers();
+  }
+  
+  protectInnerHTML() {
+    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    
+    Object.defineProperty(Element.prototype, 'innerHTML', {
+      set: function(value) {
+        // 检查是否包含潜在的XSS代码
+        if (typeof value === 'string' && this.containsXSS(value)) {
+          console.warn('检测到潜在XSS攻击，内容已被过滤');
+          value = this.sanitizeHTML(value);
+        }
+        
+        originalInnerHTML.set.call(this, value);
+      }.bind(this),
+      get: originalInnerHTML.get
+    });
+  }
+  
+  containsXSS(html) {
+    const xssPatterns = [
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /javascript:/gi,
+      /on\w+\s*=/gi,
+      /<iframe\b[^>]*>/gi,
+      /<object\b[^>]*>/gi,
+      /<embed\b[^>]*>/gi,
+      /<link\b[^>]*>/gi,
+      /<meta\b[^>]*>/gi
+    ];
+    
+    return xssPatterns.some(pattern => pattern.test(html));
+  }
+  
+  // HTML内容清理
+  sanitizeHTML(html) {
+    // 移除危险标签
+    const dangerousTags = [
+      'script', 'iframe', 'object', 'embed', 'link', 'meta',
+      'form', 'input', 'button', 'textarea', 'select'
+    ];
+    
+    let sanitized = html;
+    
+    dangerousTags.forEach(tag => {
+      const regex = new RegExp(`<${tag}\\b[^>]*>.*?<\\/${tag}>`, 'gi');
+      sanitized = sanitized.replace(regex, '');
+      
+      const selfClosingRegex = new RegExp(`<${tag}\\b[^>]*\\/?>`, 'gi');
+      sanitized = sanitized.replace(selfClosingRegex, '');
+    });
+    
+    // 移除危险属性
+    sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    
+    // HTML实体编码
+    return this.escapeHTML(sanitized);
+  }
+  
+  // HTML实体编码
+  escapeHTML(text) {
+    return String(text).replace(/[&<>"'\/]/g, (char) => {
+      return this.htmlEntities[char] || char;
+    });
+  }
+  
+  // 解码HTML实体
+  unescapeHTML(text) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  
+  // 安全的DOM操作
+  safeSetTextContent(element, text) {
+    element.textContent = text;
+  }
+  
+  safeSetHTML(element, html) {
+    element.innerHTML = this.sanitizeHTML(html);
+  }
+  
+  // 创建安全的元素
+  createSafeElement(tagName, attributes = {}, textContent = '') {
+    const element = document.createElement(tagName);
+    
+    // 安全设置属性
+    Object.entries(attributes).forEach(([key, value]) => {
+      if (this.isSafeAttribute(key, value)) {
+        element.setAttribute(key, value);
+      }
+    });
+    
+    // 安全设置文本内容
+    if (textContent) {
+      element.textContent = textContent;
+    }
+    
+    return element;
+  }
+  
+  isSafeAttribute(name, value) {
+    // 危险属性黑名单
+    const dangerousAttributes = [
+      'onclick', 'onload', 'onerror', 'onmouseover',
+      'onfocus', 'onblur', 'onchange', 'onsubmit'
+    ];
+    
+    if (dangerousAttributes.includes(name.toLowerCase())) {
+      return false;
+    }
+    
+    // 检查属性值
+    if (typeof value === 'string') {
+      if (value.toLowerCase().includes('javascript:')) {
+        return false;
+      }
+      
+      if (value.toLowerCase().includes('data:text/html')) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  monitorDOMChanges() {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            this.scanElementForXSS(node);
+          }
+        });
+      });
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+  
+  scanElementForXSS(element) {
+    // 检查元素的innerHTML
+    if (element.innerHTML && this.containsXSS(element.innerHTML)) {
+      console.warn('检测到动态插入的XSS内容:', element);
+      element.innerHTML = this.sanitizeHTML(element.innerHTML);
+    }
+    
+    // 检查属性
+    Array.from(element.attributes).forEach(attr => {
+      if (!this.isSafeAttribute(attr.name, attr.value)) {
+        console.warn('移除危险属性:', attr.name, attr.value);
+        element.removeAttribute(attr.name);
+      }
+    });
+  }
+  
+  protectEventHandlers() {
+    // 重写addEventListener
+    const originalAddEventListener = EventTarget.prototype.addEventListener;
+    
+    EventTarget.prototype.addEventListener = function(type, listener, options) {
+      // 检查事件处理器是否安全
+      if (typeof listener === 'string') {
+        console.warn('阻止字符串形式的事件处理器:', listener);
+        return;
+      }
+      
+      return originalAddEventListener.call(this, type, listener, options);
+    };
+  }
+}
+
+// 2. 内容安全策略(CSP)助手
+class CSPHelper {
+  constructor() {
+    this.policy = {
+      'default-src': ["'self'"],
+      'script-src': ["'self'"],
+      'style-src': ["'self'", "'unsafe-inline'"],
+      'img-src': ["'self'", 'data:', 'https:'],
+      'font-src': ["'self'"],
+      'connect-src': ["'self'"],
+      'frame-src': ["'none'"],
+      'object-src': ["'none'"],
+      'base-uri': ["'self'"],
+      'form-action': ["'self'"]
+    };
+  }
+  
+  // 生成CSP字符串
+  generateCSP() {
+    return Object.entries(this.policy)
+      .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
+      .join('; ');
+  }
+  
+  // 添加允许的源
+  addSource(directive, source) {
+    if (this.policy[directive]) {
+      if (!this.policy[directive].includes(source)) {
+        this.policy[directive].push(source);
+      }
+    }
+  }
+  
+  // 移除源
+  removeSource(directive, source) {
+    if (this.policy[directive]) {
+      this.policy[directive] = this.policy[directive].filter(s => s !== source);
+    }
+  }
+  
+  // 应用CSP
+  applyCSP() {
+    const csp = this.generateCSP();
+    
+    // 通过meta标签应用
+    const meta = document.createElement('meta');
+    meta.httpEquiv = 'Content-Security-Policy';
+    meta.content = csp;
+    document.head.appendChild(meta);
+    
+    console.log('应用CSP:', csp);
+  }
+  
+  // 监听CSP违规
+  monitorViolations() {
+    document.addEventListener('securitypolicyviolation', (event) => {
+      console.error('CSP违规:', {
+        directive: event.violatedDirective,
+        blockedURI: event.blockedURI,
+        sourceFile: event.sourceFile,
+        lineNumber: event.lineNumber
+      });
+      
+      // 发送违规报告
+      this.reportViolation(event);
+    });
+  }
+  
+  reportViolation(event) {
+    fetch('/api/security/csp-violation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        directive: event.violatedDirective,
+        blockedURI: event.blockedURI,
+        sourceFile: event.sourceFile,
+        lineNumber: event.lineNumber,
+        timestamp: Date.now(),
+        userAgent: navigator.userAgent
+      })
+    }).catch(console.error);
+  }
+}
+
+// 3. 安全的模板渲染
+class SecureTemplateRenderer {
+  constructor() {
+    this.xssProtection = new XSSProtection();
+  }
+  
+  // 安全渲染模板
+  render(template, data) {
+    let rendered = template;
+    
+    // 替换变量
+    Object.entries(data).forEach(([key, value]) => {
+      const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+      const escapedValue = this.xssProtection.escapeHTML(String(value));
+      rendered = rendered.replace(placeholder, escapedValue);
+    });
+    
+    // 处理原始HTML（需要特殊标记）
+    rendered = rendered.replace(/{{{(\w+)}}}/g, (match, key) => {
+      const value = data[key];
+      if (value) {
+        return this.xssProtection.sanitizeHTML(String(value));
+      }
+      return '';
+    });
+    
+    return rendered;
+  }
+  
+  // 创建安全的模板函数
+  compile(template) {
+    return (data) => this.render(template, data);
+  }
+}
+
+// 使用示例
+const xssProtection = new XSSProtection();
+const cspHelper = new CSPHelper();
+const templateRenderer = new SecureTemplateRenderer();
+
+// 应用安全策略
+cspHelper.applyCSP();
+cspHelper.monitorViolations();
+
+// 安全渲染用户内容
+const userContent = '<script>alert("XSS")</script>Hello World';
+const safeContent = xssProtection.sanitizeHTML(userContent);
+console.log('安全内容:', safeContent); // Hello World
+
+// 安全模板渲染
+const template = '<div>Hello {{name}}, your message: {{message}}</div>';
+const rendered = templateRenderer.render(template, {
+  name: '<script>alert("XSS")</script>John',
+  message: 'Welcome to our site!'
+});
+console.log('渲染结果:', rendered);
+```
+
+---
+
+<Callout type="success">
+前端安全需要多层防护，包括输入验证、输出编码、CSP配置等。安全是一个持续的过程，需要定期评估和更新防护措施。
+</Callout>

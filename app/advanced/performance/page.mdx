@@ -1,0 +1,732 @@
+import { Callout } from 'nextra/components'
+
+# 16. 性能优化和监控
+
+## 📋 目录
+
+- [性能指标和Core Web Vitals](#性能指标和core-web-vitals)
+- [加载性能优化](#加载性能优化)
+- [运行时性能优化](#运行时性能优化)
+- [性能监控和分析](#性能监控和分析)
+- [自动化性能测试](#自动化性能测试)
+- [性能预算和持续优化](#性能预算和持续优化)
+
+## 📊 性能指标和Core Web Vitals
+
+<Callout type="info">
+Core Web Vitals是Google提出的用户体验核心指标，直接影响SEO排名和用户满意度。
+</Callout>
+
+### Core Web Vitals详解
+
+```javascript
+// 1. Core Web Vitals监控
+class WebVitalsMonitor {
+  constructor() {
+    this.metrics = {
+      LCP: null, // Largest Contentful Paint
+      FID: null, // First Input Delay
+      CLS: null, // Cumulative Layout Shift
+      FCP: null, // First Contentful Paint
+      TTFB: null // Time to First Byte
+    };
+    
+    this.thresholds = {
+      LCP: { good: 2500, poor: 4000 },
+      FID: { good: 100, poor: 300 },
+      CLS: { good: 0.1, poor: 0.25 },
+      FCP: { good: 1800, poor: 3000 },
+      TTFB: { good: 800, poor: 1800 }
+    };
+    
+    this.initializeMonitoring();
+  }
+  
+  initializeMonitoring() {
+    // 使用web-vitals库监控
+    import('web-vitals').then(({ onLCP, onFID, onCLS, onFCP, onTTFB }) => {
+      onLCP(this.handleMetric.bind(this, 'LCP'));
+      onFID(this.handleMetric.bind(this, 'FID'));
+      onCLS(this.handleMetric.bind(this, 'CLS'));
+      onFCP(this.handleMetric.bind(this, 'FCP'));
+      onTTFB(this.handleMetric.bind(this, 'TTFB'));
+    });
+    
+    // 自定义性能监控
+    this.monitorCustomMetrics();
+  }
+  
+  handleMetric(name, metric) {
+    this.metrics[name] = metric.value;
+    
+    const threshold = this.thresholds[name];
+    const rating = this.getRating(metric.value, threshold);
+    
+    console.log(`${name}: ${metric.value}ms (${rating})`);
+    
+    // 发送到分析服务
+    this.sendToAnalytics({
+      name,
+      value: metric.value,
+      rating,
+      id: metric.id,
+      delta: metric.delta
+    });
+  }
+  
+  getRating(value, threshold) {
+    if (value <= threshold.good) return 'good';
+    if (value <= threshold.poor) return 'needs-improvement';
+    return 'poor';
+  }
+  
+  monitorCustomMetrics() {
+    // 监控资源加载时间
+    this.monitorResourceTiming();
+    
+    // 监控长任务
+    this.monitorLongTasks();
+    
+    // 监控内存使用
+    this.monitorMemoryUsage();
+    
+    // 监控用户交互
+    this.monitorUserInteractions();
+  }
+  
+  monitorResourceTiming() {
+    const observer = new PerformanceObserver((list) => {
+      list.getEntries().forEach((entry) => {
+        if (entry.duration > 1000) { // 超过1秒的资源
+          console.warn('慢资源:', {
+            name: entry.name,
+            duration: entry.duration,
+            size: entry.transferSize
+          });
+          
+          this.sendToAnalytics({
+            type: 'slow-resource',
+            name: entry.name,
+            duration: entry.duration,
+            size: entry.transferSize
+          });
+        }
+      });
+    });
+    
+    observer.observe({ entryTypes: ['resource'] });
+  }
+  
+  monitorLongTasks() {
+    if ('PerformanceObserver' in window) {
+      const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => {
+          console.warn('长任务检测:', {
+            duration: entry.duration,
+            startTime: entry.startTime
+          });
+          
+          this.sendToAnalytics({
+            type: 'long-task',
+            duration: entry.duration,
+            startTime: entry.startTime
+          });
+        });
+      });
+      
+      observer.observe({ entryTypes: ['longtask'] });
+    }
+  }
+  
+  monitorMemoryUsage() {
+    if ('memory' in performance) {
+      setInterval(() => {
+        const memory = performance.memory;
+        const usage = {
+          used: memory.usedJSHeapSize,
+          total: memory.totalJSHeapSize,
+          limit: memory.jsHeapSizeLimit
+        };
+        
+        // 内存使用率超过80%时警告
+        if (usage.used / usage.limit > 0.8) {
+          console.warn('内存使用率过高:', usage);
+          
+          this.sendToAnalytics({
+            type: 'high-memory-usage',
+            ...usage
+          });
+        }
+      }, 30000); // 每30秒检查一次
+    }
+  }
+  
+  monitorUserInteractions() {
+    let interactionCount = 0;
+    
+    ['click', 'keydown', 'scroll'].forEach(eventType => {
+      document.addEventListener(eventType, () => {
+        interactionCount++;
+      }, { passive: true });
+    });
+    
+    // 每分钟报告交互次数
+    setInterval(() => {
+      if (interactionCount > 0) {
+        this.sendToAnalytics({
+          type: 'user-interactions',
+          count: interactionCount
+        });
+        interactionCount = 0;
+      }
+    }, 60000);
+  }
+  
+  sendToAnalytics(data) {
+    // 发送到Google Analytics
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'web_vitals', {
+        event_category: 'Performance',
+        event_label: data.name || data.type,
+        value: Math.round(data.value || data.duration || 0)
+      });
+    }
+    
+    // 发送到自定义分析服务
+    fetch('/api/analytics/performance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        timestamp: Date.now(),
+        url: window.location.href,
+        userAgent: navigator.userAgent
+      })
+    }).catch(console.error);
+  }
+  
+  // 生成性能报告
+  generateReport() {
+    return {
+      metrics: this.metrics,
+      timestamp: Date.now(),
+      url: window.location.href,
+      connection: this.getConnectionInfo(),
+      device: this.getDeviceInfo()
+    };
+  }
+  
+  getConnectionInfo() {
+    if ('connection' in navigator) {
+      const conn = navigator.connection;
+      return {
+        effectiveType: conn.effectiveType,
+        downlink: conn.downlink,
+        rtt: conn.rtt,
+        saveData: conn.saveData
+      };
+    }
+    return null;
+  }
+  
+  getDeviceInfo() {
+    return {
+      deviceMemory: navigator.deviceMemory || 'unknown',
+      hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+      platform: navigator.platform,
+      userAgent: navigator.userAgent
+    };
+  }
+}
+
+// 2. 性能预算管理
+class PerformanceBudget {
+  constructor() {
+    this.budgets = {
+      // 资源大小预算 (KB)
+      javascript: 200,
+      css: 100,
+      images: 500,
+      fonts: 100,
+      total: 1000,
+      
+      // 性能指标预算 (ms)
+      LCP: 2500,
+      FID: 100,
+      CLS: 0.1,
+      
+      // 网络请求预算
+      requests: 50
+    };
+    
+    this.violations = [];
+  }
+  
+  checkBudgets() {
+    this.checkResourceBudgets();
+    this.checkMetricBudgets();
+    this.checkRequestBudgets();
+    
+    return this.violations;
+  }
+  
+  checkResourceBudgets() {
+    const resources = performance.getEntriesByType('resource');
+    const sizes = {
+      javascript: 0,
+      css: 0,
+      images: 0,
+      fonts: 0,
+      total: 0
+    };
+    
+    resources.forEach(resource => {
+      const size = resource.transferSize || 0;
+      sizes.total += size;
+      
+      if (resource.name.includes('.js')) {
+        sizes.javascript += size;
+      } else if (resource.name.includes('.css')) {
+        sizes.css += size;
+      } else if (/\.(jpg|jpeg|png|gif|webp|svg)/.test(resource.name)) {
+        sizes.images += size;
+      } else if (/\.(woff|woff2|ttf|otf)/.test(resource.name)) {
+        sizes.fonts += size;
+      }
+    });
+    
+    // 检查预算违规
+    Object.entries(sizes).forEach(([type, size]) => {
+      const budget = this.budgets[type] * 1024; // 转换为字节
+      if (size > budget) {
+        this.violations.push({
+          type: 'resource-budget',
+          category: type,
+          actual: Math.round(size / 1024),
+          budget: this.budgets[type],
+          excess: Math.round((size - budget) / 1024)
+        });
+      }
+    });
+  }
+  
+  checkMetricBudgets() {
+    const webVitalsMonitor = new WebVitalsMonitor();
+    const metrics = webVitalsMonitor.metrics;
+    
+    Object.entries(metrics).forEach(([metric, value]) => {
+      if (value && this.budgets[metric] && value > this.budgets[metric]) {
+        this.violations.push({
+          type: 'metric-budget',
+          metric,
+          actual: value,
+          budget: this.budgets[metric],
+          excess: value - this.budgets[metric]
+        });
+      }
+    });
+  }
+  
+  checkRequestBudgets() {
+    const resources = performance.getEntriesByType('resource');
+    const requestCount = resources.length;
+    
+    if (requestCount > this.budgets.requests) {
+      this.violations.push({
+        type: 'request-budget',
+        actual: requestCount,
+        budget: this.budgets.requests,
+        excess: requestCount - this.budgets.requests
+      });
+    }
+  }
+  
+  generateBudgetReport() {
+    const violations = this.checkBudgets();
+    
+    return {
+      passed: violations.length === 0,
+      violations,
+      summary: {
+        totalViolations: violations.length,
+        resourceViolations: violations.filter(v => v.type === 'resource-budget').length,
+        metricViolations: violations.filter(v => v.type === 'metric-budget').length,
+        requestViolations: violations.filter(v => v.type === 'request-budget').length
+      }
+    };
+  }
+}
+
+// 使用示例
+const webVitalsMonitor = new WebVitalsMonitor();
+const performanceBudget = new PerformanceBudget();
+
+// 页面加载完成后检查预算
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const budgetReport = performanceBudget.generateBudgetReport();
+    console.log('性能预算报告:', budgetReport);
+    
+    if (!budgetReport.passed) {
+      console.warn('性能预算违规:', budgetReport.violations);
+    }
+  }, 5000); // 等待5秒确保所有资源加载完成
+});
+```
+
+## 🚀 加载性能优化
+
+### 资源优化策略
+
+```javascript
+// 1. 图片优化管理器
+class ImageOptimizer {
+  constructor() {
+    this.lazyImages = new Set();
+    this.imageCache = new Map();
+    this.setupLazyLoading();
+    this.setupImageFormats();
+  }
+  
+  setupLazyLoading() {
+    // Intersection Observer懒加载
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          this.loadImage(entry.target);
+          this.observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      rootMargin: '50px 0px',
+      threshold: 0.01
+    });
+    
+    // 监听所有懒加载图片
+    document.querySelectorAll('img[data-src]').forEach(img => {
+      this.observer.observe(img);
+    });
+  }
+  
+  async loadImage(img) {
+    const src = img.dataset.src;
+    if (!src) return;
+    
+    try {
+      // 显示加载占位符
+      img.style.filter = 'blur(5px)';
+      
+      // 预加载图片
+      const image = new Image();
+      image.onload = () => {
+        img.src = src;
+        img.style.filter = 'none';
+        img.classList.add('loaded');
+      };
+      
+      image.onerror = () => {
+        img.src = '/images/placeholder.jpg'; // 错误占位图
+        img.classList.add('error');
+      };
+      
+      // 选择最佳格式
+      const optimizedSrc = await this.getOptimizedImageSrc(src);
+      image.src = optimizedSrc;
+      
+    } catch (error) {
+      console.error('图片加载失败:', error);
+      img.src = '/images/placeholder.jpg';
+    }
+  }
+  
+  async getOptimizedImageSrc(originalSrc) {
+    // 检查浏览器支持的图片格式
+    const supportedFormats = await this.getSupportedFormats();
+    
+    // 根据设备像素比选择合适尺寸
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const width = Math.round(300 * devicePixelRatio); // 假设基础宽度300px
+    
+    // 构建优化后的图片URL
+    let optimizedSrc = originalSrc;
+    
+    if (supportedFormats.webp) {
+      optimizedSrc = originalSrc.replace(/\.(jpg|jpeg|png)$/, '.webp');
+    } else if (supportedFormats.avif) {
+      optimizedSrc = originalSrc.replace(/\.(jpg|jpeg|png)$/, '.avif');
+    }
+    
+    // 添加尺寸参数（如果支持）
+    if (optimizedSrc.includes('cloudinary') || optimizedSrc.includes('imagekit')) {
+      optimizedSrc += `?w=${width}&q=auto&f=auto`;
+    }
+    
+    return optimizedSrc;
+  }
+  
+  async getSupportedFormats() {
+    if (this.supportedFormats) {
+      return this.supportedFormats;
+    }
+    
+    const formats = {
+      webp: false,
+      avif: false,
+      jpeg2000: false
+    };
+    
+    // 检测WebP支持
+    formats.webp = await this.canUseFormat('data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA');
+    
+    // 检测AVIF支持
+    formats.avif = await this.canUseFormat('data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADybWV0YQAAAAAAAAAoaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAGxpYmF2aWYAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAABGgAAAB0AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxQ29sb3IAAAAAamlwcnAAAABLaXBjbwAAABRpc3BlAAAAAAAAAAIAAAACAAAAEHBpeGkAAAAAAwgICAAAAAxhdjFDgQ0MAAAAABNjb2xybmNseAACAAIAAYAAAAAXaXBtYQAAAAAAAAABAAEEAQKDBAAAACVtZGF0EgAKCBgABogQEAwgMg8f8D///8WfhwB8+ErK42A=');
+    
+    this.supportedFormats = formats;
+    return formats;
+  }
+  
+  canUseFormat(dataUri) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = dataUri;
+    });
+  }
+  
+  // 预加载关键图片
+  preloadCriticalImages(imageUrls) {
+    imageUrls.forEach(url => {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = url;
+      document.head.appendChild(link);
+    });
+  }
+  
+  // 图片压缩（客户端）
+  async compressImage(file, quality = 0.8, maxWidth = 1920) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // 计算新尺寸
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // 绘制并压缩
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  }
+}
+
+// 2. 代码分割和懒加载
+class CodeSplittingManager {
+  constructor() {
+    this.loadedModules = new Set();
+    this.loadingPromises = new Map();
+  }
+  
+  // 动态导入模块
+  async loadModule(modulePath) {
+    if (this.loadedModules.has(modulePath)) {
+      return;
+    }
+    
+    if (this.loadingPromises.has(modulePath)) {
+      return this.loadingPromises.get(modulePath);
+    }
+    
+    const loadPromise = import(modulePath)
+      .then(module => {
+        this.loadedModules.add(modulePath);
+        this.loadingPromises.delete(modulePath);
+        return module;
+      })
+      .catch(error => {
+        this.loadingPromises.delete(modulePath);
+        console.error(`加载模块失败: ${modulePath}`, error);
+        throw error;
+      });
+    
+    this.loadingPromises.set(modulePath, loadPromise);
+    return loadPromise;
+  }
+  
+  // 预加载模块
+  preloadModule(modulePath) {
+    const link = document.createElement('link');
+    link.rel = 'modulepreload';
+    link.href = modulePath;
+    document.head.appendChild(link);
+  }
+  
+  // 基于路由的代码分割
+  setupRouteBasedSplitting() {
+    const routes = {
+      '/dashboard': () => import('./pages/Dashboard'),
+      '/profile': () => import('./pages/Profile'),
+      '/settings': () => import('./pages/Settings')
+    };
+    
+    // 预加载可能访问的路由
+    const currentPath = window.location.pathname;
+    const likelyNextRoutes = this.predictNextRoutes(currentPath);
+    
+    likelyNextRoutes.forEach(route => {
+      if (routes[route]) {
+        setTimeout(() => {
+          routes[route]().catch(console.error);
+        }, 2000); // 2秒后预加载
+      }
+    });
+  }
+  
+  predictNextRoutes(currentPath) {
+    // 基于用户行为预测下一个可能访问的路由
+    const predictions = {
+      '/': ['/dashboard', '/profile'],
+      '/dashboard': ['/profile', '/settings'],
+      '/profile': ['/settings', '/dashboard']
+    };
+    
+    return predictions[currentPath] || [];
+  }
+  
+  // 组件级懒加载
+  createLazyComponent(importFn) {
+    return React.lazy(() => {
+      return importFn().catch(error => {
+        console.error('组件加载失败:', error);
+        // 返回错误组件
+        return { default: () => React.createElement('div', null, '组件加载失败') };
+      });
+    });
+  }
+}
+
+// 3. 缓存策略优化
+class CacheOptimizer {
+  constructor() {
+    this.setupServiceWorker();
+    this.setupHTTPCache();
+  }
+  
+  async setupServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('Service Worker注册成功:', registration);
+        
+        // 监听更新
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // 有新版本可用
+              this.notifyUpdate();
+            }
+          });
+        });
+      } catch (error) {
+        console.error('Service Worker注册失败:', error);
+      }
+    }
+  }
+  
+  setupHTTPCache() {
+    // 设置资源缓存策略
+    const cacheStrategies = {
+      // 静态资源：长期缓存
+      static: {
+        pattern: /\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2)$/,
+        strategy: 'cache-first',
+        maxAge: 31536000 // 1年
+      },
+      
+      // API数据：网络优先
+      api: {
+        pattern: /\/api\//,
+        strategy: 'network-first',
+        maxAge: 300 // 5分钟
+      },
+      
+      // HTML页面：网络优先，离线回退
+      pages: {
+        pattern: /\.html$/,
+        strategy: 'network-first',
+        maxAge: 3600 // 1小时
+      }
+    };
+    
+    // 在Service Worker中实现这些策略
+    this.sendMessageToSW('SET_CACHE_STRATEGIES', cacheStrategies);
+  }
+  
+  sendMessageToSW(type, data) {
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type, data });
+    }
+  }
+  
+  notifyUpdate() {
+    // 通知用户有新版本
+    if (confirm('发现新版本，是否立即更新？')) {
+      window.location.reload();
+    }
+  }
+  
+  // 预缓存关键资源
+  precacheResources(urls) {
+    this.sendMessageToSW('PRECACHE_RESOURCES', urls);
+  }
+  
+  // 清理过期缓存
+  cleanupCache() {
+    this.sendMessageToSW('CLEANUP_CACHE');
+  }
+}
+
+// 使用示例
+const imageOptimizer = new ImageOptimizer();
+const codeSplittingManager = new CodeSplittingManager();
+const cacheOptimizer = new CacheOptimizer();
+
+// 初始化优化
+document.addEventListener('DOMContentLoaded', () => {
+  // 预加载关键图片
+  imageOptimizer.preloadCriticalImages([
+    '/images/hero.jpg',
+    '/images/logo.png'
+  ]);
+  
+  // 设置路由分割
+  codeSplittingManager.setupRouteBasedSplitting();
+  
+  // 预缓存关键资源
+  cacheOptimizer.precacheResources([
+    '/',
+    '/dashboard',
+    '/offline.html'
+  ]);
+});
+```
+
+---
+
+<Callout type="success">
+性能优化是一个持续的过程，需要结合监控数据、用户反馈和业务需求来制定合适的优化策略。
+</Callout>

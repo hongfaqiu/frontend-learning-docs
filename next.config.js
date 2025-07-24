@@ -1,6 +1,11 @@
-const withNextra = require('nextra')({
-  theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.js',
-  unstable_staticImage: true,
+import nextra from 'nextra'
+
+const withNextra = nextra({
+  // Nextra 4.0 doesn't need theme and themeConfig here
 })
-module.exports = withNextra()
+
+export default withNextra({
+  images: {
+    unoptimized: true
+  }
+})

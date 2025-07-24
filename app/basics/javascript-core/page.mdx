@@ -1,0 +1,855 @@
+import { Callout } from 'nextra/components'
+
+# 04. JavaScript核心原理和ES6+
+
+## 📋 目录
+
+- [JavaScript引擎原理](#javascript引擎原理)
+- [执行上下文和作用域](#执行上下文和作用域)
+- [原型链和继承](#原型链和继承)
+- [异步编程深入](#异步编程深入)
+- [ES6+新特性详解](#es6新特性详解)
+- [模块化开发](#模块化开发)
+
+## ⚙️ JavaScript引擎原理
+
+<Callout type="info">
+理解JavaScript引擎的工作原理是掌握JavaScript的关键，它帮助我们写出更高效的代码。
+</Callout>
+
+### V8引擎架构
+
+```javascript
+// JavaScript代码执行过程
+/*
+1. 词法分析（Lexical Analysis）
+   - 将源代码分解为tokens
+
+2. 语法分析（Syntax Analysis）
+   - 将tokens转换为抽象语法树（AST）
+
+3. 字节码生成
+   - 将AST转换为字节码
+
+4. 执行
+   - 解释器执行字节码
+   - 优化编译器（TurboFan）优化热点代码
+*/
+
+// 示例：变量提升的原理
+console.log(a); // undefined（不是报错）
+var a = 5;
+
+// 实际执行过程：
+// 1. 编译阶段：var a; （声明提升）
+// 2. 执行阶段：console.log(a); a = 5;
+
+// 函数提升
+console.log(foo()); // "Hello"
+
+function foo() {
+  return "Hello";
+}
+
+// let/const的暂时性死区
+console.log(b); // ReferenceError
+let b = 10;
+```
+
+### 内存管理和垃圾回收
+
+```javascript
+// 内存分配示例
+function createObjects() {
+  // 栈内存：存储基本类型和引用
+  let num = 42;
+  let str = "Hello";
+  
+  // 堆内存：存储对象
+  let obj = {
+    name: "JavaScript",
+    version: "ES2024"
+  };
+  
+  // 闭包会保持对外部变量的引用
+  function closure() {
+    return obj.name; // obj不会被垃圾回收
+  }
+  
+  return closure;
+}
+
+// 垃圾回收机制
+/*
+1. 标记清除（Mark and Sweep）- 主要算法
+   - 标记阶段：从根对象开始，标记所有可达对象
+   - 清除阶段：清除未标记的对象
+
+2. 引用计数（Reference Counting）- 辅助算法
+   - 跟踪每个对象的引用次数
+   - 引用次数为0时立即回收
+   - 问题：循环引用
+*/
+
+// 避免内存泄漏的最佳实践
+class MemoryManager {
+  constructor() {
+    this.listeners = new Map();
+    this.timers = new Set();
+  }
+  
+  // 正确管理事件监听器
+  addEventListener(element, event, handler) {
+    element.addEventListener(event, handler);
+    
+    if (!this.listeners.has(element)) {
+      this.listeners.set(element, new Map());
+    }
+    this.listeners.get(element).set(event, handler);
+  }
+  
+  // 清理事件监听器
+  removeEventListener(element, event) {
+    if (this.listeners.has(element)) {
+      const elementListeners = this.listeners.get(element);
+      const handler = elementListeners.get(event);
+      
+      if (handler) {
+        element.removeEventListener(event, handler);
+        elementListeners.delete(event);
+      }
+    }
+  }
+  
+  // 管理定时器
+  setTimeout(callback, delay) {
+    const timerId = setTimeout(() => {
+      callback();
+      this.timers.delete(timerId);
+    }, delay);
+    
+    this.timers.add(timerId);
+    return timerId;
+  }
+  
+  // 清理所有资源
+  cleanup() {
+    // 清理事件监听器
+    for (const [element, events] of this.listeners) {
+      for (const [event, handler] of events) {
+        element.removeEventListener(event, handler);
+      }
+    }
+    this.listeners.clear();
+    
+    // 清理定时器
+    for (const timerId of this.timers) {
+      clearTimeout(timerId);
+    }
+    this.timers.clear();
+  }
+}
+```
+
+## 🎯 执行上下文和作用域
+
+### 执行上下文详解
+
+<Callout type="warning">
+执行上下文是JavaScript代码执行的环境，理解它对于掌握this绑定、变量提升等概念至关重要。
+</Callout>
+
+```javascript
+// 执行上下文的组成
+/*
+1. 变量对象（Variable Object）/ 词法环境（Lexical Environment）
+2. 作用域链（Scope Chain）
+3. this绑定
+*/
+
+// 全局执行上下文
+var globalVar = "global";
+
+function outerFunction(x) {
+  // 函数执行上下文
+  var outerVar = "outer";
+  
+  function innerFunction(y) {
+    // 内部函数执行上下文
+    var innerVar = "inner";
+    
+    // 作用域链：innerFunction -> outerFunction -> global
+    console.log(innerVar); // "inner"
+    console.log(outerVar); // "outer"
+    console.log(globalVar); // "global"
+    console.log(x, y); // 参数也在作用域链中
+  }
+  
+  return innerFunction;
+}
+
+const inner = outerFunction("param");
+inner("arg");
+
+// 词法作用域 vs 动态作用域
+function lexicalScope() {
+  var name = "lexical";
+  
+  function inner() {
+    console.log(name); // 词法作用域：在定义时确定
+  }
+  
+  return inner;
+}
+
+function dynamicScope() {
+  var name = "dynamic";
+  lexicalScope()(); // 仍然输出 "lexical"
+}
+
+dynamicScope();
+```
+
+### this绑定规则
+
+```javascript
+// this绑定的四种规则
+
+// 1. 默认绑定
+function defaultBinding() {
+  console.log(this); // 严格模式下是undefined，非严格模式下是window
+}
+
+// 2. 隐式绑定
+const obj = {
+  name: "Object",
+  greet() {
+    console.log(this.name); // "Object"
+  }
+};
+
+obj.greet(); // 隐式绑定
+
+const greetFunc = obj.greet;
+greetFunc(); // 默认绑定，this丢失
+
+// 3. 显式绑定
+function explicitBinding() {
+  console.log(this.name);
+}
+
+const context = { name: "Explicit" };
+explicitBinding.call(context); // "Explicit"
+explicitBinding.apply(context); // "Explicit"
+
+const boundFunction = explicitBinding.bind(context);
+boundFunction(); // "Explicit"
+
+// 4. new绑定
+function Constructor(name) {
+  this.name = name;
+  this.greet = function() {
+    console.log(`Hello, ${this.name}`);
+  };
+}
+
+const instance = new Constructor("Instance");
+instance.greet(); // "Hello, Instance"
+
+// 箭头函数的this
+const arrowObj = {
+  name: "Arrow",
+  regularFunction() {
+    console.log(this.name); // "Arrow"
+    
+    const arrowFunction = () => {
+      console.log(this.name); // "Arrow" - 继承外层this
+    };
+    
+    arrowFunction();
+  }
+};
+
+arrowObj.regularFunction();
+
+// 实际应用：解决this丢失问题
+class EventHandler {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  // 方法1：箭头函数
+  handleClick = (event) => {
+    console.log(`${this.name} clicked`);
+  }
+  
+  // 方法2：bind绑定
+  handleSubmit(event) {
+    console.log(`${this.name} submitted`);
+  }
+  
+  init() {
+    const button = document.querySelector('#button');
+    const form = document.querySelector('#form');
+    
+    button.addEventListener('click', this.handleClick); // 正确
+    form.addEventListener('submit', this.handleSubmit.bind(this)); // 正确
+  }
+}
+```
+
+## 🔗 原型链和继承
+
+### 原型链机制
+
+```javascript
+// 原型链的基本概念
+function Person(name) {
+  this.name = name;
+}
+
+Person.prototype.greet = function() {
+  return `Hello, I'm ${this.name}`;
+};
+
+const person = new Person("Alice");
+
+// 原型链查找过程
+console.log(person.greet()); // 在Person.prototype上找到
+console.log(person.toString()); // 在Object.prototype上找到
+
+// 原型链：person -> Person.prototype -> Object.prototype -> null
+
+// 手动实现new操作符
+function myNew(constructor, ...args) {
+  // 1. 创建新对象，原型指向构造函数的prototype
+  const obj = Object.create(constructor.prototype);
+  
+  // 2. 执行构造函数，this指向新对象
+  const result = constructor.apply(obj, args);
+  
+  // 3. 如果构造函数返回对象，则返回该对象，否则返回新对象
+  return result instanceof Object ? result : obj;
+}
+
+const person2 = myNew(Person, "Bob");
+console.log(person2.greet()); // "Hello, I'm Bob"
+
+// 原型链继承的实现
+function Animal(name) {
+  this.name = name;
+}
+
+Animal.prototype.speak = function() {
+  return `${this.name} makes a sound`;
+};
+
+function Dog(name, breed) {
+  // 调用父构造函数
+  Animal.call(this, name);
+  this.breed = breed;
+}
+
+// 设置原型链
+Dog.prototype = Object.create(Animal.prototype);
+Dog.prototype.constructor = Dog;
+
+// 添加子类方法
+Dog.prototype.bark = function() {
+  return `${this.name} barks`;
+};
+
+const dog = new Dog("Buddy", "Golden Retriever");
+console.log(dog.speak()); // "Buddy makes a sound"
+console.log(dog.bark()); // "Buddy barks"
+```
+
+### ES6类和继承
+
+```javascript
+// ES6类语法
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  speak() {
+    return `${this.name} makes a sound`;
+  }
+  
+  // 静态方法
+  static getSpecies() {
+    return "Unknown";
+  }
+  
+  // 私有字段（ES2022）
+  #privateField = "private";
+  
+  // 私有方法
+  #privateMethod() {
+    return this.#privateField;
+  }
+  
+  // 公共方法访问私有成员
+  getPrivateData() {
+    return this.#privateMethod();
+  }
+}
+
+// 继承
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name); // 调用父类构造函数
+    this.breed = breed;
+  }
+  
+  speak() {
+    return `${super.speak()} - Woof!`; // 调用父类方法
+  }
+  
+  bark() {
+    return `${this.name} barks`;
+  }
+  
+  static getSpecies() {
+    return "Canis lupus";
+  }
+}
+
+const dog = new Dog("Max", "Labrador");
+console.log(dog.speak()); // "Max makes a sound - Woof!"
+console.log(Dog.getSpecies()); // "Canis lupus"
+
+// Mixin模式
+const Flyable = {
+  fly() {
+    return `${this.name} is flying`;
+  }
+};
+
+const Swimmable = {
+  swim() {
+    return `${this.name} is swimming`;
+  }
+};
+
+// 组合多个能力
+class Duck extends Animal {
+  constructor(name) {
+    super(name);
+  }
+}
+
+// 添加mixin
+Object.assign(Duck.prototype, Flyable, Swimmable);
+
+const duck = new Duck("Donald");
+console.log(duck.fly()); // "Donald is flying"
+console.log(duck.swim()); // "Donald is swimming"
+```
+
+## ⏰ 异步编程深入
+
+### Promise原理和实现
+
+<Callout type="info">
+Promise是JavaScript异步编程的核心，理解其原理有助于更好地处理异步操作。
+</Callout>
+
+```javascript
+// 手动实现Promise
+class MyPromise {
+  constructor(executor) {
+    this.state = 'pending';
+    this.value = undefined;
+    this.reason = undefined;
+    this.onFulfilledCallbacks = [];
+    this.onRejectedCallbacks = [];
+    
+    const resolve = (value) => {
+      if (this.state === 'pending') {
+        this.state = 'fulfilled';
+        this.value = value;
+        this.onFulfilledCallbacks.forEach(callback => callback());
+      }
+    };
+    
+    const reject = (reason) => {
+      if (this.state === 'pending') {
+        this.state = 'rejected';
+        this.reason = reason;
+        this.onRejectedCallbacks.forEach(callback => callback());
+      }
+    };
+    
+    try {
+      executor(resolve, reject);
+    } catch (error) {
+      reject(error);
+    }
+  }
+  
+  then(onFulfilled, onRejected) {
+    onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : value => value;
+    onRejected = typeof onRejected === 'function' ? onRejected : reason => { throw reason; };
+    
+    return new MyPromise((resolve, reject) => {
+      const handleFulfilled = () => {
+        try {
+          const result = onFulfilled(this.value);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      const handleRejected = () => {
+        try {
+          const result = onRejected(this.reason);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      if (this.state === 'fulfilled') {
+        setTimeout(handleFulfilled, 0);
+      } else if (this.state === 'rejected') {
+        setTimeout(handleRejected, 0);
+      } else {
+        this.onFulfilledCallbacks.push(handleFulfilled);
+        this.onRejectedCallbacks.push(handleRejected);
+      }
+    });
+  }
+  
+  catch(onRejected) {
+    return this.then(null, onRejected);
+  }
+  
+  finally(onFinally) {
+    return this.then(
+      value => MyPromise.resolve(onFinally()).then(() => value),
+      reason => MyPromise.resolve(onFinally()).then(() => { throw reason; })
+    );
+  }
+  
+  static resolve(value) {
+    return new MyPromise(resolve => resolve(value));
+  }
+  
+  static reject(reason) {
+    return new MyPromise((resolve, reject) => reject(reason));
+  }
+  
+  static all(promises) {
+    return new MyPromise((resolve, reject) => {
+      const results = [];
+      let completedCount = 0;
+      
+      promises.forEach((promise, index) => {
+        MyPromise.resolve(promise).then(
+          value => {
+            results[index] = value;
+            completedCount++;
+            if (completedCount === promises.length) {
+              resolve(results);
+            }
+          },
+          reject
+        );
+      });
+    });
+  }
+  
+  static race(promises) {
+    return new MyPromise((resolve, reject) => {
+      promises.forEach(promise => {
+        MyPromise.resolve(promise).then(resolve, reject);
+      });
+    });
+  }
+}
+
+// 使用示例
+const promise = new MyPromise((resolve, reject) => {
+  setTimeout(() => resolve("Success!"), 1000);
+});
+
+promise
+  .then(value => {
+    console.log(value); // "Success!"
+    return value.toUpperCase();
+  })
+  .then(value => {
+    console.log(value); // "SUCCESS!"
+  })
+  .catch(error => {
+    console.error(error);
+  });
+```
+
+### async/await深入
+
+```javascript
+// async/await的本质是Promise的语法糖
+async function asyncFunction() {
+  try {
+    const result1 = await fetch('/api/data1');
+    const data1 = await result1.json();
+    
+    const result2 = await fetch(`/api/data2/${data1.id}`);
+    const data2 = await result2.json();
+    
+    return { data1, data2 };
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+}
+
+// 等价的Promise写法
+function promiseFunction() {
+  return fetch('/api/data1')
+    .then(result1 => result1.json())
+    .then(data1 => {
+      return fetch(`/api/data2/${data1.id}`)
+        .then(result2 => result2.json())
+        .then(data2 => ({ data1, data2 }));
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      throw error;
+    });
+}
+
+// 并发处理
+async function concurrentRequests() {
+  try {
+    // 串行执行（慢）
+    const data1 = await fetch('/api/data1');
+    const data2 = await fetch('/api/data2');
+    
+    // 并行执行（快）
+    const [result1, result2] = await Promise.all([
+      fetch('/api/data1'),
+      fetch('/api/data2')
+    ]);
+    
+    const [data1, data2] = await Promise.all([
+      result1.json(),
+      result2.json()
+    ]);
+    
+    return { data1, data2 };
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// 错误处理最佳实践
+class ApiClient {
+  constructor(baseURL) {
+    this.baseURL = baseURL;
+  }
+  
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    };
+    
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'TypeError') {
+        throw new Error('Network error: Please check your connection');
+      }
+      throw error;
+    }
+  }
+  
+  async get(endpoint) {
+    return this.request(endpoint);
+  }
+  
+  async post(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+  
+  // 带重试机制的请求
+  async requestWithRetry(endpoint, options = {}, maxRetries = 3) {
+    let lastError;
+    
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        return await this.request(endpoint, options);
+      } catch (error) {
+        lastError = error;
+        
+        if (i < maxRetries) {
+          const delay = Math.pow(2, i) * 1000; // 指数退避
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    throw lastError;
+  }
+}
+
+// 使用示例
+const api = new ApiClient('https://api.example.com');
+
+async function fetchUserData(userId) {
+  try {
+    const user = await api.get(`/users/${userId}`);
+    const posts = await api.get(`/users/${userId}/posts`);
+    
+    return { user, posts };
+  } catch (error) {
+    console.error('Failed to fetch user data:', error.message);
+    return null;
+  }
+}
+```
+
+## 🚀 ES6+新特性详解
+
+### 解构赋值和扩展运算符
+
+```javascript
+// 数组解构
+const [first, second, ...rest] = [1, 2, 3, 4, 5];
+console.log(first); // 1
+console.log(second); // 2
+console.log(rest); // [3, 4, 5]
+
+// 默认值
+const [a = 10, b = 20] = [1];
+console.log(a, b); // 1, 20
+
+// 交换变量
+let x = 1, y = 2;
+[x, y] = [y, x];
+console.log(x, y); // 2, 1
+
+// 对象解构
+const person = { name: 'Alice', age: 30, city: 'New York' };
+const { name, age, ...others } = person;
+console.log(name, age); // 'Alice', 30
+console.log(others); // { city: 'New York' }
+
+// 重命名和默认值
+const { name: personName, age: personAge, country = 'USA' } = person;
+console.log(personName, personAge, country); // 'Alice', 30, 'USA'
+
+// 嵌套解构
+const user = {
+  id: 1,
+  profile: {
+    name: 'Bob',
+    contact: {
+      email: 'bob@example.com'
+    }
+  }
+};
+
+const { profile: { name: userName, contact: { email } } } = user;
+console.log(userName, email); // 'Bob', 'bob@example.com'
+
+// 函数参数解构
+function greet({ name, age = 18 }) {
+  return `Hello ${name}, you are ${age} years old`;
+}
+
+console.log(greet({ name: 'Charlie' })); // "Hello Charlie, you are 18 years old"
+
+// 扩展运算符
+const arr1 = [1, 2, 3];
+const arr2 = [4, 5, 6];
+const combined = [...arr1, ...arr2]; // [1, 2, 3, 4, 5, 6]
+
+const obj1 = { a: 1, b: 2 };
+const obj2 = { c: 3, d: 4 };
+const merged = { ...obj1, ...obj2 }; // { a: 1, b: 2, c: 3, d: 4 }
+
+// 函数参数
+function sum(...numbers) {
+  return numbers.reduce((total, num) => total + num, 0);
+}
+
+console.log(sum(1, 2, 3, 4)); // 10
+```
+
+### 模板字符串和标签模板
+
+```javascript
+// 基础模板字符串
+const name = 'World';
+const greeting = `Hello, ${name}!`;
+console.log(greeting); // "Hello, World!"
+
+// 多行字符串
+const multiline = `
+  This is a
+  multiline
+  string
+`;
+
+// 表达式计算
+const a = 5, b = 10;
+console.log(`The sum is ${a + b}`); // "The sum is 15"
+
+// 标签模板
+function highlight(strings, ...values) {
+  return strings.reduce((result, string, i) => {
+    const value = values[i] ? `<mark>${values[i]}</mark>` : '';
+    return result + string + value;
+  }, '');
+}
+
+const searchTerm = 'JavaScript';
+const text = highlight`Learn ${searchTerm} programming`;
+console.log(text); // "Learn <mark>JavaScript</mark> programming"
+
+// 实用的标签模板函数
+function sql(strings, ...values) {
+  // 简单的SQL注入防护
+  const escapedValues = values.map(value => {
+    if (typeof value === 'string') {
+      return `'${value.replace(/'/g, "''")}'`;
+    }
+    return value;
+  });
+  
+  return strings.reduce((query, string, i) => {
+    const value = escapedValues[i] || '';
+    return query + string + value;
+  }, '');
+}
+
+const userId = 123;
+const userName = "O'Connor";
+const query = sql`SELECT * FROM users WHERE id = ${userId} AND name = ${userName}`;
+console.log(query); // "SELECT * FROM users WHERE id = 123 AND name = 'O''Connor'"
+```
+
+---
+
+<Callout type="success">
+JavaScript的核心原理和ES6+特性为现代Web开发提供了强大的基础。掌握这些概念能让你写出更优雅、更高效的代码。
+</Callout>

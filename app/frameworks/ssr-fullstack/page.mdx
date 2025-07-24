@@ -1,0 +1,1543 @@
+import { Callout } from 'nextra/components'
+
+# 11. 服务端渲染和全栈框架
+
+## 📋 目录
+
+- [SSR/SSG/ISR概念深入](#ssrssgisr概念深入)
+- [Next.js 14全栈开发](#nextjs-14全栈开发)
+- [Nuxt.js 3现代化开发](#nuxtjs-3现代化开发)
+- [性能优化策略](#性能优化策略)
+- [SEO和元数据管理](#seo和元数据管理)
+- [部署和运维](#部署和运维)
+
+## 🔄 SSR/SSG/ISR概念深入
+
+<Callout type="info">
+现代全栈框架提供了多种渲染策略，理解它们的区别和适用场景是构建高性能Web应用的关键。
+</Callout>
+
+### 渲染策略对比
+
+```javascript
+// 渲染策略详解
+const renderingStrategies = {
+  // 1. 客户端渲染 (CSR - Client-Side Rendering)
+  CSR: {
+    description: '在浏览器中使用JavaScript渲染页面',
+    advantages: [
+      '丰富的交互体验',
+      '减少服务器负载',
+      '页面切换流畅'
+    ],
+    disadvantages: [
+      'SEO不友好',
+      '首屏加载慢',
+      '依赖JavaScript'
+    ],
+    useCase: '复杂的单页应用，如管理后台'
+  },
+  
+  // 2. 服务端渲染 (SSR - Server-Side Rendering)
+  SSR: {
+    description: '在服务器上渲染HTML，发送完整页面到浏览器',
+    advantages: [
+      'SEO友好',
+      '首屏加载快',
+      '更好的性能感知'
+    ],
+    disadvantages: [
+      '服务器负载高',
+      '页面切换可能较慢',
+      '复杂的状态管理'
+    ],
+    useCase: '内容驱动的网站，如新闻、博客'
+  },
+  
+  // 3. 静态站点生成 (SSG - Static Site Generation)
+  SSG: {
+    description: '构建时预渲染所有页面为静态HTML',
+    advantages: [
+      '极快的加载速度',
+      'CDN友好',
+      '高安全性',
+      '低服务器成本'
+    ],
+    disadvantages: [
+      '构建时间长',
+      '动态内容支持有限',
+      '更新需要重新构建'
+    ],
+    useCase: '文档网站、营销页面、博客'
+  },
+  
+  // 4. 增量静态再生 (ISR - Incremental Static Regeneration)
+  ISR: {
+    description: '结合SSG和SSR，按需更新静态页面',
+    advantages: [
+      '静态页面的性能',
+      '动态内容支持',
+      '自动缓存管理'
+    ],
+    disadvantages: [
+      '复杂的缓存策略',
+      '可能的数据不一致',
+      '调试困难'
+    ],
+    useCase: '电商网站、内容管理系统'
+  }
+};
+
+// 渲染策略选择决策树
+function chooseRenderingStrategy(requirements) {
+  const {
+    seoImportant,
+    contentDynamic,
+    userInteraction,
+    performanceCritical,
+    serverResources
+  } = requirements;
+  
+  // SEO重要且内容相对静态
+  if (seoImportant && !contentDynamic) {
+    return 'SSG';
+  }
+  
+  // SEO重要且内容动态
+  if (seoImportant && contentDynamic) {
+    return serverResources === 'limited' ? 'ISR' : 'SSR';
+  }
+  
+  // 高交互性应用
+  if (userInteraction === 'high') {
+    return 'CSR';
+  }
+  
+  // 性能关键且内容半动态
+  if (performanceCritical && contentDynamic) {
+    return 'ISR';
+  }
+  
+  // 默认推荐
+  return 'SSR';
+}
+```
+
+### 水合(Hydration)原理
+
+```javascript
+// 水合过程详解
+class HydrationManager {
+  constructor() {
+    this.isHydrating = true;
+    this.hydratedComponents = new Set();
+    this.pendingEvents = [];
+  }
+  
+  // 开始水合过程
+  startHydration() {
+    console.log('开始水合过程...');
+    
+    // 1. 恢复组件状态
+    this.restoreComponentState();
+    
+    // 2. 绑定事件监听器
+    this.attachEventListeners();
+    
+    // 3. 初始化客户端特定功能
+    this.initializeClientFeatures();
+    
+    // 4. 标记水合完成
+    this.completeHydration();
+  }
+  
+  restoreComponentState() {
+    // 从服务端传递的数据恢复状态
+    const serverData = window.__INITIAL_DATA__;
+    
+    if (serverData) {
+      // 恢复Redux store
+      if (window.__REDUX_STORE__) {
+        window.__REDUX_STORE__.replaceState(serverData.reduxState);
+      }
+      
+      // 恢复React组件状态
+      if (serverData.componentStates) {
+        this.restoreReactStates(serverData.componentStates);
+      }
+    }
+  }
+  
+  attachEventListeners() {
+    // 重新绑定事件监听器
+    document.querySelectorAll('[data-hydrate-events]').forEach(element => {
+      const events = JSON.parse(element.dataset.hydrateEvents);
+      
+      events.forEach(({ type, handler }) => {
+        element.addEventListener(type, this.getEventHandler(handler));
+      });
+    });
+  }
+  
+  initializeClientFeatures() {
+    // 初始化只在客户端运行的功能
+    this.initializeAnalytics();
+    this.initializeServiceWorker();
+    this.initializeWebVitals();
+  }
+  
+  completeHydration() {
+    this.isHydrating = false;
+    
+    // 处理水合期间积累的事件
+    this.processPendingEvents();
+    
+    // 触发水合完成事件
+    window.dispatchEvent(new CustomEvent('hydration-complete'));
+    
+    console.log('水合过程完成');
+  }
+  
+  // 水合期间的事件处理
+  handleEventDuringHydration(event) {
+    if (this.isHydrating) {
+      event.preventDefault();
+      this.pendingEvents.push(event);
+    }
+  }
+  
+  processPendingEvents() {
+    this.pendingEvents.forEach(event => {
+      // 重新触发事件
+      event.target.dispatchEvent(new event.constructor(event.type, event));
+    });
+    
+    this.pendingEvents = [];
+  }
+}
+
+// React中的水合优化
+import { hydrateRoot } from 'react-dom/client';
+import { Suspense } from 'react';
+
+function hydrateApp() {
+  const container = document.getElementById('root');
+  const initialData = window.__INITIAL_DATA__;
+  
+  // 使用Suspense包装应用以处理异步组件
+  const App = (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AppComponent initialData={initialData} />
+    </Suspense>
+  );
+  
+  // 水合应用
+  hydrateRoot(container, App, {
+    onRecoverableError: (error) => {
+      console.error('水合过程中的可恢复错误:', error);
+    }
+  });
+}
+
+// 延迟水合优化
+class LazyHydration {
+  constructor() {
+    this.observer = new IntersectionObserver(
+      this.handleIntersection.bind(this),
+      { rootMargin: '50px' }
+    );
+  }
+  
+  // 观察需要延迟水合的组件
+  observeComponent(element) {
+    this.observer.observe(element);
+  }
+  
+  handleIntersection(entries) {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        this.hydrateComponent(entry.target);
+        this.observer.unobserve(entry.target);
+      }
+    });
+  }
+  
+  hydrateComponent(element) {
+    const componentName = element.dataset.component;
+    const props = JSON.parse(element.dataset.props || '{}');
+    
+    // 动态导入并水合组件
+    import(`./components/${componentName}`)
+      .then(({ default: Component }) => {
+        hydrateRoot(element, <Component {...props} />);
+      })
+      .catch(error => {
+        console.error(`水合组件 ${componentName} 失败:`, error);
+      });
+  }
+}
+```
+
+## ⚡ Next.js 14全栈开发
+
+### App Router深度应用
+
+<Callout type="warning">
+Next.js 14的App Router是一个重大的架构升级，提供了更强大的路由和布局系统。
+</Callout>
+
+```typescript
+// 1. 文件系统路由和布局
+// app/layout.tsx - 根布局
+import { Inter } from 'next/font/google';
+import { Metadata } from 'next';
+import './globals.css';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | My App',
+    default: 'My App'
+  },
+  description: '现代化的全栈应用',
+  keywords: ['Next.js', 'React', 'TypeScript'],
+  authors: [{ name: 'Your Name' }],
+  creator: 'Your Name',
+  openGraph: {
+    type: 'website',
+    locale: 'zh_CN',
+    url: 'https://myapp.com',
+    siteName: 'My App',
+    images: [
+      {
+        url: '/og-image.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'My App'
+      }
+    ]
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'My App',
+    description: '现代化的全栈应用',
+    images: ['/twitter-image.jpg']
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1
+    }
+  }
+};
+
+export default function RootLayout({
+  children
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="zh-CN">
+      <body className={inter.className}>
+        <header>
+          <nav>导航栏</nav>
+        </header>
+        <main>{children}</main>
+        <footer>页脚</footer>
+      </body>
+    </html>
+  );
+}
+
+// app/dashboard/layout.tsx - 嵌套布局
+export default function DashboardLayout({
+  children,
+  analytics,
+  team
+}: {
+  children: React.ReactNode;
+  analytics: React.ReactNode;
+  team: React.ReactNode;
+}) {
+  return (
+    <div className="dashboard">
+      <aside className="sidebar">
+        <DashboardNav />
+      </aside>
+      <div className="content">
+        {children}
+        <div className="widgets">
+          {analytics}
+          {team}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 2. 服务器组件和客户端组件
+// app/posts/page.tsx - 服务器组件
+import { Suspense } from 'react';
+import { PostList } from './components/PostList';
+import { PostFilters } from './components/PostFilters';
+
+interface SearchParams {
+  page?: string;
+  category?: string;
+  search?: string;
+}
+
+export default async function PostsPage({
+  searchParams
+}: {
+  searchParams: SearchParams;
+}) {
+  // 服务器端数据获取
+  const posts = await getPosts({
+    page: Number(searchParams.page) || 1,
+    category: searchParams.category,
+    search: searchParams.search
+  });
+  
+  return (
+    <div>
+      <h1>文章列表</h1>
+      
+      {/* 客户端组件用于交互 */}
+      <PostFilters />
+      
+      {/* 使用Suspense处理异步加载 */}
+      <Suspense fallback={<PostListSkeleton />}>
+        <PostList posts={posts} />
+      </Suspense>
+    </div>
+  );
+}
+
+// app/posts/components/PostFilters.tsx - 客户端组件
+'use client';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useCallback } from 'react';
+
+export function PostFilters() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  
+  const updateFilters = useCallback((updates: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams);
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    
+    router.push(`/posts?${params.toString()}`);
+  }, [router, searchParams]);
+  
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateFilters({ search, page: '1' });
+  };
+  
+  return (
+    <form onSubmit={handleSearch} className="filters">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="搜索文章..."
+      />
+      
+      <select
+        value={searchParams.get('category') || ''}
+        onChange={(e) => updateFilters({ category: e.target.value, page: '1' })}
+      >
+        <option value="">所有分类</option>
+        <option value="tech">技术</option>
+        <option value="design">设计</option>
+        <option value="business">商业</option>
+      </select>
+      
+      <button type="submit">搜索</button>
+    </form>
+  );
+}
+
+// 3. API路由和中间件
+// app/api/posts/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const PostSchema = z.object({
+  title: z.string().min(1).max(200),
+  content: z.string().min(1),
+  category: z.string(),
+  tags: z.array(z.string()).optional()
+});
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const category = searchParams.get('category');
+    const search = searchParams.get('search');
+    
+    const posts = await getPosts({
+      page,
+      limit,
+      category,
+      search
+    });
+    
+    return NextResponse.json({
+      data: posts,
+      pagination: {
+        page,
+        limit,
+        total: posts.length
+      }
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: '获取文章失败' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validatedData = PostSchema.parse(body);
+    
+    const post = await createPost(validatedData);
+    
+    return NextResponse.json(post, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: '数据验证失败', details: error.errors },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: '创建文章失败' },
+      { status: 500 }
+    );
+  }
+}
+
+// middleware.ts - 中间件
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  // 认证检查
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    const token = request.cookies.get('auth-token');
+    
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+  }
+  
+  // API限流
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const ip = request.ip || 'unknown';
+    const rateLimitResult = checkRateLimit(ip);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: '请求过于频繁' },
+        { status: 429 }
+      );
+    }
+  }
+  
+  // 地理位置重定向
+  const country = request.geo?.country;
+  if (country === 'CN' && !request.nextUrl.pathname.startsWith('/cn')) {
+    return NextResponse.redirect(new URL('/cn', request.url));
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico).*)'
+  ]
+};
+
+// 4. 数据获取和缓存
+// lib/data.ts
+import { unstable_cache } from 'next/cache';
+
+// 缓存数据获取函数
+export const getCachedPosts = unstable_cache(
+  async (filters: PostFilters) => {
+    const posts = await db.post.findMany({
+      where: {
+        ...(filters.category && { category: filters.category }),
+        ...(filters.search && {
+          OR: [
+            { title: { contains: filters.search } },
+            { content: { contains: filters.search } }
+          ]
+        })
+      },
+      include: {
+        author: true,
+        tags: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    return posts;
+  },
+  ['posts'],
+  {
+    revalidate: 3600, // 1小时后重新验证
+    tags: ['posts']
+  }
+);
+
+// 手动重新验证缓存
+import { revalidateTag } from 'next/cache';
+
+export async function createPost(data: PostData) {
+  const post = await db.post.create({ data });
+  
+  // 重新验证相关缓存
+  revalidateTag('posts');
+  
+  return post;
+}
+
+// 5. 流式渲染
+// app/posts/[id]/page.tsx
+import { Suspense } from 'react';
+
+export default function PostPage({ params }: { params: { id: string } }) {
+  return (
+    <div>
+      {/* 立即渲染的内容 */}
+      <PostHeader postId={params.id} />
+      
+      {/* 流式渲染的内容 */}
+      <Suspense fallback={<PostContentSkeleton />}>
+        <PostContent postId={params.id} />
+      </Suspense>
+      
+      <Suspense fallback={<CommentsSkeleton />}>
+        <Comments postId={params.id} />
+      </Suspense>
+      
+      <Suspense fallback={<RelatedPostsSkeleton />}>
+        <RelatedPosts postId={params.id} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function PostContent({ postId }: { postId: string }) {
+  // 模拟慢速数据获取
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  const post = await getPost(postId);
+  
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <div dangerouslySetInnerHTML={{ __html: post.content }} />
+    </article>
+  );
+}
+```
+
+## 🎨 Nuxt.js 3现代化开发
+
+### Nuxt 3核心特性
+
+```vue
+<!-- 1. 自动导入和组件 -->
+<!-- pages/index.vue -->
+<template>
+  <div>
+    <h1>{{ title }}</h1>
+    
+    <!-- 自动导入的组件 -->
+    <UserCard 
+      v-for="user in users" 
+      :key="user.id" 
+      :user="user" 
+    />
+    
+    <!-- 内置组件 -->
+    <NuxtLink to="/about">关于我们</NuxtLink>
+    <NuxtImg src="/hero.jpg" alt="Hero Image" />
+  </div>
+</template>
+
+<script setup>
+// 自动导入的组合式函数
+const title = ref('欢迎来到我的网站');
+
+// 服务端数据获取
+const { data: users } = await $fetch('/api/users');
+
+// SEO和元数据
+useSeoMeta({
+  title: '首页',
+  description: '这是我的网站首页',
+  ogTitle: '首页',
+  ogDescription: '这是我的网站首页',
+  ogImage: '/og-image.jpg',
+  twitterCard: 'summary_large_image'
+});
+
+// 页面级别的中间件
+definePageMeta({
+  middleware: 'auth',
+  layout: 'default'
+});
+</script>
+
+<!-- 2. 服务器API -->
+<!-- server/api/users.get.ts -->
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event);
+  const { page = 1, limit = 10 } = query;
+  
+  try {
+    const users = await getUsersFromDB({
+      page: Number(page),
+      limit: Number(limit)
+    });
+    
+    return {
+      data: users,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: users.length
+      }
+    };
+  } catch (error) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: '获取用户失败'
+    });
+  }
+});
+
+<!-- server/api/users.post.ts -->
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event);
+  
+  // 数据验证
+  const schema = z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    role: z.enum(['admin', 'user'])
+  });
+  
+  try {
+    const validatedData = schema.parse(body);
+    const user = await createUser(validatedData);
+    
+    return user;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: '数据验证失败',
+        data: error.errors
+      });
+    }
+    
+    throw createError({
+      statusCode: 500,
+      statusMessage: '创建用户失败'
+    });
+  }
+});
+
+<!-- 3. 中间件和插件 -->
+<!-- middleware/auth.ts -->
+export default defineNuxtRouteMiddleware((to, from) => {
+  const { $auth } = useNuxtApp();
+  
+  if (!$auth.user) {
+    return navigateTo('/login');
+  }
+});
+
+<!-- plugins/auth.client.ts -->
+export default defineNuxtPlugin(async () => {
+  const user = ref(null);
+  const token = useCookie('auth-token');
+  
+  const login = async (credentials: LoginCredentials) => {
+    const { data } = await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: credentials
+    });
+    
+    user.value = data.user;
+    token.value = data.token;
+  };
+  
+  const logout = () => {
+    user.value = null;
+    token.value = null;
+    navigateTo('/');
+  };
+  
+  const checkAuth = async () => {
+    if (token.value) {
+      try {
+        const { data } = await $fetch('/api/auth/me', {
+          headers: {
+            Authorization: `Bearer ${token.value}`
+          }
+        });
+        user.value = data;
+      } catch (error) {
+        token.value = null;
+      }
+    }
+  };
+  
+  // 初始化时检查认证状态
+  await checkAuth();
+  
+  return {
+    provide: {
+      auth: {
+        user: readonly(user),
+        login,
+        logout,
+        checkAuth
+      }
+    }
+  };
+});
+
+<!-- 4. 状态管理 -->
+<!-- stores/user.ts -->
+export const useUserStore = defineStore('user', () => {
+  const users = ref<User[]>([]);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  
+  const fetchUsers = async () => {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const { data } = await $fetch('/api/users');
+      users.value = data;
+    } catch (err) {
+      error.value = err.message;
+    } finally {
+      loading.value = false;
+    }
+  };
+  
+  const addUser = async (userData: CreateUserData) => {
+    try {
+      const newUser = await $fetch('/api/users', {
+        method: 'POST',
+        body: userData
+      });
+      
+      users.value.unshift(newUser);
+      return newUser;
+    } catch (err) {
+      error.value = err.message;
+      throw err;
+    }
+  };
+  
+  const filteredUsers = computed(() => {
+    return users.value.filter(user => user.status === 'active');
+  });
+  
+  return {
+    users: readonly(users),
+    loading: readonly(loading),
+    error: readonly(error),
+    filteredUsers,
+    fetchUsers,
+    addUser
+  };
+});
+
+<!-- 5. 配置文件 -->
+<!-- nuxt.config.ts -->
+export default defineNuxtConfig({
+  // 开发工具
+  devtools: { enabled: true },
+  
+  // TypeScript配置
+  typescript: {
+    strict: true,
+    typeCheck: true
+  },
+  
+  // CSS框架
+  css: ['~/assets/css/main.css'],
+  
+  // 模块
+  modules: [
+    '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
+    '@nuxtjs/color-mode',
+    '@vueuse/nuxt',
+    '@nuxt/image'
+  ],
+  
+  // 运行时配置
+  runtimeConfig: {
+    // 私有配置（仅服务端）
+    apiSecret: process.env.API_SECRET,
+    databaseUrl: process.env.DATABASE_URL,
+    
+    // 公共配置（客户端和服务端）
+    public: {
+      apiBase: process.env.API_BASE || '/api',
+      appName: 'My Nuxt App'
+    }
+  },
+  
+  // 渲染配置
+  nitro: {
+    preset: 'vercel',
+    compressPublicAssets: true
+  },
+  
+  // 实验性功能
+  experimental: {
+    payloadExtraction: false,
+    viewTransition: true
+  },
+  
+  // 构建配置
+  build: {
+    transpile: ['@headlessui/vue']
+  },
+  
+  // 路由配置
+  router: {
+    options: {
+      scrollBehaviorType: 'smooth'
+    }
+  }
+});
+```
+
+## 🚀 性能优化策略
+
+### 代码分割和懒加载
+
+```javascript
+// 1. 动态导入和代码分割
+// Next.js中的动态导入
+import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+
+// 组件级代码分割
+const DynamicChart = dynamic(() => import('../components/Chart'), {
+  loading: () => <p>Loading chart...</p>,
+  ssr: false // 禁用服务端渲染
+});
+
+const DynamicModal = dynamic(() => import('../components/Modal'), {
+  loading: () => <div>Loading modal...</div>
+});
+
+// 条件加载
+const AdminPanel = dynamic(() => import('../components/AdminPanel'), {
+  loading: () => <div>Loading admin panel...</div>
+});
+
+function Dashboard({ user }) {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+
+      {/* 总是加载的组件 */}
+      <UserProfile user={user} />
+
+      {/* 懒加载的图表组件 */}
+      <Suspense fallback={<ChartSkeleton />}>
+        <DynamicChart data={user.analytics} />
+      </Suspense>
+
+      {/* 条件懒加载 */}
+      {user.role === 'admin' && (
+        <Suspense fallback={<AdminSkeleton />}>
+          <AdminPanel />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+
+// 2. 路由级代码分割
+// pages/products/[id].js
+import { lazy, Suspense } from 'react';
+
+const ProductReviews = lazy(() => import('../../components/ProductReviews'));
+const RelatedProducts = lazy(() => import('../../components/RelatedProducts'));
+
+export default function ProductPage({ product }) {
+  return (
+    <div>
+      <ProductInfo product={product} />
+
+      <Suspense fallback={<ReviewsSkeleton />}>
+        <ProductReviews productId={product.id} />
+      </Suspense>
+
+      <Suspense fallback={<RelatedSkeleton />}>
+        <RelatedProducts category={product.category} />
+      </Suspense>
+    </div>
+  );
+}
+
+// 3. 第三方库的懒加载
+class LazyLibraryLoader {
+  constructor() {
+    this.loadedLibraries = new Set();
+    this.loadingPromises = new Map();
+  }
+
+  async loadLibrary(name, loader) {
+    if (this.loadedLibraries.has(name)) {
+      return;
+    }
+
+    if (this.loadingPromises.has(name)) {
+      return this.loadingPromises.get(name);
+    }
+
+    const promise = loader().then(lib => {
+      this.loadedLibraries.add(name);
+      this.loadingPromises.delete(name);
+      return lib;
+    });
+
+    this.loadingPromises.set(name, promise);
+    return promise;
+  }
+
+  // 预加载关键库
+  preloadLibraries() {
+    // 在空闲时间预加载
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        this.loadLibrary('charts', () => import('chart.js'));
+        this.loadLibrary('editor', () => import('@monaco-editor/react'));
+      });
+    }
+  }
+}
+
+// 使用示例
+const libraryLoader = new LazyLibraryLoader();
+
+function ChartComponent({ data }) {
+  const [chartLib, setChartLib] = useState(null);
+
+  useEffect(() => {
+    libraryLoader.loadLibrary('charts', () => import('chart.js'))
+      .then(lib => setChartLib(lib));
+  }, []);
+
+  if (!chartLib) {
+    return <div>Loading chart library...</div>;
+  }
+
+  return <Chart data={data} library={chartLib} />;
+}
+```
+
+### 缓存策略优化
+
+```javascript
+// 1. 多层缓存架构
+class CacheManager {
+  constructor() {
+    this.memoryCache = new Map();
+    this.sessionCache = sessionStorage;
+    this.persistentCache = localStorage;
+    this.serviceWorkerCache = 'sw-cache-v1';
+  }
+
+  // 内存缓存（最快，但页面刷新后丢失）
+  setMemoryCache(key, value, ttl = 300000) { // 5分钟
+    const expiry = Date.now() + ttl;
+    this.memoryCache.set(key, { value, expiry });
+  }
+
+  getMemoryCache(key) {
+    const item = this.memoryCache.get(key);
+    if (!item) return null;
+
+    if (Date.now() > item.expiry) {
+      this.memoryCache.delete(key);
+      return null;
+    }
+
+    return item.value;
+  }
+
+  // 会话缓存（页面关闭后丢失）
+  setSessionCache(key, value) {
+    try {
+      this.sessionCache.setItem(key, JSON.stringify({
+        value,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.warn('Session cache storage failed:', error);
+    }
+  }
+
+  getSessionCache(key, maxAge = 3600000) { // 1小时
+    try {
+      const item = this.sessionCache.getItem(key);
+      if (!item) return null;
+
+      const { value, timestamp } = JSON.parse(item);
+
+      if (Date.now() - timestamp > maxAge) {
+        this.sessionCache.removeItem(key);
+        return null;
+      }
+
+      return value;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // 持久缓存（浏览器关闭后仍保留）
+  setPersistentCache(key, value, ttl = 86400000) { // 24小时
+    try {
+      this.persistentCache.setItem(key, JSON.stringify({
+        value,
+        expiry: Date.now() + ttl
+      }));
+    } catch (error) {
+      console.warn('Persistent cache storage failed:', error);
+    }
+  }
+
+  getPersistentCache(key) {
+    try {
+      const item = this.persistentCache.getItem(key);
+      if (!item) return null;
+
+      const { value, expiry } = JSON.parse(item);
+
+      if (Date.now() > expiry) {
+        this.persistentCache.removeItem(key);
+        return null;
+      }
+
+      return value;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Service Worker缓存
+  async setServiceWorkerCache(key, response) {
+    if ('serviceWorker' in navigator && 'caches' in window) {
+      try {
+        const cache = await caches.open(this.serviceWorkerCache);
+        await cache.put(key, response.clone());
+      } catch (error) {
+        console.warn('Service Worker cache failed:', error);
+      }
+    }
+  }
+
+  async getServiceWorkerCache(key) {
+    if ('caches' in window) {
+      try {
+        const cache = await caches.open(this.serviceWorkerCache);
+        return await cache.match(key);
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // 智能缓存策略
+  async get(key, fetcher, options = {}) {
+    const {
+      useMemory = true,
+      useSession = true,
+      usePersistent = true,
+      useServiceWorker = false,
+      ttl = 300000
+    } = options;
+
+    // 1. 尝试内存缓存
+    if (useMemory) {
+      const memoryResult = this.getMemoryCache(key);
+      if (memoryResult) return memoryResult;
+    }
+
+    // 2. 尝试会话缓存
+    if (useSession) {
+      const sessionResult = this.getSessionCache(key);
+      if (sessionResult) {
+        if (useMemory) this.setMemoryCache(key, sessionResult, ttl);
+        return sessionResult;
+      }
+    }
+
+    // 3. 尝试持久缓存
+    if (usePersistent) {
+      const persistentResult = this.getPersistentCache(key);
+      if (persistentResult) {
+        if (useMemory) this.setMemoryCache(key, persistentResult, ttl);
+        if (useSession) this.setSessionCache(key, persistentResult);
+        return persistentResult;
+      }
+    }
+
+    // 4. 尝试Service Worker缓存
+    if (useServiceWorker) {
+      const swResult = await this.getServiceWorkerCache(key);
+      if (swResult) {
+        const data = await swResult.json();
+        if (useMemory) this.setMemoryCache(key, data, ttl);
+        if (useSession) this.setSessionCache(key, data);
+        return data;
+      }
+    }
+
+    // 5. 获取新数据
+    try {
+      const freshData = await fetcher();
+
+      // 存储到各级缓存
+      if (useMemory) this.setMemoryCache(key, freshData, ttl);
+      if (useSession) this.setSessionCache(key, freshData);
+      if (usePersistent) this.setPersistentCache(key, freshData, ttl);
+
+      return freshData;
+    } catch (error) {
+      console.error('Failed to fetch fresh data:', error);
+      throw error;
+    }
+  }
+}
+
+// 2. React Query集成
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+const cacheManager = new CacheManager();
+
+function useOptimizedQuery(key, fetcher, options = {}) {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: key,
+    queryFn: () => cacheManager.get(
+      key.join('-'),
+      fetcher,
+      options.cache
+    ),
+    staleTime: options.staleTime || 5 * 60 * 1000, // 5分钟
+    cacheTime: options.cacheTime || 30 * 60 * 1000, // 30分钟
+    refetchOnWindowFocus: false,
+    ...options
+  });
+}
+
+// 使用示例
+function UserProfile({ userId }) {
+  const { data: user, isLoading, error } = useOptimizedQuery(
+    ['user', userId],
+    () => fetch(`/api/users/${userId}`).then(res => res.json()),
+    {
+      cache: {
+        useMemory: true,
+        useSession: true,
+        usePersistent: true,
+        ttl: 600000 // 10分钟
+      },
+      staleTime: 300000 // 5分钟
+    }
+  );
+
+  if (isLoading) return <UserSkeleton />;
+  if (error) return <ErrorMessage error={error} />;
+
+  return <UserCard user={user} />;
+}
+```
+
+## 🔍 SEO和元数据管理
+
+### 结构化数据和Schema.org
+
+```javascript
+// 1. 结构化数据生成器
+class StructuredDataGenerator {
+  constructor() {
+    this.baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://example.com';
+  }
+
+  // 文章结构化数据
+  generateArticleSchema(article) {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: article.title,
+      description: article.excerpt,
+      image: article.featuredImage ? [
+        `${this.baseUrl}${article.featuredImage}`
+      ] : [],
+      datePublished: article.publishedAt,
+      dateModified: article.updatedAt,
+      author: {
+        '@type': 'Person',
+        name: article.author.name,
+        url: `${this.baseUrl}/authors/${article.author.slug}`
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: 'My Blog',
+        logo: {
+          '@type': 'ImageObject',
+          url: `${this.baseUrl}/logo.png`
+        }
+      },
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': `${this.baseUrl}/articles/${article.slug}`
+      }
+    };
+  }
+
+  // 产品结构化数据
+  generateProductSchema(product) {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name,
+      description: product.description,
+      image: product.images.map(img => `${this.baseUrl}${img}`),
+      brand: {
+        '@type': 'Brand',
+        name: product.brand
+      },
+      offers: {
+        '@type': 'Offer',
+        price: product.price,
+        priceCurrency: 'CNY',
+        availability: product.inStock
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock',
+        seller: {
+          '@type': 'Organization',
+          name: 'My Store'
+        }
+      },
+      aggregateRating: product.reviews.length > 0 ? {
+        '@type': 'AggregateRating',
+        ratingValue: product.averageRating,
+        reviewCount: product.reviews.length
+      } : undefined
+    };
+  }
+
+  // 面包屑导航
+  generateBreadcrumbSchema(breadcrumbs) {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: breadcrumbs.map((crumb, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: crumb.name,
+        item: `${this.baseUrl}${crumb.path}`
+      }))
+    };
+  }
+
+  // 组织信息
+  generateOrganizationSchema() {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'My Company',
+      url: this.baseUrl,
+      logo: `${this.baseUrl}/logo.png`,
+      contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: '+86-123-456-7890',
+        contactType: 'customer service',
+        availableLanguage: ['Chinese', 'English']
+      },
+      sameAs: [
+        'https://twitter.com/mycompany',
+        'https://linkedin.com/company/mycompany',
+        'https://github.com/mycompany'
+      ]
+    };
+  }
+}
+
+// 2. Next.js中的SEO组件
+import Head from 'next/head';
+
+function SEOHead({
+  title,
+  description,
+  canonical,
+  openGraph,
+  structuredData,
+  noindex = false
+}) {
+  const fullTitle = title ? `${title} | My Site` : 'My Site';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+  return (
+    <Head>
+      {/* 基础元数据 */}
+      <title>{fullTitle}</title>
+      <meta name="description" content={description} />
+      {canonical && <link rel="canonical" href={`${baseUrl}${canonical}`} />}
+
+      {/* 机器人指令 */}
+      <meta
+        name="robots"
+        content={noindex ? 'noindex,nofollow' : 'index,follow'}
+      />
+
+      {/* Open Graph */}
+      <meta property="og:title" content={openGraph?.title || title} />
+      <meta property="og:description" content={openGraph?.description || description} />
+      <meta property="og:type" content={openGraph?.type || 'website'} />
+      <meta property="og:url" content={`${baseUrl}${canonical}`} />
+      {openGraph?.image && (
+        <>
+          <meta property="og:image" content={`${baseUrl}${openGraph.image}`} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+        </>
+      )}
+
+      {/* Twitter Card */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={openGraph?.title || title} />
+      <meta name="twitter:description" content={openGraph?.description || description} />
+      {openGraph?.image && (
+        <meta name="twitter:image" content={`${baseUrl}${openGraph.image}`} />
+      )}
+
+      {/* 结构化数据 */}
+      {structuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData)
+          }}
+        />
+      )}
+    </Head>
+  );
+}
+
+// 3. 动态SEO Hook
+function useSEO() {
+  const router = useRouter();
+  const [seoData, setSeoData] = useState({});
+
+  const updateSEO = useCallback((data) => {
+    setSeoData(prev => ({ ...prev, ...data }));
+  }, []);
+
+  // 根据路由自动生成SEO数据
+  useEffect(() => {
+    const generateAutoSEO = () => {
+      const path = router.asPath;
+      const segments = path.split('/').filter(Boolean);
+
+      // 生成面包屑
+      const breadcrumbs = segments.map((segment, index) => ({
+        name: segment.charAt(0).toUpperCase() + segment.slice(1),
+        path: '/' + segments.slice(0, index + 1).join('/')
+      }));
+
+      updateSEO({
+        canonical: path,
+        breadcrumbs
+      });
+    };
+
+    generateAutoSEO();
+  }, [router.asPath, updateSEO]);
+
+  return { seoData, updateSEO };
+}
+
+// 使用示例
+function ArticlePage({ article }) {
+  const { updateSEO } = useSEO();
+  const structuredDataGenerator = new StructuredDataGenerator();
+
+  useEffect(() => {
+    updateSEO({
+      title: article.title,
+      description: article.excerpt,
+      openGraph: {
+        title: article.title,
+        description: article.excerpt,
+        type: 'article',
+        image: article.featuredImage
+      },
+      structuredData: structuredDataGenerator.generateArticleSchema(article)
+    });
+  }, [article, updateSEO]);
+
+  return (
+    <article>
+      <h1>{article.title}</h1>
+      <div dangerouslySetInnerHTML={{ __html: article.content }} />
+    </article>
+  );
+}
+```
+
+---
+
+<Callout type="success">
+现代全栈框架如Next.js和Nuxt.js提供了完整的解决方案，从开发到部署的全流程支持，大大提升了全栈开发的效率。
+</Callout>

@@ -1,0 +1,685 @@
+import { Callout } from 'nextra/components'
+
+# 06. 开发环境和工具链配置
+
+## 📋 目录
+
+- [现代开发环境搭建](#现代开发环境搭建)
+- [版本控制和Git工作流](#版本控制和git工作流)
+- [调试工具和技巧](#调试工具和技巧)
+- [包管理器深入](#包管理器深入)
+- [开发效率工具](#开发效率工具)
+- [团队协作规范](#团队协作规范)
+
+## 💻 现代开发环境搭建
+
+<Callout type="info">
+一个高效的开发环境能够显著提升开发效率，减少重复性工作，让开发者专注于核心业务逻辑。
+</Callout>
+
+### Node.js环境管理
+
+```bash
+# 使用nvm管理Node.js版本
+# 安装nvm (macOS/Linux)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Windows用户使用nvm-windows
+# 下载：https://github.com/coreybutler/nvm-windows
+
+# 安装和使用不同版本的Node.js
+nvm install 18.17.0    # 安装Node.js 18.17.0
+nvm install 20.5.0     # 安装Node.js 20.5.0
+nvm use 18.17.0        # 切换到18.17.0
+nvm alias default 18.17.0  # 设置默认版本
+nvm list               # 查看已安装版本
+
+# 项目级Node.js版本管理
+echo "18.17.0" > .nvmrc  # 创建.nvmrc文件
+nvm use                  # 自动使用.nvmrc中指定的版本
+```
+
+### VS Code开发环境配置
+
+```json
+// .vscode/settings.json - 项目级配置
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.rulers": [80, 120],
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact",
+    "typescript": "typescriptreact"
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.git": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/build/**": true
+  }
+}
+
+// .vscode/extensions.json - 推荐扩展
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-typescript-next",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "ms-vscode.vscode-json",
+    "redhat.vscode-yaml",
+    "ms-vscode.vscode-css-peek",
+    "zignd.html-css-class-completion"
+  ]
+}
+
+// .vscode/launch.json - 调试配置
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Chrome",
+      "request": "launch",
+      "type": "chrome",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Attach to Chrome",
+      "port": 9222,
+      "request": "attach",
+      "type": "chrome",
+      "webRoot": "${workspaceFolder}/src"
+    },
+    {
+      "name": "Debug Node.js",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/server.js",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  ]
+}
+
+// .vscode/tasks.json - 任务配置
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "npm: start",
+      "type": "npm",
+      "script": "start",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "npm: build",
+      "type": "npm",
+      "script": "build",
+      "group": "build"
+    },
+    {
+      "label": "npm: test",
+      "type": "npm",
+      "script": "test",
+      "group": "test"
+    }
+  ]
+}
+```
+
+### 终端和Shell配置
+
+```bash
+# Zsh配置 (.zshrc)
+# 安装Oh My Zsh
+sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+# 配置主题和插件
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+plugins=(
+  git
+  node
+  npm
+  yarn
+  vscode
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+  z
+)
+
+# 自定义别名
+alias ll="ls -la"
+alias la="ls -A"
+alias l="ls -CF"
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+
+# Git别名
+alias gs="git status"
+alias ga="git add"
+alias gc="git commit"
+alias gp="git push"
+alias gl="git pull"
+alias gco="git checkout"
+alias gb="git branch"
+alias gm="git merge"
+
+# 开发相关别名
+alias ni="npm install"
+alias ns="npm start"
+alias nb="npm run build"
+alias nt="npm test"
+alias nrd="npm run dev"
+
+alias yi="yarn install"
+alias ys="yarn start"
+alias yb="yarn build"
+alias yt="yarn test"
+alias yd="yarn dev"
+
+# 项目快速导航
+alias projects="cd ~/Projects"
+alias work="cd ~/Work"
+
+# 常用函数
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# 快速创建React组件
+create-component() {
+  local name=$1
+  local dir="src/components/$name"
+  
+  mkdir -p "$dir"
+  
+  cat > "$dir/index.tsx" << EOF
+import React from 'react';
+import './$name.css';
+
+interface ${name}Props {
+  // 定义props类型
+}
+
+const $name: React.FC<${name}Props> = () => {
+  return (
+    <div className="$name">
+      <h1>$name Component</h1>
+    </div>
+  );
+};
+
+export default $name;
+EOF
+
+  cat > "$dir/$name.css" << EOF
+.$name {
+  /* 组件样式 */
+}
+EOF
+
+  echo "Component $name created in $dir"
+}
+```
+
+## 🔧 版本控制和Git工作流
+
+### Git配置和最佳实践
+
+<Callout type="warning">
+良好的Git工作流是团队协作的基础，能够避免代码冲突，保证代码质量。
+</Callout>
+
+```bash
+# Git全局配置
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+git config --global init.defaultBranch main
+git config --global core.autocrlf input  # macOS/Linux
+git config --global core.autocrlf true   # Windows
+
+# 配置编辑器
+git config --global core.editor "code --wait"
+
+# 配置别名
+git config --global alias.co checkout
+git config --global alias.br branch
+git config --global alias.ci commit
+git config --global alias.st status
+git config --global alias.unstage 'reset HEAD --'
+git config --global alias.last 'log -1 HEAD'
+git config --global alias.visual '!gitk'
+
+# 美化日志输出
+git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
+
+# 配置差异工具
+git config --global merge.tool vscode
+git config --global mergetool.vscode.cmd 'code --wait $MERGED'
+git config --global diff.tool vscode
+git config --global difftool.vscode.cmd 'code --wait --diff $LOCAL $REMOTE'
+```
+
+### Git工作流模式
+
+```bash
+# Git Flow工作流
+# 初始化Git Flow
+git flow init
+
+# 功能开发
+git flow feature start new-feature
+# 开发完成后
+git flow feature finish new-feature
+
+# 发布准备
+git flow release start 1.0.0
+# 发布完成
+git flow release finish 1.0.0
+
+# 热修复
+git flow hotfix start critical-bug
+git flow hotfix finish critical-bug
+
+# GitHub Flow工作流（更简单）
+# 1. 从main分支创建功能分支
+git checkout main
+git pull origin main
+git checkout -b feature/user-authentication
+
+# 2. 开发和提交
+git add .
+git commit -m "feat: add user authentication"
+
+# 3. 推送分支
+git push origin feature/user-authentication
+
+# 4. 创建Pull Request
+# 5. 代码审查和合并
+# 6. 删除功能分支
+git checkout main
+git pull origin main
+git branch -d feature/user-authentication
+```
+
+### 提交规范和自动化
+
+```bash
+# Conventional Commits规范
+# 格式：<type>[optional scope]: <description>
+
+# 类型说明：
+# feat: 新功能
+# fix: 修复bug
+# docs: 文档更新
+# style: 代码格式化
+# refactor: 重构
+# test: 测试相关
+# chore: 构建过程或辅助工具的变动
+
+# 示例：
+git commit -m "feat(auth): add user login functionality"
+git commit -m "fix(api): resolve data fetching issue"
+git commit -m "docs(readme): update installation instructions"
+```
+
+```json
+// package.json - 提交规范工具配置
+{
+  "scripts": {
+    "commit": "git-cz",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.0.0",
+    "@commitlint/config-conventional": "^17.0.0",
+    "commitizen": "^4.2.4",
+    "cz-conventional-changelog": "^3.3.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "commitlint": {
+    "extends": ["@commitlint/config-conventional"]
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  }
+}
+```
+
+```bash
+#!/bin/sh
+# .husky/commit-msg
+. "$(dirname "$0")/_/husky.sh"
+
+npx --no-install commitlint --edit "$1"
+```
+
+```bash
+#!/bin/sh
+# .husky/pre-commit
+. "$(dirname "$0")/_/husky.sh"
+
+npx lint-staged
+npm run type-check
+```
+
+## 🐛 调试工具和技巧
+
+### 浏览器开发者工具
+
+```javascript
+// Console调试技巧
+// 1. 条件断点
+function processData(data) {
+  // 在开发者工具中设置条件断点：data.length > 100
+  return data.map(item => item.value);
+}
+
+// 2. 性能分析
+console.time('data-processing');
+const result = processLargeDataSet();
+console.timeEnd('data-processing');
+
+// 3. 内存使用监控
+console.memory; // 查看内存使用情况
+
+// 4. 函数调用栈
+console.trace('Function call trace');
+
+// 5. 分组日志
+console.group('User Data');
+console.log('Name:', user.name);
+console.log('Email:', user.email);
+console.groupEnd();
+
+// 6. 表格显示数据
+const users = [
+  { name: 'Alice', age: 25, city: 'New York' },
+  { name: 'Bob', age: 30, city: 'London' }
+];
+console.table(users);
+
+// 7. 样式化输出
+console.log('%c Success! ', 'background: green; color: white; padding: 2px 5px; border-radius: 2px');
+console.log('%c Error! ', 'background: red; color: white; padding: 2px 5px; border-radius: 2px');
+
+// 8. 断言调试
+console.assert(user.age >= 18, 'User must be at least 18 years old');
+
+// 9. 计数器
+function trackClicks() {
+  console.count('Button clicked');
+}
+
+// 10. 清空控制台
+console.clear();
+```
+
+### React开发者工具
+
+```javascript
+// React DevTools使用技巧
+
+// 1. 组件性能分析
+import { Profiler } from 'react';
+
+function onRenderCallback(id, phase, actualDuration, baseDuration, startTime, commitTime) {
+  console.log('Component render info:', {
+    id,
+    phase,
+    actualDuration,
+    baseDuration,
+    startTime,
+    commitTime
+  });
+}
+
+function App() {
+  return (
+    <Profiler id="App" onRender={onRenderCallback}>
+      <Header />
+      <Main />
+      <Footer />
+    </Profiler>
+  );
+}
+
+// 2. 开发模式下的调试信息
+if (process.env.NODE_ENV === 'development') {
+  // 添加全局调试函数
+  window.debugComponent = (component) => {
+    console.log('Component props:', component.props);
+    console.log('Component state:', component.state);
+  };
+  
+  // React DevTools集成
+  if (typeof window.__REACT_DEVTOOLS_GLOBAL_HOOK__ === 'object') {
+    window.__REACT_DEVTOOLS_GLOBAL_HOOK__.onCommitFiberRoot = (id, root) => {
+      console.log('React tree updated:', root);
+    };
+  }
+}
+
+// 3. 自定义Hook调试
+import { useDebugValue, useEffect, useState } from 'react';
+
+function useCustomHook(initialValue) {
+  const [value, setValue] = useState(initialValue);
+  
+  // 在React DevTools中显示调试信息
+  useDebugValue(value > 0 ? 'Positive' : 'Zero or Negative');
+  
+  useEffect(() => {
+    console.log('Custom hook value changed:', value);
+  }, [value]);
+  
+  return [value, setValue];
+}
+```
+
+### 网络调试
+
+```javascript
+// 网络请求调试
+class DebugFetch {
+  static async request(url, options = {}) {
+    const startTime = performance.now();
+    
+    console.group(`🌐 Network Request: ${options.method || 'GET'} ${url}`);
+    console.log('Request options:', options);
+    
+    try {
+      const response = await fetch(url, options);
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      console.log(`✅ Response received in ${duration.toFixed(2)}ms`);
+      console.log('Status:', response.status, response.statusText);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+      
+      const clonedResponse = response.clone();
+      const data = await clonedResponse.json().catch(() => clonedResponse.text());
+      console.log('Response data:', data);
+      
+      console.groupEnd();
+      
+      return response;
+    } catch (error) {
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      console.error(`❌ Request failed after ${duration.toFixed(2)}ms:`, error);
+      console.groupEnd();
+      
+      throw error;
+    }
+  }
+}
+
+// 使用示例
+DebugFetch.request('/api/users', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ name: 'John' })
+});
+```
+
+## 📦 包管理器深入
+
+### npm vs yarn vs pnpm对比
+
+| 特性 | npm | yarn | pnpm |
+|------|-----|------|------|
+| **安装速度** | 中等 | 快 | 最快 |
+| **磁盘空间** | 大 | 大 | 小（硬链接） |
+| **离线安装** | 支持 | 支持 | 支持 |
+| **工作空间** | 支持 | 支持 | 支持 |
+| **安全性** | 中等 | 高 | 高 |
+| **兼容性** | 最好 | 好 | 好 |
+
+```bash
+# pnpm使用示例（推荐）
+# 安装pnpm
+npm install -g pnpm
+
+# 项目初始化
+pnpm init
+
+# 安装依赖
+pnpm install
+pnpm add react react-dom
+pnpm add -D typescript @types/react
+
+# 工作空间配置
+# pnpm-workspace.yaml
+packages:
+  - 'packages/*'
+  - 'apps/*'
+
+# 在工作空间中安装依赖
+pnpm add lodash --filter @myorg/utils
+pnpm add react --filter @myorg/web-app
+
+# 运行脚本
+pnpm run build
+pnpm run --filter @myorg/web-app dev
+```
+
+### 依赖管理最佳实践
+
+```json
+// package.json优化配置
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext ts,tsx --fix",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write src/**/*.{ts,tsx,json,css,md}",
+    "prepare": "husky install",
+    "clean": "rimraf dist node_modules/.cache",
+    "analyze": "npm run build && npx vite-bundle-analyzer"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vitest": "^0.34.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+```
+
+---
+
+<Callout type="success">
+良好的开发环境配置是高效开发的基础，投入时间配置工具链能够在长期开发中获得巨大的效率提升。
+</Callout>

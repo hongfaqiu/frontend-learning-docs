@@ -1,0 +1,872 @@
+import { Callout } from 'nextra/components'
+
+# 03. CSS3高级特性和预处理器
+
+## 📋 目录
+
+- [现代CSS布局系统](#现代css布局系统)
+- [CSS动画和变换](#css动画和变换)
+- [响应式设计深入](#响应式设计深入)
+- [CSS架构方法论](#css架构方法论)
+- [预处理器深入](#预处理器深入)
+- [CSS-in-JS方案](#css-in-js方案)
+
+## 🎨 现代CSS布局系统
+
+<Callout type="info">
+CSS3引入了Flexbox和Grid两大布局系统，彻底改变了Web布局的方式，让复杂布局变得简单直观。
+</Callout>
+
+### Flexbox布局详解
+
+```css
+/* Flexbox容器属性 */
+.flex-container {
+  display: flex;
+  
+  /* 主轴方向 */
+  flex-direction: row | row-reverse | column | column-reverse;
+  
+  /* 换行方式 */
+  flex-wrap: nowrap | wrap | wrap-reverse;
+  
+  /* 简写：flex-direction + flex-wrap */
+  flex-flow: row wrap;
+  
+  /* 主轴对齐 */
+  justify-content: flex-start | flex-end | center | space-between | space-around | space-evenly;
+  
+  /* 交叉轴对齐 */
+  align-items: stretch | flex-start | flex-end | center | baseline;
+  
+  /* 多行交叉轴对齐 */
+  align-content: stretch | flex-start | flex-end | center | space-between | space-around;
+  
+  /* 间距 */
+  gap: 1rem; /* 或者 row-gap: 1rem; column-gap: 1rem; */
+}
+
+/* Flexbox项目属性 */
+.flex-item {
+  /* 放大比例 */
+  flex-grow: 0; /* 默认不放大 */
+  
+  /* 缩小比例 */
+  flex-shrink: 1; /* 默认可缩小 */
+  
+  /* 基础大小 */
+  flex-basis: auto; /* 默认为auto */
+  
+  /* 简写：flex-grow + flex-shrink + flex-basis */
+  flex: 1; /* 等同于 flex: 1 1 0% */
+  flex: auto; /* 等同于 flex: 1 1 auto */
+  flex: none; /* 等同于 flex: 0 0 auto */
+  
+  /* 单独对齐 */
+  align-self: auto | flex-start | flex-end | center | baseline | stretch;
+  
+  /* 排序 */
+  order: 0; /* 默认为0，数值越小越靠前 */
+}
+```
+
+#### Flexbox实战案例
+
+```html
+<!-- 经典的三栏布局 -->
+<div class="layout">
+  <header class="header">头部</header>
+  <main class="main">
+    <aside class="sidebar">侧边栏</aside>
+    <section class="content">主内容</section>
+  </main>
+  <footer class="footer">底部</footer>
+</div>
+
+<style>
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header, .footer {
+  background: #333;
+  color: white;
+  padding: 1rem;
+  flex-shrink: 0; /* 防止收缩 */
+}
+
+.main {
+  flex: 1; /* 占据剩余空间 */
+  display: flex;
+}
+
+.sidebar {
+  width: 250px;
+  background: #f5f5f5;
+  padding: 1rem;
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+  padding: 1rem;
+  background: white;
+}
+
+/* 响应式：小屏幕时垂直排列 */
+@media (max-width: 768px) {
+  .main {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: auto;
+    order: 2; /* 移到内容下方 */
+  }
+}
+</style>
+
+<!-- 卡片网格布局 -->
+<div class="card-grid">
+  <div class="card">卡片1</div>
+  <div class="card">卡片2</div>
+  <div class="card">卡片3</div>
+  <div class="card">卡片4</div>
+</div>
+
+<style>
+.card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.card {
+  flex: 1 1 300px; /* 最小宽度300px，可伸缩 */
+  min-height: 200px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  padding: 1rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>
+```
+
+### CSS Grid布局详解
+
+<Callout type="warning">
+CSS Grid是二维布局系统，比Flexbox更适合复杂的网格布局。掌握Grid能让你轻松实现各种复杂的布局需求。
+</Callout>
+
+```css
+/* Grid容器属性 */
+.grid-container {
+  display: grid;
+  
+  /* 定义列 */
+  grid-template-columns: 200px 1fr 100px; /* 固定-自适应-固定 */
+  grid-template-columns: repeat(3, 1fr); /* 三等分 */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* 响应式网格 */
+  
+  /* 定义行 */
+  grid-template-rows: 60px 1fr 40px;
+  grid-template-rows: repeat(3, 100px);
+  
+  /* 定义区域 */
+  grid-template-areas: 
+    "header header header"
+    "sidebar content content"
+    "footer footer footer";
+  
+  /* 间距 */
+  gap: 1rem; /* 或者 row-gap: 1rem; column-gap: 1rem; */
+  
+  /* 对齐方式 */
+  justify-items: start | end | center | stretch;
+  align-items: start | end | center | stretch;
+  justify-content: start | end | center | stretch | space-around | space-between | space-evenly;
+  align-content: start | end | center | stretch | space-around | space-between | space-evenly;
+}
+
+/* Grid项目属性 */
+.grid-item {
+  /* 指定位置 */
+  grid-column: 1 / 3; /* 从第1列到第3列 */
+  grid-row: 2 / 4; /* 从第2行到第4行 */
+  
+  /* 简写 */
+  grid-area: 2 / 1 / 4 / 3; /* row-start / col-start / row-end / col-end */
+  
+  /* 使用命名区域 */
+  grid-area: header;
+  
+  /* 跨越 */
+  grid-column: span 2; /* 跨越2列 */
+  grid-row: span 3; /* 跨越3行 */
+  
+  /* 单独对齐 */
+  justify-self: start | end | center | stretch;
+  align-self: start | end | center | stretch;
+}
+```
+
+#### Grid实战案例
+
+```html
+<!-- 经典网站布局 -->
+<div class="website-layout">
+  <header class="header">网站头部</header>
+  <nav class="nav">导航栏</nav>
+  <aside class="sidebar">侧边栏</aside>
+  <main class="content">主要内容</main>
+  <footer class="footer">网站底部</footer>
+</div>
+
+<style>
+.website-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: 80px 60px 1fr 60px;
+  grid-template-areas:
+    "header header"
+    "nav nav"
+    "sidebar content"
+    "footer footer";
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.header { grid-area: header; background: #333; color: white; }
+.nav { grid-area: nav; background: #666; color: white; }
+.sidebar { grid-area: sidebar; background: #f5f5f5; }
+.content { grid-area: content; background: white; }
+.footer { grid-area: footer; background: #333; color: white; }
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .website-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "nav"
+      "content"
+      "sidebar"
+      "footer";
+  }
+}
+</style>
+
+<!-- 响应式卡片网格 -->
+<div class="responsive-grid">
+  <div class="card">卡片 1</div>
+  <div class="card featured">特色卡片</div>
+  <div class="card">卡片 3</div>
+  <div class="card">卡片 4</div>
+  <div class="card">卡片 5</div>
+  <div class="card">卡片 6</div>
+</div>
+
+<style>
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  padding: 1rem;
+  color: white;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.featured {
+  grid-column: span 2; /* 特色卡片占两列 */
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* 确保在小屏幕上特色卡片不会过宽 */
+@media (max-width: 600px) {
+  .featured {
+    grid-column: span 1;
+  }
+}
+</style>
+```
+
+## 🎭 CSS动画和变换
+
+### Transform变换
+
+```css
+/* 2D变换 */
+.transform-2d {
+  /* 平移 */
+  transform: translate(50px, 100px);
+  transform: translateX(50px);
+  transform: translateY(100px);
+  
+  /* 缩放 */
+  transform: scale(1.5);
+  transform: scale(2, 0.5); /* X轴2倍，Y轴0.5倍 */
+  transform: scaleX(2);
+  transform: scaleY(0.5);
+  
+  /* 旋转 */
+  transform: rotate(45deg);
+  
+  /* 倾斜 */
+  transform: skew(30deg, 20deg);
+  transform: skewX(30deg);
+  transform: skewY(20deg);
+  
+  /* 组合变换 */
+  transform: translate(50px, 100px) rotate(45deg) scale(1.2);
+}
+
+/* 3D变换 */
+.transform-3d {
+  /* 启用3D空间 */
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  
+  /* 3D平移 */
+  transform: translate3d(50px, 100px, 200px);
+  transform: translateZ(200px);
+  
+  /* 3D旋转 */
+  transform: rotateX(45deg);
+  transform: rotateY(45deg);
+  transform: rotateZ(45deg);
+  transform: rotate3d(1, 1, 0, 45deg);
+  
+  /* 3D缩放 */
+  transform: scale3d(2, 1, 0.5);
+  transform: scaleZ(2);
+}
+
+/* 变换原点 */
+.transform-origin {
+  transform-origin: center center; /* 默认 */
+  transform-origin: top left;
+  transform-origin: 50% 50%;
+  transform-origin: 10px 20px;
+}
+```
+
+### CSS动画
+
+```css
+/* 关键帧动画 */
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -30px, 0);
+  }
+  70% {
+    transform: translate3d(0, -15px, 0);
+  }
+  90% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 应用动画 */
+.animated {
+  animation-name: slideIn;
+  animation-duration: 0.5s;
+  animation-timing-function: ease-out;
+  animation-delay: 0.2s;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
+  animation-play-state: running;
+  
+  /* 简写 */
+  animation: slideIn 0.5s ease-out 0.2s 1 normal forwards;
+}
+
+.bounce-animation {
+  animation: bounce 2s infinite;
+}
+
+.pulse-animation {
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+```
+
+### 过渡效果
+
+```css
+/* 基础过渡 */
+.transition-basic {
+  transition-property: all;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+  transition-delay: 0s;
+  
+  /* 简写 */
+  transition: all 0.3s ease;
+}
+
+/* 多属性过渡 */
+.transition-multiple {
+  transition: 
+    background-color 0.3s ease,
+    transform 0.2s ease-out,
+    opacity 0.4s linear;
+}
+
+/* 实用的过渡效果 */
+.button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 卡片悬停效果 */
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+```
+
+## 📱 响应式设计深入
+
+### 媒体查询高级用法
+
+<Callout type="info">
+现代响应式设计不仅仅是屏幕尺寸适配，还要考虑设备特性、用户偏好等多个维度。
+</Callout>
+
+```css
+/* 基础媒体查询 */
+@media screen and (max-width: 768px) {
+  /* 移动端样式 */
+}
+
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  /* 平板端样式 */
+}
+
+@media screen and (min-width: 1025px) {
+  /* 桌面端样式 */
+}
+
+/* 高级媒体查询 */
+@media screen and (orientation: landscape) {
+  /* 横屏样式 */
+}
+
+@media screen and (orientation: portrait) {
+  /* 竖屏样式 */
+}
+
+@media screen and (min-resolution: 2dppx) {
+  /* 高分辨率屏幕（Retina等） */
+}
+
+@media (prefers-color-scheme: dark) {
+  /* 用户偏好暗色主题 */
+  :root {
+    --bg-color: #1a1a1a;
+    --text-color: #ffffff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 用户偏好减少动画 */
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (hover: hover) {
+  /* 支持悬停的设备 */
+  .button:hover {
+    background-color: #0056b3;
+  }
+}
+
+@media (hover: none) {
+  /* 不支持悬停的设备（触摸设备） */
+  .button:active {
+    background-color: #0056b3;
+  }
+}
+```
+
+### 容器查询
+
+```css
+/* 容器查询（现代浏览器支持） */
+.card-container {
+  container-type: inline-size;
+  container-name: card;
+}
+
+@container card (min-width: 300px) {
+  .card {
+    display: flex;
+    flex-direction: row;
+  }
+  
+  .card-image {
+    width: 150px;
+  }
+}
+
+@container card (max-width: 299px) {
+  .card {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .card-image {
+    width: 100%;
+  }
+}
+```
+
+### 现代CSS单位
+
+```css
+/* 视口单位 */
+.hero {
+  height: 100vh; /* 视口高度 */
+  width: 100vw; /* 视口宽度 */
+  font-size: 4vw; /* 视口宽度的4% */
+}
+
+/* 新的视口单位（解决移动端地址栏问题） */
+.mobile-hero {
+  height: 100dvh; /* 动态视口高度 */
+  height: 100svh; /* 小视口高度 */
+  height: 100lvh; /* 大视口高度 */
+}
+
+/* 容器单位 */
+.responsive-text {
+  font-size: clamp(1rem, 4cqw, 2rem); /* 容器查询宽度 */
+}
+
+/* 逻辑属性 */
+.logical-spacing {
+  margin-block: 1rem; /* margin-top + margin-bottom */
+  margin-inline: 2rem; /* margin-left + margin-right */
+  padding-block-start: 0.5rem; /* padding-top */
+  padding-block-end: 0.5rem; /* padding-bottom */
+  padding-inline-start: 1rem; /* padding-left (LTR) / padding-right (RTL) */
+  padding-inline-end: 1rem; /* padding-right (LTR) / padding-left (RTL) */
+}
+
+/* 数学函数 */
+.math-functions {
+  width: calc(100% - 2rem);
+  font-size: clamp(1rem, 2.5vw, 2rem); /* 最小值, 首选值, 最大值 */
+  margin: max(1rem, 5%); /* 取较大值 */
+  padding: min(2rem, 10%); /* 取较小值 */
+}
+```
+
+## 🏗️ CSS架构方法论
+
+### BEM方法论
+
+<Callout type="warning">
+BEM（Block Element Modifier）是一种CSS命名约定，能够让CSS更加模块化和可维护。
+</Callout>
+
+```css
+/* BEM命名规范 */
+/* Block（块） */
+.card { }
+
+/* Element（元素） */
+.card__header { }
+.card__body { }
+.card__footer { }
+.card__title { }
+.card__description { }
+.card__button { }
+
+/* Modifier（修饰符） */
+.card--featured { } /* 特色卡片 */
+.card--large { } /* 大尺寸卡片 */
+.card__button--primary { } /* 主要按钮 */
+.card__button--disabled { } /* 禁用按钮 */
+
+/* 实际应用 */
+.product-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.product-card--featured {
+  border: 2px solid #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.product-card__image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.product-card__content {
+  padding: 1rem;
+}
+
+.product-card__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.product-card__title--large {
+  font-size: 1.5rem;
+}
+
+.product-card__description {
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.product-card__price {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #007bff;
+}
+
+.product-card__button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.product-card__button--secondary {
+  background: #6c757d;
+}
+
+.product-card__button--disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+```
+
+### OOCSS（面向对象CSS）
+
+```css
+/* 结构与皮肤分离 */
+/* 结构类 */
+.btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* 皮肤类 */
+.btn-primary {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #007bff;
+  border-color: #007bff;
+}
+
+/* 容器与内容分离 */
+.media {
+  display: flex;
+  align-items: flex-start;
+}
+
+.media__object {
+  flex-shrink: 0;
+  margin-right: 1rem;
+}
+
+.media__body {
+  flex: 1;
+}
+
+/* 使用示例 */
+/* <div class="media">
+     <img src="avatar.jpg" class="media__object" alt="Avatar">
+     <div class="media__body">
+       <h5>用户名</h5>
+       <p>用户描述...</p>
+     </div>
+   </div> */
+```
+
+### 原子化CSS（Atomic CSS）
+
+```css
+/* 原子化工具类 */
+/* 间距 */
+.m-0 { margin: 0; }
+.m-1 { margin: 0.25rem; }
+.m-2 { margin: 0.5rem; }
+.m-3 { margin: 0.75rem; }
+.m-4 { margin: 1rem; }
+
+.mt-1 { margin-top: 0.25rem; }
+.mr-1 { margin-right: 0.25rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.ml-1 { margin-left: 0.25rem; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+
+/* 显示 */
+.d-none { display: none; }
+.d-block { display: block; }
+.d-inline { display: inline; }
+.d-inline-block { display: inline-block; }
+.d-flex { display: flex; }
+.d-grid { display: grid; }
+
+/* Flexbox */
+.flex-row { flex-direction: row; }
+.flex-column { flex-direction: column; }
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+
+/* 文本 */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* 颜色 */
+.text-gray-500 { color: #6b7280; }
+.text-gray-900 { color: #111827; }
+.text-blue-500 { color: #3b82f6; }
+.text-red-500 { color: #ef4444; }
+.bg-white { background-color: #ffffff; }
+.bg-gray-100 { background-color: #f3f4f6; }
+.bg-blue-500 { background-color: #3b82f6; }
+
+/* 边框 */
+.border { border: 1px solid #e5e7eb; }
+.border-0 { border: 0; }
+.border-t { border-top: 1px solid #e5e7eb; }
+.border-gray-200 { border-color: #e5e7eb; }
+.rounded { border-radius: 0.25rem; }
+.rounded-md { border-radius: 0.375rem; }
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-full { border-radius: 9999px; }
+
+/* 阴影 */
+.shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+.shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+```
+
+---
+
+<Callout type="success">
+CSS3的强大功能让我们能够创建出美观、响应式、高性能的用户界面。掌握现代CSS布局、动画和架构方法论，是成为优秀前端开发者的必备技能。
+</Callout>

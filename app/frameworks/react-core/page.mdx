@@ -1,0 +1,601 @@
+import { Callout } from 'nextra/components'
+
+# 07. React核心原理和生态
+
+## 📋 目录
+
+- [React架构深度解析](#react架构深度解析)
+- [Fiber架构和调度机制](#fiber架构和调度机制)
+- [Hooks原理和最佳实践](#hooks原理和最佳实践)
+- [状态管理方案对比](#状态管理方案对比)
+- [React性能优化](#react性能优化)
+- [React生态工具链](#react生态工具链)
+
+## ⚛️ React架构深度解析
+
+<Callout type="info">
+React的核心思想是将UI视为函数的纯粹输出，通过声明式编程和组件化思想构建用户界面。
+</Callout>
+
+### React核心概念
+
+```jsx
+// React的核心思想：UI = f(state)
+// 组件就是函数，接收props和state，返回JSX
+
+// 1. 函数式组件的本质
+function MyComponent(props) {
+  // 这就是一个纯函数
+  return <div>{props.children}</div>;
+}
+
+// 2. JSX的本质
+// JSX语法糖
+const element = <h1 className="greeting">Hello, world!</h1>;
+
+// 编译后的真实代码
+const element = React.createElement(
+  'h1',
+  { className: 'greeting' },
+  'Hello, world!'
+);
+
+// 3. Virtual DOM的结构
+const virtualDOM = {
+  type: 'h1',
+  props: {
+    className: 'greeting',
+    children: 'Hello, world!'
+  },
+  key: null,
+  ref: null
+};
+
+// 4. React元素的不可变性
+const element1 = <div>Hello</div>;
+const element2 = <div>Hello</div>;
+console.log(element1 === element2); // false，每次都是新对象
+```
+
+### React渲染流程
+
+<Callout type="warning">
+理解React的渲染流程对于编写高性能的React应用至关重要。React的渲染过程分为三个主要阶段。
+</Callout>
+
+```javascript
+// React渲染的三个阶段
+/*
+1. Render Phase (可中断)
+   - 构建Fiber树
+   - 执行组件函数
+   - 计算state和props的变化
+   - 标记副作用
+
+2. Commit Phase (不可中断)
+   - DOM操作
+   - 执行副作用
+   - 调用生命周期方法
+
+3. Passive Effects Phase
+   - 执行useEffect
+*/
+```
+
+#### 渲染流程详解
+
+1. **触发更新**：
+   - 首次渲染
+   - setState/useState更新
+   - forceUpdate
+   - 父组件重新渲染
+
+2. **Render阶段**：
+   - 执行组件函数/render方法
+   - 生成Virtual DOM
+   - Diffing算法比较变化
+   - 收集副作用
+
+3. **Commit阶段**：
+   - 应用DOM更新
+   - 执行DOM相关副作用
+   - 调用生命周期方法/useLayoutEffect
+
+4. **Passive Effects阶段**：
+   - 执行useEffect回调
+
+```jsx
+// 渲染流程示例
+function Counter() {
+  console.log("1. 组件函数执行"); // Render阶段
+  
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    console.log("4. useEffect执行"); // Passive Effects阶段
+    return () => {
+      console.log("清除上一次的Effect");
+    };
+  }, [count]);
+  
+  useLayoutEffect(() => {
+    console.log("3. useLayoutEffect执行"); // Commit阶段结束
+  }, [count]);
+  
+  console.log("2. 渲染JSX"); // Render阶段
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>
+        Increment
+      </button>
+    </div>
+  );
+}
+```
+
+## 🧵 Fiber架构和调度机制
+
+<Callout type="info">
+Fiber架构是React 16引入的重大架构升级，它使React能够实现可中断的渲染和优先级调度。
+</Callout>
+
+### Fiber节点结构
+
+```javascript
+// Fiber节点的数据结构
+const FiberNode = {
+  // 节点类型信息
+  type: null,          // 组件类型（函数、类、DOM标签）
+  key: null,           // React key
+  elementType: null,   // 元素类型
+  
+  // 节点实例
+  stateNode: null,     // 对应的DOM节点或组件实例
+  
+  // Fiber树结构
+  return: null,        // 父Fiber节点
+  child: null,         // 第一个子Fiber节点
+  sibling: null,       // 下一个兄弟Fiber节点
+  index: 0,            // 在父节点中的索引
+  
+  // 工作相关
+  ref: null,           // ref引用
+  pendingProps: null,  // 新的props
+  memoizedProps: null, // 上次渲染的props
+  updateQueue: null,   // 更新队列
+  memoizedState: null, // 上次渲染的state
+  
+  // 副作用
+  flags: NoFlags,      // 副作用标记
+  subtreeFlags: NoFlags, // 子树副作用标记
+  deletions: null,     // 需要删除的子节点
+  
+  // 调度相关
+  lanes: NoLanes,      // 优先级车道
+  childLanes: NoLanes, // 子节点优先级车道
+  
+  // 双缓存
+  alternate: null      // 指向另一个Fiber树中对应的节点
+};
+```
+
+### 时间切片和优先级调度
+
+```javascript
+// 时间切片示例
+function workLoopConcurrent() {
+  // 在有剩余时间时继续工作
+  while (workInProgress !== null && !shouldYield()) {
+    performUnitOfWork(workInProgress);
+  }
+}
+
+function shouldYield() {
+  // 检查是否应该让出控制权
+  return getCurrentTime() >= deadline;
+}
+
+// 优先级调度示例
+const priorities = {
+  ImmediatePriority: 1,    // 立即执行（如用户输入）
+  UserBlockingPriority: 2, // 用户阻塞（如点击、滚动）
+  NormalPriority: 3,       // 正常优先级（如网络请求）
+  LowPriority: 4,          // 低优先级（如分析统计）
+  IdlePriority: 5          // 空闲时执行
+};
+```
+
+## 🎣 Hooks原理和最佳实践
+
+### Hooks实现原理
+
+<Callout type="warning">
+Hooks的实现基于链表结构，这就是为什么Hooks必须在组件顶层调用，不能在条件语句中使用。
+</Callout>
+
+```javascript
+// useState的简化实现
+let hookIndex = 0;
+let hooks = [];
+
+function useState(initialValue) {
+  const currentIndex = hookIndex;
+  
+  // 初始化或获取已有的hook
+  if (hooks[currentIndex] === undefined) {
+    hooks[currentIndex] = {
+      state: initialValue,
+      queue: []
+    };
+  }
+  
+  const hook = hooks[currentIndex];
+  
+  // 处理更新队列
+  hook.queue.forEach(action => {
+    hook.state = typeof action === 'function' ? action(hook.state) : action;
+  });
+  hook.queue = [];
+  
+  const setState = (action) => {
+    hook.queue.push(action);
+    // 触发重新渲染
+    rerender();
+  };
+  
+  hookIndex++;
+  return [hook.state, setState];
+}
+
+// useEffect的简化实现
+function useEffect(callback, deps) {
+  const currentIndex = hookIndex;
+  
+  if (hooks[currentIndex] === undefined) {
+    hooks[currentIndex] = {
+      callback,
+      deps,
+      cleanup: null
+    };
+    
+    // 首次执行
+    hooks[currentIndex].cleanup = callback();
+  } else {
+    const hook = hooks[currentIndex];
+    
+    // 检查依赖是否变化
+    const depsChanged = deps ? 
+      !deps.every((dep, i) => dep === hook.deps[i]) : 
+      true;
+    
+    if (depsChanged) {
+      // 清理上一次的副作用
+      if (hook.cleanup) {
+        hook.cleanup();
+      }
+      
+      // 执行新的副作用
+      hook.cleanup = callback();
+      hook.deps = deps;
+    }
+  }
+  
+  hookIndex++;
+}
+```
+
+### 自定义Hooks最佳实践
+
+```javascript
+// 1. useLocalStorage - 本地存储Hook
+function useLocalStorage(key, initialValue) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(`Error reading localStorage key "${key}":`, error);
+      return initialValue;
+    }
+  });
+
+  const setValue = useCallback((value) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(`Error setting localStorage key "${key}":`, error);
+    }
+  }, [key, storedValue]);
+
+  return [storedValue, setValue];
+}
+
+// 2. useDebounce - 防抖Hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// 3. useAsync - 异步状态管理Hook
+function useAsync(asyncFunction, dependencies = []) {
+  const [state, setState] = useState({
+    data: null,
+    loading: false,
+    error: null
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    setState({ data: null, loading: true, error: null });
+    
+    asyncFunction()
+      .then(data => {
+        if (!cancelled) {
+          setState({ data, loading: false, error: null });
+        }
+      })
+      .catch(error => {
+        if (!cancelled) {
+          setState({ data: null, loading: false, error });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, dependencies);
+
+  return state;
+}
+
+// 4. useIntersectionObserver - 交叉观察器Hook
+function useIntersectionObserver(ref, options = {}) {
+  const [isIntersecting, setIsIntersecting] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsIntersecting(entry.isIntersecting);
+    }, options);
+
+    observer.observe(ref.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref, options]);
+
+  return isIntersecting;
+}
+
+// 使用示例
+function ExampleComponent() {
+  const [name, setName] = useLocalStorage('name', '');
+  const debouncedName = useDebounce(name, 500);
+  const elementRef = useRef();
+  const isVisible = useIntersectionObserver(elementRef);
+  
+  const { data, loading, error } = useAsync(
+    () => fetch('/api/data').then(res => res.json()),
+    [debouncedName]
+  );
+
+  return (
+    <div>
+      <input 
+        value={name} 
+        onChange={(e) => setName(e.target.value)}
+        placeholder="输入姓名"
+      />
+      
+      <div ref={elementRef}>
+        {isVisible && <p>元素可见！</p>}
+      </div>
+      
+      {loading && <p>加载中...</p>}
+      {error && <p>错误: {error.message}</p>}
+      {data && <pre>{JSON.stringify(data, null, 2)}</pre>}
+    </div>
+  );
+}
+```
+
+## 🏪 状态管理方案对比
+
+### Redux vs Zustand vs Jotai
+
+```javascript
+// 1. Redux + Redux Toolkit
+import { createSlice, configureStore } from '@reduxjs/toolkit';
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 },
+  reducers: {
+    increment: (state) => {
+      state.value += 1;
+    },
+    decrement: (state) => {
+      state.value -= 1;
+    },
+    incrementByAmount: (state, action) => {
+      state.value += action.payload;
+    }
+  }
+});
+
+const store = configureStore({
+  reducer: {
+    counter: counterSlice.reducer
+  }
+});
+
+// 2. Zustand
+import { create } from 'zustand';
+
+const useCounterStore = create((set) => ({
+  count: 0,
+  increment: () => set((state) => ({ count: state.count + 1 })),
+  decrement: () => set((state) => ({ count: state.count - 1 })),
+  reset: () => set({ count: 0 })
+}));
+
+// 3. Jotai
+import { atom, useAtom } from 'jotai';
+
+const countAtom = atom(0);
+const doubleCountAtom = atom((get) => get(countAtom) * 2);
+
+function JotaiCounter() {
+  const [count, setCount] = useAtom(countAtom);
+  const [doubleCount] = useAtom(doubleCountAtom);
+
+  return (
+    <div>
+      <span>Count: {count}</span>
+      <span>Double: {doubleCount}</span>
+      <button onClick={() => setCount(c => c + 1)}>+</button>
+    </div>
+  );
+}
+```
+
+### 状态管理方案选择指南
+
+| 方案 | 适用场景 | 优点 | 缺点 |
+|------|----------|------|------|
+| **Redux** | 大型复杂应用 | 可预测、调试工具强大 | 样板代码多、学习曲线陡 |
+| **Zustand** | 中小型应用 | 轻量、API简单 | 生态相对较小 |
+| **Jotai** | 需要细粒度控制 | 原子化、避免不必要重渲染 | 概念相对新颖 |
+| **Context** | 简单全局状态 | React内置、无需依赖 | 性能问题、不适合频繁更新 |
+
+## ⚡ React性能优化
+
+### 组件优化技巧
+
+```jsx
+// 1. React.memo - 组件记忆化
+const ExpensiveComponent = React.memo(({ data, onUpdate }) => {
+  console.log('ExpensiveComponent 重新渲染');
+  
+  return (
+    <div>
+      {data.map(item => (
+        <div key={item.id}>{item.name}</div>
+      ))}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // 自定义比较函数
+  return prevProps.data.length === nextProps.data.length &&
+         prevProps.onUpdate === nextProps.onUpdate;
+});
+
+// 2. useMemo - 值记忆化
+function DataProcessor({ items, filter }) {
+  const expensiveValue = useMemo(() => {
+    console.log('计算昂贵的值');
+    return items
+      .filter(item => item.category === filter)
+      .reduce((sum, item) => sum + item.value, 0);
+  }, [items, filter]);
+
+  return <div>总计: {expensiveValue}</div>;
+}
+
+// 3. useCallback - 函数记忆化
+function ParentComponent() {
+  const [count, setCount] = useState(0);
+  const [name, setName] = useState('');
+
+  // 没有useCallback，每次渲染都会创建新函数
+  const handleClick = useCallback(() => {
+    console.log('按钮被点击');
+  }, []); // 空依赖数组，函数永远不会改变
+
+  const handleNameChange = useCallback((newName) => {
+    setName(newName);
+  }, []); // 使用函数式更新，避免依赖name
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(c => c + 1)}>增加</button>
+      
+      <ExpensiveChild 
+        onClick={handleClick}
+        onNameChange={handleNameChange}
+      />
+    </div>
+  );
+}
+
+// 4. 代码分割和懒加载
+const LazyComponent = React.lazy(() => import('./LazyComponent'));
+
+function App() {
+  return (
+    <div>
+      <Suspense fallback={<div>加载中...</div>}>
+        <LazyComponent />
+      </Suspense>
+    </div>
+  );
+}
+
+// 5. 虚拟滚动
+function VirtualList({ items, itemHeight = 50 }) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const containerHeight = 400;
+  const visibleCount = Math.ceil(containerHeight / itemHeight);
+  const startIndex = Math.floor(scrollTop / itemHeight);
+  const endIndex = Math.min(startIndex + visibleCount, items.length);
+  
+  const visibleItems = items.slice(startIndex, endIndex);
+  
+  return (
+    <div 
+      style={{ height: containerHeight, overflow: 'auto' }}
+      onScroll={(e) => setScrollTop(e.target.scrollTop)}
+    >
+      <div style={{ height: items.length * itemHeight, position: 'relative' }}>
+        {visibleItems.map((item, index) => (
+          <div
+            key={startIndex + index}
+            style={{
+              position: 'absolute',
+              top: (startIndex + index) * itemHeight,
+              height: itemHeight,
+              width: '100%'
+            }}
+          >
+            {item.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+<Callout type="success">
+理解React的核心原理和Fiber架构是成为React高级开发者的关键。这些知识将帮助你编写更高效、更可维护的React应用。
+</Callout>

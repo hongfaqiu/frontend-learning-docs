@@ -1,0 +1,910 @@
+import { Callout } from 'nextra/components'
+
+# 14. 移动端开发
+
+## 📋 目录
+
+- [移动端开发技术栈](#移动端开发技术栈)
+- [React Native深入开发](#react-native深入开发)
+- [Flutter跨平台开发](#flutter跨平台开发)
+- [原生模块和桥接](#原生模块和桥接)
+- [性能优化策略](#性能优化策略)
+- [发布和分发](#发布和分发)
+
+## 📱 移动端开发技术栈
+
+<Callout type="info">
+移动端开发技术日新月异，选择合适的技术栈能够大大提升开发效率和应用性能。
+</Callout>
+
+### 移动端技术方案对比
+
+```javascript
+// 移动端开发技术对比
+const mobileTechnologies = {
+  // 原生开发
+  native: {
+    ios: {
+      语言: 'Swift/Objective-C',
+      IDE: 'Xcode',
+      优势: ['最佳性能', '完整平台特性', '最新API支持'],
+      劣势: ['开发成本高', '维护复杂', '技能要求高'],
+      适用场景: '高性能应用、平台特定功能'
+    },
+    android: {
+      语言: 'Kotlin/Java',
+      IDE: 'Android Studio',
+      优势: ['最佳性能', '完整平台特性', '灵活定制'],
+      劣势: ['碎片化严重', '开发成本高', '维护复杂'],
+      适用场景: '高性能应用、深度定制'
+    }
+  },
+  
+  // 跨平台框架
+  crossPlatform: {
+    reactNative: {
+      技术栈: 'React + JavaScript/TypeScript',
+      渲染方式: '原生组件',
+      优势: [
+        'React生态丰富',
+        '热重载开发体验',
+        '代码复用率高',
+        '社区活跃'
+      ],
+      劣势: [
+        '性能不如原生',
+        '平台差异处理',
+        '第三方库依赖'
+      ],
+      知名应用: ['Facebook', 'Instagram', 'Uber Eats'],
+      适用场景: '快速开发、内容展示类应用'
+    },
+    
+    flutter: {
+      技术栈: 'Dart + Flutter',
+      渲染方式: '自绘引擎',
+      优势: [
+        '高性能渲染',
+        '一致的UI体验',
+        '热重载',
+        'Google支持'
+      ],
+      劣势: [
+        '学习成本高',
+        '生态相对较小',
+        '应用体积大'
+      ],
+      知名应用: ['Google Pay', 'Alibaba', 'BMW'],
+      适用场景: '复杂UI、高性能要求'
+    },
+    
+    ionic: {
+      技术栈: 'Web技术 + Cordova/Capacitor',
+      渲染方式: 'WebView',
+      优势: [
+        'Web技术栈',
+        '快速开发',
+        '插件丰富'
+      ],
+      劣势: [
+        '性能较差',
+        'WebView限制',
+        '用户体验差异'
+      ],
+      适用场景: '简单应用、快速原型'
+    }
+  }
+};
+
+// 技术选择决策
+function chooseMobileTechnology(requirements) {
+  const {
+    teamSkills,
+    performanceRequirements,
+    developmentTime,
+    budget,
+    platformPriority,
+    uiComplexity
+  } = requirements;
+  
+  // 高性能要求或平台特定功能
+  if (performanceRequirements === 'critical' || platformPriority === 'single') {
+    return {
+      recommendation: 'Native',
+      reason: '最佳性能和平台集成'
+    };
+  }
+  
+  // React技术栈团队
+  if (teamSkills.includes('react') && developmentTime === 'short') {
+    return {
+      recommendation: 'React Native',
+      reason: '快速开发，技能复用'
+    };
+  }
+  
+  // 复杂UI或高性能要求
+  if (uiComplexity === 'high' || performanceRequirements === 'high') {
+    return {
+      recommendation: 'Flutter',
+      reason: '优秀的UI性能和一致性'
+    };
+  }
+  
+  // 预算有限，快速开发
+  if (budget === 'limited' && teamSkills.includes('web')) {
+    return {
+      recommendation: 'Ionic',
+      reason: '低成本，快速上线'
+    };
+  }
+  
+  // 默认推荐
+  return {
+    recommendation: 'React Native',
+    reason: '平衡了开发效率和性能'
+  };
+}
+```
+
+## ⚛️ React Native深入开发
+
+### React Native架构和组件
+
+```typescript
+// 1. 核心组件和API使用
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Platform,
+  Alert,
+  Linking,
+  Share
+} from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// 获取设备信息
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const isIOS = Platform.OS === 'ios';
+const isAndroid = Platform.OS === 'android';
+
+// 用户列表组件
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  isOnline: boolean;
+}
+
+interface UserListProps {
+  users: User[];
+  onUserPress: (user: User) => void;
+  onRefresh: () => Promise<void>;
+}
+
+const UserList: React.FC<UserListProps> = ({ users, onUserPress, onRefresh }) => {
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [onRefresh]);
+  
+  const renderUser = useCallback(({ item }: { item: User }) => (
+    <TouchableOpacity
+      style={styles.userItem}
+      onPress={() => onUserPress(item)}
+      activeOpacity={0.7}
+    >
+      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <View style={styles.userInfo}>
+        <Text style={styles.userName}>{item.name}</Text>
+        <Text style={styles.userEmail}>{item.email}</Text>
+      </View>
+      <View style={[
+        styles.onlineIndicator,
+        { backgroundColor: item.isOnline ? '#4CAF50' : '#9E9E9E' }
+      ]} />
+    </TouchableOpacity>
+  ), [onUserPress]);
+  
+  const keyExtractor = useCallback((item: User) => item.id, []);
+  
+  return (
+    <FlatList
+      data={users}
+      renderItem={renderUser}
+      keyExtractor={keyExtractor}
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.listContainer}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ListEmptyComponent={() => (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>暂无用户数据</Text>
+        </View>
+      )}
+    />
+  );
+};
+
+// 主应用组件
+const App: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    loadUsers();
+  }, []);
+  
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      
+      // 从本地存储加载缓存数据
+      const cachedUsers = await AsyncStorage.getItem('users');
+      if (cachedUsers) {
+        setUsers(JSON.parse(cachedUsers));
+      }
+      
+      // 从API获取最新数据
+      const response = await fetch('https://api.example.com/users');
+      const freshUsers = await response.json();
+      
+      setUsers(freshUsers);
+      
+      // 缓存到本地存储
+      await AsyncStorage.setItem('users', JSON.stringify(freshUsers));
+    } catch (error) {
+      console.error('加载用户失败:', error);
+      Alert.alert('错误', '加载用户数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleUserPress = useCallback((user: User) => {
+    Alert.alert(
+      user.name,
+      `邮箱: ${user.email}`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '发送邮件',
+          onPress: () => {
+            Linking.openURL(`mailto:${user.email}`);
+          }
+        },
+        {
+          text: '分享',
+          onPress: () => {
+            Share.share({
+              message: `推荐用户: ${user.name} (${user.email})`,
+              title: '用户分享'
+            });
+          }
+        }
+      ]
+    );
+  }, []);
+  
+  const handleRefresh = useCallback(async () => {
+    await loadUsers();
+  }, []);
+  
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text>加载中...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>用户列表</Text>
+        </View>
+        
+        <UserList
+          users={users}
+          onUserPress={handleUserPress}
+          onRefresh={handleRefresh}
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+};
+
+// 样式定义
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5'
+  },
+  header: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4
+      },
+      android: {
+        elevation: 4
+      }
+    })
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center'
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  listContainer: {
+    padding: 16
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2
+      },
+      android: {
+        elevation: 2
+      }
+    })
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12
+  },
+  userInfo: {
+    flex: 1
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4
+  },
+  userEmail: {
+    fontSize: 14,
+    color: '#666'
+  },
+  onlineIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6
+  },
+  separator: {
+    height: 12
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999'
+  }
+});
+
+export default App;
+```
+
+### 导航和状态管理
+
+```typescript
+// 1. React Navigation设置
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+
+// 类型定义
+export type RootStackParamList = {
+  Main: undefined;
+  UserDetail: { userId: string };
+  Settings: undefined;
+};
+
+export type TabParamList = {
+  Home: undefined;
+  Users: undefined;
+  Profile: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
+const Drawer = createDrawerNavigator();
+
+// 标签页导航
+function TabNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: string;
+          
+          switch (route.name) {
+            case 'Home':
+              iconName = 'home';
+              break;
+            case 'Users':
+              iconName = 'people';
+              break;
+            case 'Profile':
+              iconName = 'person';
+              break;
+            default:
+              iconName = 'help';
+          }
+          
+          return <Icon name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#2196F3',
+        tabBarInactiveTintColor: '#999',
+        headerShown: false
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Users" component={UsersScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
+// 主导航
+function AppNavigator() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Main"
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#2196F3'
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold'
+          }
+        }}
+      >
+        <Stack.Screen 
+          name="Main" 
+          component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="UserDetail" 
+          component={UserDetailScreen}
+          options={({ route }) => ({
+            title: '用户详情',
+            headerBackTitle: '返回'
+          })}
+        />
+        <Stack.Screen 
+          name="Settings" 
+          component={SettingsScreen}
+          options={{
+            title: '设置',
+            presentation: 'modal'
+          }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+// 2. Redux Toolkit状态管理
+import { configureStore, createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { Provider, useSelector, useDispatch } from 'react-redux';
+
+// 异步操作
+export const fetchUsers = createAsyncThunk(
+  'users/fetchUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch('https://api.example.com/users');
+      if (!response.ok) {
+        throw new Error('网络请求失败');
+      }
+      return await response.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// 用户状态切片
+const usersSlice = createSlice({
+  name: 'users',
+  initialState: {
+    items: [] as User[],
+    loading: false,
+    error: null as string | null
+  },
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+    updateUser: (state, action) => {
+      const { id, updates } = action.payload;
+      const userIndex = state.items.findIndex(user => user.id === id);
+      if (userIndex !== -1) {
+        state.items[userIndex] = { ...state.items[userIndex], ...updates };
+      }
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = action.payload;
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+  }
+});
+
+export const { clearError, updateUser } = usersSlice.actions;
+
+// Store配置
+const store = configureStore({
+  reducer: {
+    users: usersSlice.reducer
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: ['persist/PERSIST']
+      }
+    })
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
+// 3. 自定义Hooks
+import { useSelector, useDispatch } from 'react-redux';
+import { useFocusEffect } from '@react-navigation/native';
+
+export const useAppSelector = useSelector.withTypes<RootState>();
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+
+// 用户数据Hook
+export function useUsers() {
+  const dispatch = useAppDispatch();
+  const { items: users, loading, error } = useAppSelector(state => state.users);
+  
+  const loadUsers = useCallback(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
+  
+  const updateUserData = useCallback((id: string, updates: Partial<User>) => {
+    dispatch(updateUser({ id, updates }));
+  }, [dispatch]);
+  
+  const clearErrorMessage = useCallback(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+  
+  // 页面聚焦时刷新数据
+  useFocusEffect(
+    useCallback(() => {
+      loadUsers();
+    }, [loadUsers])
+  );
+  
+  return {
+    users,
+    loading,
+    error,
+    loadUsers,
+    updateUserData,
+    clearErrorMessage
+  };
+}
+
+// 设备信息Hook
+export function useDeviceInfo() {
+  const [deviceInfo, setDeviceInfo] = useState({
+    width: screenWidth,
+    height: screenHeight,
+    isLandscape: false
+  });
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDeviceInfo({
+        width: window.width,
+        height: window.height,
+        isLandscape: window.width > window.height
+      });
+    });
+    
+    return () => subscription?.remove();
+  }, []);
+  
+  return deviceInfo;
+}
+
+// 4. 应用入口
+function App() {
+  return (
+    <Provider store={store}>
+      <AppNavigator />
+    </Provider>
+  );
+}
+
+export default App;
+```
+
+### 原生模块集成
+
+```typescript
+// 1. 原生模块桥接 (iOS)
+// ios/MyApp/NativeModule.h
+#import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
+
+@interface NativeModule : RCTEventEmitter <RCTBridgeModule>
+@end
+
+// ios/MyApp/NativeModule.m
+#import "NativeModule.h"
+#import <React/RCTLog.h>
+
+@implementation NativeModule
+
+RCT_EXPORT_MODULE();
+
+// 支持事件发送
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"onLocationUpdate", @"onBatteryChange"];
+}
+
+// 获取设备信息
+RCT_EXPORT_METHOD(getDeviceInfo:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  @try {
+    UIDevice *device = [UIDevice currentDevice];
+    NSDictionary *deviceInfo = @{
+      @"name": device.name,
+      @"model": device.model,
+      @"systemName": device.systemName,
+      @"systemVersion": device.systemVersion,
+      @"batteryLevel": @(device.batteryLevel)
+    };
+    resolve(deviceInfo);
+  } @catch (NSException *exception) {
+    reject(@"device_info_error", @"Failed to get device info", nil);
+  }
+}
+
+// 显示原生弹窗
+RCT_EXPORT_METHOD(showNativeAlert:(NSString *)title
+                  message:(NSString *)message
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    UIAlertController *alert = [UIAlertController 
+      alertControllerWithTitle:title 
+      message:message 
+      preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *okAction = [UIAlertAction 
+      actionWithTitle:@"确定" 
+      style:UIAlertActionStyleDefault 
+      handler:^(UIAlertAction * action) {
+        resolve(@"ok");
+      }];
+    
+    [alert addAction:okAction];
+    
+    UIViewController *rootViewController = [UIApplication sharedApplication].delegate.window.rootViewController;
+    [rootViewController presentViewController:alert animated:YES completion:nil];
+  });
+}
+
+@end
+
+// 2. 原生模块桥接 (Android)
+// android/app/src/main/java/com/myapp/NativeModule.java
+package com.myapp;
+
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+
+import android.os.Build;
+import android.content.Context;
+import android.app.AlertDialog;
+
+public class NativeModule extends ReactContextBaseJavaModule {
+    private ReactApplicationContext reactContext;
+    
+    public NativeModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        this.reactContext = reactContext;
+    }
+    
+    @Override
+    public String getName() {
+        return "NativeModule";
+    }
+    
+    @ReactMethod
+    public void getDeviceInfo(Promise promise) {
+        try {
+            WritableMap deviceInfo = Arguments.createMap();
+            deviceInfo.putString("manufacturer", Build.MANUFACTURER);
+            deviceInfo.putString("model", Build.MODEL);
+            deviceInfo.putString("version", Build.VERSION.RELEASE);
+            deviceInfo.putInt("sdkVersion", Build.VERSION.SDK_INT);
+            
+            promise.resolve(deviceInfo);
+        } catch (Exception e) {
+            promise.reject("device_info_error", "Failed to get device info", e);
+        }
+    }
+    
+    @ReactMethod
+    public void showNativeAlert(String title, String message, Promise promise) {
+        getCurrentActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getCurrentActivity());
+                builder.setTitle(title)
+                       .setMessage(message)
+                       .setPositiveButton("确定", (dialog, which) -> {
+                           promise.resolve("ok");
+                       })
+                       .show();
+            }
+        });
+    }
+    
+    // 发送事件到JavaScript
+    private void sendEvent(String eventName, WritableMap params) {
+        reactContext
+            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+            .emit(eventName, params);
+    }
+}
+
+// 3. JavaScript端使用
+import { NativeModules, NativeEventEmitter } from 'react-native';
+
+const { NativeModule } = NativeModules;
+const nativeEventEmitter = new NativeEventEmitter(NativeModule);
+
+// 原生模块Hook
+export function useNativeModule() {
+  const [deviceInfo, setDeviceInfo] = useState(null);
+  
+  useEffect(() => {
+    // 获取设备信息
+    NativeModule.getDeviceInfo()
+      .then(setDeviceInfo)
+      .catch(console.error);
+    
+    // 监听原生事件
+    const locationSubscription = nativeEventEmitter.addListener(
+      'onLocationUpdate',
+      (location) => {
+        console.log('位置更新:', location);
+      }
+    );
+    
+    const batterySubscription = nativeEventEmitter.addListener(
+      'onBatteryChange',
+      (battery) => {
+        console.log('电池状态:', battery);
+      }
+    );
+    
+    return () => {
+      locationSubscription.remove();
+      batterySubscription.remove();
+    };
+  }, []);
+  
+  const showNativeAlert = useCallback(async (title: string, message: string) => {
+    try {
+      const result = await NativeModule.showNativeAlert(title, message);
+      console.log('弹窗结果:', result);
+    } catch (error) {
+      console.error('显示弹窗失败:', error);
+    }
+  }, []);
+  
+  return {
+    deviceInfo,
+    showNativeAlert
+  };
+}
+
+// 使用示例
+function DeviceInfoScreen() {
+  const { deviceInfo, showNativeAlert } = useNativeModule();
+  
+  const handleShowAlert = () => {
+    showNativeAlert('原生弹窗', '这是来自原生模块的弹窗');
+  };
+  
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>设备信息</Text>
+      
+      {deviceInfo && (
+        <View style={styles.infoContainer}>
+          <Text>设备型号: {deviceInfo.model}</Text>
+          <Text>系统版本: {deviceInfo.systemVersion || deviceInfo.version}</Text>
+          <Text>制造商: {deviceInfo.manufacturer}</Text>
+        </View>
+      )}
+      
+      <TouchableOpacity style={styles.button} onPress={handleShowAlert}>
+        <Text style={styles.buttonText}>显示原生弹窗</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+```
+
+---
+
+<Callout type="success">
+移动端开发技术为前端开发者提供了进入移动应用领域的机会，通过跨平台框架可以高效地开发出优质的移动应用。
+</Callout>

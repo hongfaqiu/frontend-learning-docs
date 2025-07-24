@@ -1,0 +1,837 @@
+import { Callout } from 'nextra/components'
+
+# 08. Vue3深入和组合式API
+
+## 📋 目录
+
+- [Vue3架构革新](#vue3架构革新)
+- [响应式系统原理](#响应式系统原理)
+- [Composition API深入](#composition-api深入)
+- [组件通信和状态管理](#组件通信和状态管理)
+- [Vue3性能优化](#vue3性能优化)
+- [Vue3生态系统](#vue3生态系统)
+
+## 🔄 Vue3架构革新
+
+<Callout type="info">
+Vue3带来了全新的架构设计，包括Composition API、更好的TypeScript支持、Tree-shaking友好的设计等重大改进。
+</Callout>
+
+### Vue3 vs Vue2 核心差异
+
+```javascript
+// Vue2 Options API
+export default {
+  data() {
+    return {
+      count: 0,
+      user: null
+    }
+  },
+  computed: {
+    doubleCount() {
+      return this.count * 2
+    }
+  },
+  methods: {
+    increment() {
+      this.count++
+    },
+    async fetchUser() {
+      this.user = await api.getUser()
+    }
+  },
+  mounted() {
+    this.fetchUser()
+  }
+}
+
+// Vue3 Composition API
+import { ref, computed, onMounted } from 'vue'
+
+export default {
+  setup() {
+    const count = ref(0)
+    const user = ref(null)
+    
+    const doubleCount = computed(() => count.value * 2)
+    
+    const increment = () => {
+      count.value++
+    }
+    
+    const fetchUser = async () => {
+      user.value = await api.getUser()
+    }
+    
+    onMounted(() => {
+      fetchUser()
+    })
+    
+    return {
+      count,
+      user,
+      doubleCount,
+      increment,
+      fetchUser
+    }
+  }
+}
+```
+
+### Vue3新特性概览
+
+```vue
+<!-- Vue3 新特性示例 -->
+<template>
+  <!-- 1. Fragment - 多个根节点 -->
+  <header>头部内容</header>
+  <main>主要内容</main>
+  <footer>底部内容</footer>
+  
+  <!-- 2. Teleport - 传送门 -->
+  <Teleport to="body">
+    <div class="modal">模态框内容</div>
+  </Teleport>
+  
+  <!-- 3. Suspense - 异步组件 -->
+  <Suspense>
+    <template #default>
+      <AsyncComponent />
+    </template>
+    <template #fallback>
+      <div>加载中...</div>
+    </template>
+  </Suspense>
+</template>
+
+<script setup>
+// 4. <script setup> 语法糖
+import { ref, computed, watch, onMounted } from 'vue'
+import AsyncComponent from './AsyncComponent.vue'
+
+// 响应式数据
+const count = ref(0)
+const message = ref('Hello Vue3!')
+
+// 计算属性
+const doubleCount = computed(() => count.value * 2)
+
+// 侦听器
+watch(count, (newVal, oldVal) => {
+  console.log(`count changed from ${oldVal} to ${newVal}`)
+})
+
+// 生命周期
+onMounted(() => {
+  console.log('组件已挂载')
+})
+
+// 方法
+const increment = () => {
+  count.value++
+}
+
+// 自动暴露给模板
+defineExpose({
+  increment,
+  count
+})
+</script>
+```
+
+## ⚡ 响应式系统原理
+
+### Proxy vs Object.defineProperty
+
+<Callout type="warning">
+Vue3使用Proxy替代了Vue2的Object.defineProperty，解决了数组和对象属性动态添加的响应式问题。
+</Callout>
+
+```javascript
+// Vue2 响应式实现（简化版）
+function defineReactive(obj, key, val) {
+  Object.defineProperty(obj, key, {
+    get() {
+      // 依赖收集
+      if (Dep.target) {
+        dep.depend()
+      }
+      return val
+    },
+    set(newVal) {
+      if (newVal === val) return
+      val = newVal
+      // 通知更新
+      dep.notify()
+    }
+  })
+}
+
+// Vue3 响应式实现（简化版）
+function reactive(target) {
+  return new Proxy(target, {
+    get(target, key, receiver) {
+      const result = Reflect.get(target, key, receiver)
+      
+      // 依赖收集
+      track(target, key)
+      
+      // 如果是对象，递归代理
+      if (typeof result === 'object' && result !== null) {
+        return reactive(result)
+      }
+      
+      return result
+    },
+    
+    set(target, key, value, receiver) {
+      const oldValue = target[key]
+      const result = Reflect.set(target, key, value, receiver)
+      
+      // 触发更新
+      if (oldValue !== value) {
+        trigger(target, key)
+      }
+      
+      return result
+    },
+    
+    deleteProperty(target, key) {
+      const hadKey = hasOwn(target, key)
+      const result = Reflect.deleteProperty(target, key)
+      
+      if (result && hadKey) {
+        trigger(target, key)
+      }
+      
+      return result
+    }
+  })
+}
+
+// 依赖收集和触发更新
+let activeEffect = null
+const targetMap = new WeakMap()
+
+function track(target, key) {
+  if (!activeEffect) return
+  
+  let depsMap = targetMap.get(target)
+  if (!depsMap) {
+    targetMap.set(target, (depsMap = new Map()))
+  }
+  
+  let dep = depsMap.get(key)
+  if (!dep) {
+    depsMap.set(key, (dep = new Set()))
+  }
+  
+  dep.add(activeEffect)
+}
+
+function trigger(target, key) {
+  const depsMap = targetMap.get(target)
+  if (!depsMap) return
+  
+  const dep = depsMap.get(key)
+  if (dep) {
+    dep.forEach(effect => effect())
+  }
+}
+
+function effect(fn) {
+  activeEffect = fn
+  fn()
+  activeEffect = null
+}
+```
+
+### 响应式API详解
+
+```javascript
+// 1. ref - 基本类型响应式
+import { ref, isRef, unref, toRef, toRefs } from 'vue'
+
+const count = ref(0)
+const message = ref('hello')
+
+console.log(count.value) // 0
+count.value++ // 触发响应式更新
+
+// ref 判断和解包
+console.log(isRef(count)) // true
+console.log(unref(count)) // 1，等同于 count.value
+
+// 2. reactive - 对象响应式
+import { reactive, isReactive, toRaw, markRaw } from 'vue'
+
+const state = reactive({
+  count: 0,
+  nested: {
+    message: 'hello'
+  }
+})
+
+// 深度响应式
+state.nested.message = 'world' // 触发更新
+
+// 响应式判断
+console.log(isReactive(state)) // true
+console.log(isReactive(state.nested)) // true
+
+// 获取原始对象
+const raw = toRaw(state)
+console.log(raw === state) // false
+
+// 标记为非响应式
+const nonReactive = markRaw({ foo: 'bar' })
+const reactiveObj = reactive({ nonReactive })
+console.log(isReactive(reactiveObj.nonReactive)) // false
+
+// 3. computed - 计算属性
+import { computed } from 'vue'
+
+const count = ref(1)
+const plusOne = computed(() => count.value + 1)
+
+console.log(plusOne.value) // 2
+count.value++
+console.log(plusOne.value) // 3
+
+// 可写计算属性
+const writableComputed = computed({
+  get: () => count.value + 1,
+  set: (val) => {
+    count.value = val - 1
+  }
+})
+
+writableComputed.value = 10
+console.log(count.value) // 9
+
+// 4. watch 和 watchEffect
+import { watch, watchEffect } from 'vue'
+
+const state = reactive({ count: 0 })
+
+// 侦听单个源
+watch(() => state.count, (newVal, oldVal) => {
+  console.log(`count: ${oldVal} -> ${newVal}`)
+})
+
+// 侦听多个源
+watch([() => state.count, () => state.name], ([newCount, newName], [oldCount, oldName]) => {
+  console.log('多个值发生变化')
+})
+
+// 立即执行的侦听器
+watchEffect(() => {
+  console.log(`count is ${state.count}`)
+})
+
+// 停止侦听
+const stop = watchEffect(() => {
+  console.log('这个侦听器可以被停止')
+})
+
+// 停止侦听
+stop()
+```
+
+## 🎯 Composition API深入
+
+### 组合式函数（Composables）
+
+<Callout type="info">
+组合式函数是Vue3的核心特性，它允许我们将相关的逻辑组合在一起，提高代码的复用性和可维护性。
+</Callout>
+
+```javascript
+// 1. useCounter - 计数器组合式函数
+import { ref, computed } from 'vue'
+
+export function useCounter(initialValue = 0) {
+  const count = ref(initialValue)
+  
+  const increment = () => count.value++
+  const decrement = () => count.value--
+  const reset = () => count.value = initialValue
+  
+  const isEven = computed(() => count.value % 2 === 0)
+  const isPositive = computed(() => count.value > 0)
+  
+  return {
+    count: readonly(count), // 只读，防止外部直接修改
+    increment,
+    decrement,
+    reset,
+    isEven,
+    isPositive
+  }
+}
+
+// 2. useFetch - 数据获取组合式函数
+import { ref, watchEffect } from 'vue'
+
+export function useFetch(url) {
+  const data = ref(null)
+  const error = ref(null)
+  const loading = ref(false)
+  
+  const fetchData = async () => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await fetch(url.value || url)
+      data.value = await response.json()
+    } catch (err) {
+      error.value = err
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 如果url是响应式的，自动重新获取
+  if (isRef(url)) {
+    watchEffect(fetchData)
+  } else {
+    fetchData()
+  }
+  
+  return {
+    data: readonly(data),
+    error: readonly(error),
+    loading: readonly(loading),
+    refetch: fetchData
+  }
+}
+
+// 3. useLocalStorage - 本地存储组合式函数
+import { ref, watch } from 'vue'
+
+export function useLocalStorage(key, defaultValue) {
+  const storedValue = localStorage.getItem(key)
+  const initialValue = storedValue ? JSON.parse(storedValue) : defaultValue
+  
+  const value = ref(initialValue)
+  
+  // 监听值的变化，同步到localStorage
+  watch(value, (newValue) => {
+    localStorage.setItem(key, JSON.stringify(newValue))
+  }, { deep: true })
+  
+  // 监听localStorage的变化（其他标签页修改）
+  window.addEventListener('storage', (e) => {
+    if (e.key === key && e.newValue) {
+      value.value = JSON.parse(e.newValue)
+    }
+  })
+  
+  return value
+}
+
+// 4. useEventListener - 事件监听组合式函数
+import { onMounted, onUnmounted } from 'vue'
+
+export function useEventListener(target, event, handler, options) {
+  onMounted(() => {
+    target.addEventListener(event, handler, options)
+  })
+  
+  onUnmounted(() => {
+    target.removeEventListener(event, handler, options)
+  })
+}
+
+// 5. useIntersectionObserver - 交叉观察器组合式函数
+import { ref, onMounted, onUnmounted } from 'vue'
+
+export function useIntersectionObserver(target, options = {}) {
+  const isIntersecting = ref(false)
+  const entries = ref([])
+  
+  let observer = null
+  
+  onMounted(() => {
+    observer = new IntersectionObserver((observerEntries) => {
+      entries.value = observerEntries
+      isIntersecting.value = observerEntries.some(entry => entry.isIntersecting)
+    }, options)
+    
+    if (target.value) {
+      observer.observe(target.value)
+    }
+  })
+  
+  onUnmounted(() => {
+    if (observer) {
+      observer.disconnect()
+    }
+  })
+  
+  return {
+    isIntersecting: readonly(isIntersecting),
+    entries: readonly(entries)
+  }
+}
+
+// 使用示例
+export default {
+  setup() {
+    // 使用计数器
+    const { count, increment, decrement, isEven } = useCounter(10)
+    
+    // 使用数据获取
+    const { data: users, loading, error } = useFetch('/api/users')
+    
+    // 使用本地存储
+    const theme = useLocalStorage('theme', 'light')
+    
+    // 使用事件监听
+    useEventListener(window, 'resize', () => {
+      console.log('窗口大小改变')
+    })
+    
+    return {
+      count,
+      increment,
+      decrement,
+      isEven,
+      users,
+      loading,
+      error,
+      theme
+    }
+  }
+}
+```
+
+### 高级组合模式
+
+```javascript
+// 1. 状态机组合式函数
+export function useStateMachine(initialState, transitions) {
+  const state = ref(initialState)
+  
+  const transition = (action) => {
+    const currentTransitions = transitions[state.value]
+    if (currentTransitions && currentTransitions[action]) {
+      state.value = currentTransitions[action]
+    }
+  }
+  
+  const can = (action) => {
+    const currentTransitions = transitions[state.value]
+    return currentTransitions && currentTransitions[action] !== undefined
+  }
+  
+  return {
+    state: readonly(state),
+    transition,
+    can
+  }
+}
+
+// 使用状态机
+const { state, transition, can } = useStateMachine('idle', {
+  idle: { start: 'loading' },
+  loading: { success: 'success', error: 'error' },
+  success: { reset: 'idle' },
+  error: { retry: 'loading', reset: 'idle' }
+})
+
+// 2. 表单验证组合式函数
+export function useFormValidation(rules) {
+  const errors = ref({})
+  const isValid = computed(() => Object.keys(errors.value).length === 0)
+  
+  const validate = (field, value) => {
+    const fieldRules = rules[field]
+    if (!fieldRules) return true
+    
+    for (const rule of fieldRules) {
+      const result = rule.validator(value)
+      if (!result) {
+        errors.value[field] = rule.message
+        return false
+      }
+    }
+    
+    delete errors.value[field]
+    return true
+  }
+  
+  const validateAll = (values) => {
+    let allValid = true
+    for (const [field, value] of Object.entries(values)) {
+      if (!validate(field, value)) {
+        allValid = false
+      }
+    }
+    return allValid
+  }
+  
+  const clearErrors = () => {
+    errors.value = {}
+  }
+  
+  return {
+    errors: readonly(errors),
+    isValid,
+    validate,
+    validateAll,
+    clearErrors
+  }
+}
+
+// 3. 无限滚动组合式函数
+export function useInfiniteScroll(fetchMore, options = {}) {
+  const {
+    distance = 100,
+    disabled = false
+  } = options
+  
+  const loading = ref(false)
+  const finished = ref(false)
+  
+  const checkScroll = () => {
+    if (loading.value || finished.value || disabled) return
+    
+    const { scrollTop, scrollHeight, clientHeight } = document.documentElement
+    
+    if (scrollTop + clientHeight >= scrollHeight - distance) {
+      loading.value = true
+      
+      fetchMore()
+        .then((hasMore) => {
+          if (!hasMore) {
+            finished.value = true
+          }
+        })
+        .finally(() => {
+          loading.value = false
+        })
+    }
+  }
+  
+  useEventListener(window, 'scroll', checkScroll)
+  
+  return {
+    loading: readonly(loading),
+    finished: readonly(finished)
+  }
+}
+```
+
+## 🔄 组件通信和状态管理
+
+### 组件通信方式
+
+```vue
+<!-- 1. Props 和 Emits -->
+<!-- 父组件 -->
+<template>
+  <ChildComponent 
+    :message="parentMessage"
+    :count="count"
+    @update:count="handleCountUpdate"
+    @custom-event="handleCustomEvent"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import ChildComponent from './ChildComponent.vue'
+
+const parentMessage = ref('来自父组件的消息')
+const count = ref(0)
+
+const handleCountUpdate = (newCount) => {
+  count.value = newCount
+}
+
+const handleCustomEvent = (data) => {
+  console.log('收到自定义事件:', data)
+}
+</script>
+
+<!-- 子组件 -->
+<template>
+  <div>
+    <p>{{ message }}</p>
+    <p>Count: {{ count }}</p>
+    <button @click="updateCount">更新计数</button>
+    <button @click="emitCustomEvent">发送自定义事件</button>
+  </div>
+</template>
+
+<script setup>
+import { defineProps, defineEmits } from 'vue'
+
+// 定义props
+const props = defineProps({
+  message: {
+    type: String,
+    required: true
+  },
+  count: {
+    type: Number,
+    default: 0
+  }
+})
+
+// 定义emits
+const emit = defineEmits(['update:count', 'custom-event'])
+
+const updateCount = () => {
+  emit('update:count', props.count + 1)
+}
+
+const emitCustomEvent = () => {
+  emit('custom-event', { timestamp: Date.now() })
+}
+</script>
+
+<!-- 2. Provide/Inject -->
+<!-- 祖先组件 -->
+<script setup>
+import { provide, ref } from 'vue'
+
+const theme = ref('dark')
+const user = ref({ name: 'John', role: 'admin' })
+
+// 提供数据
+provide('theme', theme)
+provide('user', readonly(user))
+
+// 提供方法
+provide('updateTheme', (newTheme) => {
+  theme.value = newTheme
+})
+</script>
+
+<!-- 后代组件 -->
+<script setup>
+import { inject } from 'vue'
+
+// 注入数据
+const theme = inject('theme')
+const user = inject('user')
+const updateTheme = inject('updateTheme')
+
+// 使用默认值
+const config = inject('config', { api: '/api' })
+</script>
+
+<!-- 3. 模板引用 -->
+<template>
+  <ChildComponent ref="childRef" />
+  <button @click="callChildMethod">调用子组件方法</button>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const childRef = ref()
+
+const callChildMethod = () => {
+  childRef.value.someMethod()
+}
+
+onMounted(() => {
+  console.log(childRef.value) // 子组件实例
+})
+</script>
+```
+
+### Pinia状态管理
+
+```javascript
+// stores/counter.js
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+// Option Store
+export const useCounterStore = defineStore('counter', {
+  state: () => ({
+    count: 0,
+    name: 'Eduardo'
+  }),
+  
+  getters: {
+    doubleCount: (state) => state.count * 2,
+    doubleCountPlusOne() {
+      return this.doubleCount + 1
+    }
+  },
+  
+  actions: {
+    increment() {
+      this.count++
+    },
+    
+    async fetchUserData() {
+      const userData = await api.getUser()
+      this.name = userData.name
+    }
+  }
+})
+
+// Composition Store
+export const useCounterStore = defineStore('counter', () => {
+  // state
+  const count = ref(0)
+  const name = ref('Eduardo')
+  
+  // getters
+  const doubleCount = computed(() => count.value * 2)
+  
+  // actions
+  function increment() {
+    count.value++
+  }
+  
+  async function fetchUserData() {
+    const userData = await api.getUser()
+    name.value = userData.name
+  }
+  
+  return {
+    count,
+    name,
+    doubleCount,
+    increment,
+    fetchUserData
+  }
+})
+
+// 在组件中使用
+<script setup>
+import { useCounterStore } from '@/stores/counter'
+import { storeToRefs } from 'pinia'
+
+const store = useCounterStore()
+
+// 解构响应式数据
+const { count, name, doubleCount } = storeToRefs(store)
+
+// 解构actions（不需要storeToRefs）
+const { increment, fetchUserData } = store
+
+// 直接使用
+store.count++
+store.$patch({ count: store.count + 1 })
+store.$patch((state) => {
+  state.count++
+  state.name = 'New Name'
+})
+</script>
+```
+
+---
+
+<Callout type="success">
+Vue3的Composition API和响应式系统为我们提供了更灵活、更强大的开发体验。通过合理使用组合式函数，我们可以构建更加模块化和可复用的代码。
+</Callout>

@@ -1,22 +1,52 @@
-# [Nextra Docs](https://nextra.vercel.app)
+# 🚀 前端学习指南
 
-_Warning: this project is not production ready, API might change without notice._
+> 从零基础到专家的完整前端开发学习路径
 
-[![](https://vercel.com/button)](https://vercel.com/import/git?s=https%3A%2F%2Fgithub.com%2Fshuding%2Fnextra&c=1)
+## 📖 项目介绍
 
-**Nextra** is a [Next.js](https://nextjs.org) and [MDX](https://mdxjs.com) powered, no-code site generator.
+这是一份系统性、实用性的前端学习指南，旨在为前端开发学习者提供完整的技术栈学习路径。本指南涵盖从基础知识到高级技能的完整内容，包含大量代码示例和最佳实践。
 
-![](/public/demo.png)
+## 🌟 特色亮点
 
-## Development
+- **📝 详细的代码示例**：每个概念都配有实际可运行的代码
+- **🔍 深度原理解析**：不仅知其然，更知其所以然
+- **🛠️ 最佳实践指南**：来自一线开发经验的实用技巧
+- **📚 丰富的学习资源**：精选的书籍、课程、工具推荐
+- **🎯 实战项目导向**：理论结合实践，学以致用
 
-The code of Nextra is under the [`core`](https://github.com/shuding/nextra/tree/core) branch.
+## 🚀 快速开始
 
-## Themes
+### 环境要求
 
-- [nextra-theme-docs](https://github.com/vercel/swr-site) ([demo](https://swr.vercel.app))
-- [nextra-theme-blog](https://github.com/shuding/site) ([demo](https://shud.in))
+- Node.js 18+
+- pnpm 8+
+
+### 本地运行
+
+```bash
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
+pnpm run dev
+
+# 构建生产版本
+pnpm run build
+```
+
+访问 [http://localhost:3000](http://localhost:3000) 查看文档。
+
+## 🛠️ 技术栈
+
+- **框架**: [Next.js 14](https://nextjs.org/)
+- **文档引擎**: [Nextra 4.0](https://nextra.site/)
+- **样式**: CSS3 + 自定义样式
+- **包管理**: pnpm
+
+## 📄 许可证
+
+本项目采用 [MIT 许可证](LICENSE)。
 
 ---
 
-Created by [@shuding](https://github.com/shuding) and [@pacocoursey](https://github.com/pacocoursey) at [Vercel](https://vercel.com). Released under the MIT license.
+**⭐ 如果这个项目对你有帮助，请给我们一个Star！**

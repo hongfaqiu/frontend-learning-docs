@@ -1,0 +1,656 @@
+import { Callout } from 'nextra/components'
+
+# 18. 现代前端架构设计
+
+## 📋 目录
+
+- [前端架构演进历程](#前端架构演进历程)
+- [微前端架构设计](#微前端架构设计)
+- [组件化架构模式](#组件化架构模式)
+- [模块化和依赖管理](#模块化和依赖管理)
+- [可扩展性设计原则](#可扩展性设计原则)
+- [架构决策和权衡](#架构决策和权衡)
+
+## 🏗️ 前端架构演进历程
+
+<Callout type="info">
+前端架构从简单的页面脚本发展到复杂的应用架构，理解这个演进过程有助于我们做出更好的架构决策。
+</Callout>
+
+### 架构演进阶段
+
+```javascript
+// 前端架构演进历程
+const architectureEvolution = {
+  // 1. 传统多页应用 (MPA)
+  traditionalMPA: {
+    period: '1990s-2000s',
+    characteristics: [
+      '服务端渲染',
+      '页面刷新导航',
+      'jQuery操作DOM',
+      '简单的脚本文件'
+    ],
+    advantages: ['SEO友好', '简单直接', '服务端控制'],
+    disadvantages: ['用户体验差', '重复加载', '状态难以维护'],
+    example: `
+      <!-- 传统MPA结构 -->
+      <script src="jquery.js"></script>
+      <script>
+        $(document).ready(function() {
+          $('#button').click(function() {
+            window.location.href = '/next-page';
+          });
+        });
+      </script>
+    `
+  },
+  
+  // 2. 单页应用 (SPA)
+  singlePageApp: {
+    period: '2010s',
+    characteristics: [
+      '客户端路由',
+      '动态内容更新',
+      'AJAX数据获取',
+      '前端框架兴起'
+    ],
+    advantages: ['流畅体验', '快速导航', '丰富交互'],
+    disadvantages: ['SEO挑战', '首屏加载慢', '复杂度增加'],
+    frameworks: ['Angular', 'React', 'Vue'],
+    example: `
+      // SPA路由示例
+      const router = new Router({
+        '/home': () => import('./pages/Home'),
+        '/about': () => import('./pages/About'),
+        '/contact': () => import('./pages/Contact')
+      });
+    `
+  },
+  
+  // 3. 同构应用 (SSR)
+  isomorphicApp: {
+    period: '2015+',
+    characteristics: [
+      '服务端+客户端渲染',
+      '代码复用',
+      '首屏优化',
+      'SEO友好'
+    ],
+    advantages: ['最佳性能', 'SEO优化', '用户体验好'],
+    disadvantages: ['复杂度高', '开发成本大', '服务器压力'],
+    frameworks: ['Next.js', 'Nuxt.js', 'SvelteKit'],
+    example: `
+      // Next.js SSR示例
+      export async function getServerSideProps() {
+        const data = await fetchData();
+        return { props: { data } };
+      }
+    `
+  },
+  
+  // 4. 微前端架构
+  microfrontend: {
+    period: '2018+',
+    characteristics: [
+      '应用拆分',
+      '独立部署',
+      '技术栈自由',
+      '团队自治'
+    ],
+    advantages: ['可扩展性', '技术多样性', '团队独立'],
+    disadvantages: ['复杂度高', '性能开销', '一致性挑战'],
+    solutions: ['Single-SPA', 'Module Federation', 'qiankun'],
+    example: `
+      // 微前端注册
+      registerApplication({
+        name: 'react-app',
+        app: () => import('./react-app/main.js'),
+        activeWhen: ['/react']
+      });
+    `
+  },
+  
+  // 5. 边缘计算架构
+  edgeComputing: {
+    period: '2020+',
+    characteristics: [
+      '边缘渲染',
+      '就近计算',
+      '低延迟',
+      '全球分布'
+    ],
+    advantages: ['极低延迟', '全球性能', '高可用性'],
+    disadvantages: ['复杂部署', '成本较高', '调试困难'],
+    platforms: ['Cloudflare Workers', 'Vercel Edge', 'Deno Deploy']
+  }
+};
+
+// 架构选择决策树
+class ArchitectureDecisionTree {
+  constructor() {
+    this.factors = {
+      teamSize: null,
+      projectComplexity: null,
+      performanceRequirements: null,
+      seoRequirements: null,
+      scalabilityNeeds: null,
+      maintenanceCapacity: null
+    };
+  }
+  
+  analyze(requirements) {
+    this.factors = { ...this.factors, ...requirements };
+    return this.recommend();
+  }
+  
+  recommend() {
+    const { 
+      teamSize, 
+      projectComplexity, 
+      performanceRequirements,
+      seoRequirements,
+      scalabilityNeeds 
+    } = this.factors;
+    
+    // 小团队 + 简单项目
+    if (teamSize <= 5 && projectComplexity === 'low') {
+      return {
+        architecture: 'Traditional MPA',
+        reason: '简单直接，维护成本低',
+        frameworks: ['Next.js', 'Nuxt.js', 'SvelteKit']
+      };
+    }
+    
+    // 中等团队 + 中等复杂度 + 高性能要求
+    if (teamSize <= 15 && performanceRequirements === 'high') {
+      return {
+        architecture: 'SSR/SSG',
+        reason: '平衡性能和开发效率',
+        frameworks: ['Next.js', 'Nuxt.js', 'Remix']
+      };
+    }
+    
+    // 大团队 + 高复杂度 + 高扩展性需求
+    if (teamSize > 15 && scalabilityNeeds === 'high') {
+      return {
+        architecture: 'Micro-frontend',
+        reason: '支持大规模团队协作',
+        solutions: ['Module Federation', 'Single-SPA', 'qiankun']
+      };
+    }
+    
+    // SEO重要的内容网站
+    if (seoRequirements === 'critical') {
+      return {
+        architecture: 'Static Site Generation',
+        reason: '最佳SEO性能',
+        frameworks: ['Next.js', 'Gatsby', 'Astro']
+      };
+    }
+    
+    // 默认推荐
+    return {
+      architecture: 'SPA with SSR',
+      reason: '平衡各方面需求',
+      frameworks: ['Next.js', 'Nuxt.js']
+    };
+  }
+}
+```
+
+## 🔧 微前端架构设计
+
+### 微前端实现方案
+
+```javascript
+// 1. 基于Module Federation的微前端架构
+class MicrofrontendOrchestrator {
+  constructor() {
+    this.applications = new Map();
+    this.sharedDependencies = new Map();
+    this.eventBus = new EventTarget();
+    this.setupGlobalErrorHandling();
+  }
+  
+  // 注册微应用
+  registerApplication(config) {
+    const {
+      name,
+      entry,
+      container,
+      activeRule,
+      props = {}
+    } = config;
+    
+    const application = {
+      name,
+      entry,
+      container,
+      activeRule,
+      props,
+      status: 'NOT_LOADED',
+      instance: null
+    };
+    
+    this.applications.set(name, application);
+    console.log(`微应用 ${name} 注册成功`);
+  }
+  
+  // 加载微应用
+  async loadApplication(name) {
+    const app = this.applications.get(name);
+    if (!app) {
+      throw new Error(`微应用 ${name} 未注册`);
+    }
+    
+    if (app.status === 'LOADED') {
+      return app.instance;
+    }
+    
+    try {
+      app.status = 'LOADING';
+      
+      // 动态导入微应用
+      const module = await import(app.entry);
+      
+      // 创建应用实例
+      app.instance = {
+        mount: module.mount,
+        unmount: module.unmount,
+        update: module.update || (() => {}),
+        getStatus: () => app.status
+      };
+      
+      app.status = 'LOADED';
+      
+      this.eventBus.dispatchEvent(new CustomEvent('app-loaded', {
+        detail: { name, app }
+      }));
+      
+      return app.instance;
+    } catch (error) {
+      app.status = 'LOAD_ERROR';
+      console.error(`加载微应用 ${name} 失败:`, error);
+      throw error;
+    }
+  }
+  
+  // 挂载微应用
+  async mountApplication(name, container) {
+    const app = this.applications.get(name);
+    if (!app) {
+      throw new Error(`微应用 ${name} 未注册`);
+    }
+    
+    try {
+      if (app.status !== 'LOADED') {
+        await this.loadApplication(name);
+      }
+      
+      // 准备挂载环境
+      const mountContainer = container || document.querySelector(app.container);
+      if (!mountContainer) {
+        throw new Error(`找不到容器: ${app.container}`);
+      }
+      
+      // 设置沙箱环境
+      const sandbox = this.createSandbox(name);
+      
+      // 挂载应用
+      await app.instance.mount({
+        container: mountContainer,
+        props: app.props,
+        sandbox
+      });
+      
+      app.status = 'MOUNTED';
+      
+      this.eventBus.dispatchEvent(new CustomEvent('app-mounted', {
+        detail: { name, app }
+      }));
+      
+      console.log(`微应用 ${name} 挂载成功`);
+    } catch (error) {
+      app.status = 'MOUNT_ERROR';
+      console.error(`挂载微应用 ${name} 失败:`, error);
+      throw error;
+    }
+  }
+  
+  // 卸载微应用
+  async unmountApplication(name) {
+    const app = this.applications.get(name);
+    if (!app || app.status !== 'MOUNTED') {
+      return;
+    }
+    
+    try {
+      await app.instance.unmount();
+      app.status = 'LOADED';
+      
+      this.eventBus.dispatchEvent(new CustomEvent('app-unmounted', {
+        detail: { name, app }
+      }));
+      
+      console.log(`微应用 ${name} 卸载成功`);
+    } catch (error) {
+      console.error(`卸载微应用 ${name} 失败:`, error);
+    }
+  }
+  
+  // 创建沙箱环境
+  createSandbox(appName) {
+    const sandbox = {
+      // 样式隔离
+      scopedCSS: this.createScopedCSS(appName),
+      
+      // JavaScript隔离
+      isolatedGlobals: this.createIsolatedGlobals(appName),
+      
+      // 事件隔离
+      eventIsolation: this.createEventIsolation(appName)
+    };
+    
+    return sandbox;
+  }
+  
+  createScopedCSS(appName) {
+    const prefix = `micro-app-${appName}`;
+    
+    return {
+      addScope: (css) => {
+        // 简化的CSS作用域添加
+        return css.replace(/([^{}]+){/g, (match, selector) => {
+          return `.${prefix} ${selector.trim()}{`;
+        });
+      },
+      
+      removeScope: (css) => {
+        const regex = new RegExp(`\\.${prefix}\\s+`, 'g');
+        return css.replace(regex, '');
+      }
+    };
+  }
+  
+  createIsolatedGlobals(appName) {
+    const originalGlobals = {};
+    const isolatedWindow = {};
+    
+    return {
+      isolate: () => {
+        // 保存原始全局变量
+        ['localStorage', 'sessionStorage', 'history'].forEach(key => {
+          originalGlobals[key] = window[key];
+        });
+        
+        // 创建隔离的全局对象
+        isolatedWindow.localStorage = this.createIsolatedStorage(`${appName}-local`);
+        isolatedWindow.sessionStorage = this.createIsolatedStorage(`${appName}-session`);
+        isolatedWindow.history = this.createIsolatedHistory(appName);
+        
+        return isolatedWindow;
+      },
+      
+      restore: () => {
+        Object.assign(window, originalGlobals);
+      }
+    };
+  }
+  
+  createIsolatedStorage(prefix) {
+    return {
+      getItem: (key) => {
+        return localStorage.getItem(`${prefix}-${key}`);
+      },
+      setItem: (key, value) => {
+        localStorage.setItem(`${prefix}-${key}`, value);
+      },
+      removeItem: (key) => {
+        localStorage.removeItem(`${prefix}-${key}`);
+      },
+      clear: () => {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith(`${prefix}-`)) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
+    };
+  }
+  
+  createIsolatedHistory(appName) {
+    const baseUrl = `/micro-app/${appName}`;
+    
+    return {
+      pushState: (state, title, url) => {
+        const fullUrl = `${baseUrl}${url}`;
+        history.pushState(state, title, fullUrl);
+      },
+      replaceState: (state, title, url) => {
+        const fullUrl = `${baseUrl}${url}`;
+        history.replaceState(state, title, fullUrl);
+      },
+      back: () => history.back(),
+      forward: () => history.forward(),
+      go: (delta) => history.go(delta)
+    };
+  }
+  
+  createEventIsolation(appName) {
+    const eventMap = new Map();
+    
+    return {
+      addEventListener: (type, listener, options) => {
+        const wrappedListener = (event) => {
+          // 检查事件是否属于当前应用
+          if (this.isEventFromApp(event, appName)) {
+            listener(event);
+          }
+        };
+        
+        eventMap.set(listener, wrappedListener);
+        document.addEventListener(type, wrappedListener, options);
+      },
+      
+      removeEventListener: (type, listener, options) => {
+        const wrappedListener = eventMap.get(listener);
+        if (wrappedListener) {
+          document.removeEventListener(type, wrappedListener, options);
+          eventMap.delete(listener);
+        }
+      }
+    };
+  }
+  
+  isEventFromApp(event, appName) {
+    const target = event.target;
+    const appContainer = document.querySelector(`[data-app="${appName}"]`);
+    return appContainer && appContainer.contains(target);
+  }
+  
+  // 应用间通信
+  createCommunicationBridge() {
+    return {
+      // 发送消息
+      emit: (event, data) => {
+        this.eventBus.dispatchEvent(new CustomEvent(event, {
+          detail: data
+        }));
+      },
+      
+      // 监听消息
+      on: (event, callback) => {
+        this.eventBus.addEventListener(event, callback);
+      },
+      
+      // 移除监听
+      off: (event, callback) => {
+        this.eventBus.removeEventListener(event, callback);
+      },
+      
+      // 共享状态
+      setSharedState: (key, value) => {
+        window.__SHARED_STATE__ = window.__SHARED_STATE__ || {};
+        window.__SHARED_STATE__[key] = value;
+        
+        this.eventBus.dispatchEvent(new CustomEvent('shared-state-change', {
+          detail: { key, value }
+        }));
+      },
+      
+      getSharedState: (key) => {
+        return window.__SHARED_STATE__?.[key];
+      }
+    };
+  }
+  
+  setupGlobalErrorHandling() {
+    window.addEventListener('error', (event) => {
+      console.error('微前端全局错误:', event.error);
+      
+      // 尝试识别错误来源的应用
+      const sourceApp = this.identifyErrorSource(event);
+      if (sourceApp) {
+        console.log(`错误来源应用: ${sourceApp}`);
+        
+        // 可以选择重启应用或显示错误页面
+        this.handleApplicationError(sourceApp, event.error);
+      }
+    });
+    
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('微前端未处理的Promise拒绝:', event.reason);
+    });
+  }
+  
+  identifyErrorSource(event) {
+    // 简化的错误源识别
+    const stack = event.error?.stack || '';
+    
+    for (const [name] of this.applications) {
+      if (stack.includes(name) || stack.includes(`micro-app-${name}`)) {
+        return name;
+      }
+    }
+    
+    return null;
+  }
+  
+  handleApplicationError(appName, error) {
+    const app = this.applications.get(appName);
+    if (app && app.status === 'MOUNTED') {
+      // 尝试重新挂载应用
+      this.unmountApplication(appName)
+        .then(() => this.mountApplication(appName))
+        .catch(console.error);
+    }
+  }
+}
+
+// 2. 微前端路由管理
+class MicrofrontendRouter {
+  constructor(orchestrator) {
+    this.orchestrator = orchestrator;
+    this.routes = new Map();
+    this.currentApp = null;
+    this.setupRouting();
+  }
+  
+  registerRoute(path, appName) {
+    this.routes.set(path, appName);
+  }
+  
+  setupRouting() {
+    window.addEventListener('popstate', () => {
+      this.handleRouteChange();
+    });
+    
+    // 拦截pushState和replaceState
+    this.interceptHistoryMethods();
+    
+    // 初始路由处理
+    this.handleRouteChange();
+  }
+  
+  interceptHistoryMethods() {
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    history.pushState = (...args) => {
+      originalPushState.apply(history, args);
+      this.handleRouteChange();
+    };
+    
+    history.replaceState = (...args) => {
+      originalReplaceState.apply(history, args);
+      this.handleRouteChange();
+    };
+  }
+  
+  async handleRouteChange() {
+    const currentPath = window.location.pathname;
+    const targetApp = this.findMatchingApp(currentPath);
+    
+    if (targetApp !== this.currentApp) {
+      // 卸载当前应用
+      if (this.currentApp) {
+        await this.orchestrator.unmountApplication(this.currentApp);
+      }
+      
+      // 挂载新应用
+      if (targetApp) {
+        await this.orchestrator.mountApplication(targetApp);
+        this.currentApp = targetApp;
+      }
+    }
+  }
+  
+  findMatchingApp(path) {
+    for (const [routePath, appName] of this.routes) {
+      if (path.startsWith(routePath)) {
+        return appName;
+      }
+    }
+    return null;
+  }
+}
+
+// 使用示例
+const orchestrator = new MicrofrontendOrchestrator();
+const router = new MicrofrontendRouter(orchestrator);
+
+// 注册微应用
+orchestrator.registerApplication({
+  name: 'header-app',
+  entry: './micro-apps/header/index.js',
+  container: '#header-container',
+  activeRule: () => true
+});
+
+orchestrator.registerApplication({
+  name: 'dashboard-app',
+  entry: './micro-apps/dashboard/index.js',
+  container: '#main-container',
+  activeRule: (location) => location.pathname.startsWith('/dashboard')
+});
+
+// 注册路由
+router.registerRoute('/dashboard', 'dashboard-app');
+router.registerRoute('/profile', 'profile-app');
+
+// 创建通信桥
+const communicationBridge = orchestrator.createCommunicationBridge();
+
+// 应用间通信示例
+communicationBridge.on('user-login', (event) => {
+  console.log('用户登录:', event.detail);
+  communicationBridge.setSharedState('currentUser', event.detail.user);
+});
+```
+
+---
+
+<Callout type="success">
+现代前端架构设计需要平衡复杂性、可维护性和性能。选择合适的架构模式对项目的长期成功至关重要。
+</Callout>

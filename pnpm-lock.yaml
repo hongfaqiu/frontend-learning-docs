@@ -242,104 +242,104 @@ packages:
   '@mermaid-js/parser@0.6.2':
     resolution: {integrity: sha512-+PO02uGF6L6Cs0Bw8RpGhikVvMWEysfAyl27qTlroUB8jSWr1lL0Sf6zi78ZxlSnmgSY2AMMKVgghnN9jTtwkQ==}
 
-  '@napi-rs/simple-git-android-arm-eabi@0.1.20':
-    resolution: {integrity: sha512-IcxPUq91JY2vVaG0EmWmcX9cj55VtI141WcTpsEwNFgwW30JWpFzr7cmVPUjmM0a0+/1hqYAAheM1+2tDjjKwA==}
+  '@napi-rs/simple-git-android-arm-eabi@0.1.21':
+    resolution: {integrity: sha512-NSZTD3c+RzSR3cg0acPFqUfV64+Vqye4Veda5L9fbbnsYRzziYHbL3alMI/6p5Ur44ezw5RqKRZ4Tbp1T08veA==}
     engines: {node: '>= 10'}
     cpu: [arm]
     os: [android]
 
-  '@napi-rs/simple-git-android-arm64@0.1.20':
-    resolution: {integrity: sha512-2I7V65DFGZ4PBkU3JQDJiTVlip7XZd0PBxUqRGZ0PsU+YgCrr2iTMFAUtMWBUpgv6MRv3jBKkrlp9DLkMmEHjg==}
+  '@napi-rs/simple-git-android-arm64@0.1.21':
+    resolution: {integrity: sha512-FR8J/pmy4nFyzWon0RuhReucociF8kiCTBRBQV+TN+7tmI2lsHp+8sDNh1HXf+UP0iOC8azMTKwcHiyhv7oPPw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [android]
 
-  '@napi-rs/simple-git-darwin-arm64@0.1.20':
-    resolution: {integrity: sha512-nADW+bi4g/02j5bkHDColMk56veH2RS/dJs4/2DpAH76xyW8KVeT6PaPtXR0nRthI7kEsxGrR7Jyj9Pr6rMdig==}
+  '@napi-rs/simple-git-darwin-arm64@0.1.21':
+    resolution: {integrity: sha512-FoUck6Sv1VJZyEZ7CcAKPDystkwnv4osJs3XCXCtx6AdT/8oDyfjMHxe3CSBMcNVjawsd+tG7yFvhgKJCdjBvA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@napi-rs/simple-git-darwin-x64@0.1.20':
-    resolution: {integrity: sha512-OVEmMq5ee6WrKX4TLaaJmLc/stTaKFLjb8/PV4PTojjt3lDVoIjOnkcYGdOUhp60g6Riv/Aypi02+YX9dxGZWQ==}
+  '@napi-rs/simple-git-darwin-x64@0.1.21':
+    resolution: {integrity: sha512-PlqZgFhcwJmdj4j/LSLxddrAZU5KbDtq54UMp35++IFs+XkK0SnJlfB9oQTE+m6ieQPYQVz6S9cLeyw5X12L+w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@napi-rs/simple-git-freebsd-x64@0.1.20':
-    resolution: {integrity: sha512-S6j7tKjh9uwCGH71+L4nxbCJa7DpTnYPSud9tuTlzBndgQfuzYWeuTTANumRtay7GJgBQ7vYriwjvrNFdWbiHw==}
+  '@napi-rs/simple-git-freebsd-x64@0.1.21':
+    resolution: {integrity: sha512-n3S74zw0WIuCdsXV6hdU3vpakYNZyeTU3VlQdV/m5f3TxxqeEGcxJi18s2QfQOelE/N0Ze+u23USd7b06NQlCg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [freebsd]
 
-  '@napi-rs/simple-git-linux-arm-gnueabihf@0.1.20':
-    resolution: {integrity: sha512-bT2oc+Uns9lj6Vo9yTSuTHR1C6Hbp1Bbg1tY1CrihXKCU9fj812MxKProZ9jgFtchLUjs8gajjVfXSTYK8i/uw==}
+  '@napi-rs/simple-git-linux-arm-gnueabihf@0.1.21':
+    resolution: {integrity: sha512-gsLnZD8OMttCjB2OYofDdsI9SpidMfJP6H8fjPXcon2q90JT/XUS7xIYXDEABiwRvz1BZ149HqmnjO8yPgNMIQ==}
     engines: {node: '>= 10'}
     cpu: [arm]
     os: [linux]
 
-  '@napi-rs/simple-git-linux-arm64-gnu@0.1.20':
-    resolution: {integrity: sha512-q+Hdd2Yo9vOjgrF3c7NOCEPtt8dprJwLH6HGGJAOgr67oQ1Xt3OGdUelcTMI7Ns5QPe7OGKQ/+x5kHUhDMNC2w==}
+  '@napi-rs/simple-git-linux-arm64-gnu@0.1.21':
+    resolution: {integrity: sha512-05hSW4K5RexXo6YICmKzBThkY4WXJ25MAkSON720kIVv8ZPLi0ZouijJuM7GWmEZPcgCm6/mvrGrEDrS6i0/Mg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@napi-rs/simple-git-linux-arm64-musl@0.1.20':
-    resolution: {integrity: sha512-93yMKzjzmpPJQg9zbSE3aXyph6lxjPc4G1YQaXQzDg6aaBuhJzIqQ9UMXFFNit6hiQWtOfIrg7NBPWu5GGsCCA==}
+  '@napi-rs/simple-git-linux-arm64-musl@0.1.21':
+    resolution: {integrity: sha512-z2dyQmwtbpgAuUmWeJBhz00/6C3//SV0YSYE9Smfaf2DiSEEAvWyoni67pQU5/Q9FFaiyvzrCoz966EVNmz6Bg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@napi-rs/simple-git-linux-ppc64-gnu@0.1.20':
-    resolution: {integrity: sha512-7hUGBBowyeV+cbAR5fqGcLIEbcC0irRrBVZGbnch3U/gef93ljMq/JT8OxcZvDbOHqfDjZbD/C/nlt52lkxeUg==}
+  '@napi-rs/simple-git-linux-ppc64-gnu@0.1.21':
+    resolution: {integrity: sha512-mEkVx9oQxKTdzTdjDTCc9XAaH9E9eI2F+KsY0R6DTYafgb/rwq0FJO+eCa8Llzz6ndgbLrzq4q+wHqR8z7dF3w==}
     engines: {node: '>= 10'}
     cpu: [ppc64]
     os: [linux]
     libc: [glibc]
 
-  '@napi-rs/simple-git-linux-s390x-gnu@0.1.20':
-    resolution: {integrity: sha512-z9AY4rz9KedtzPDwroE6UXyr4nAOBTGc+Ry/gSyz8/D7gh7GLJXl0DYl6jLC8H6BjS1IB1/UGzvHvlcxrsjJ4A==}
+  '@napi-rs/simple-git-linux-s390x-gnu@0.1.21':
+    resolution: {integrity: sha512-FulRem5vdsvH0VER2Q9cynv01SugMk/jQwbytwyPziF6JZ81D6I8otP9NkS3dqv//6HCokyojH+oOnrsF82/VQ==}
     engines: {node: '>= 10'}
     cpu: [s390x]
     os: [linux]
     libc: [glibc]
 
-  '@napi-rs/simple-git-linux-x64-gnu@0.1.20':
-    resolution: {integrity: sha512-Wun4ibl7xmW5TMMCK8P8PfUJ6Eqp1qnYfXk4vUavUWvXQ7kG3XwuzjRKK/NZ3aoD0TYww6YcONAs+nhnwDapFg==}
+  '@napi-rs/simple-git-linux-x64-gnu@0.1.21':
+    resolution: {integrity: sha512-SY6HuLVH+IFlkz8aTf4hwtaXalqBIPyE7FvEMCQIVPf85slOHMs9RThmrL7fvuSl0EDuUKOXANUP2OtdgT+zNg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@napi-rs/simple-git-linux-x64-musl@0.1.20':
-    resolution: {integrity: sha512-FmvuJi9X6rNZcD/BoD+5M7ZGg96hABbIH65TJQRMYEKfhxO8zQx7wWBK4eydGb1hlB05hqbapozU7j0YbG1DZw==}
+  '@napi-rs/simple-git-linux-x64-musl@0.1.21':
+    resolution: {integrity: sha512-bG6zRqlXmVysjUUXNPsApfXP6c+rSjhinmGlLh8XW6Tfj0PqYmbSTL/3XcowbP6yJGTJbbkvxmhQDdGYO99AnQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@napi-rs/simple-git-win32-arm64-msvc@0.1.20':
-    resolution: {integrity: sha512-gKE2nUKiamjGvHB8yU0AeCh5crm46aGUoRhv+4lZl4iM8FXMCE3asBcRlnpunxA/YJeTCeLb5X64Wu0TouUOuQ==}
+  '@napi-rs/simple-git-win32-arm64-msvc@0.1.21':
+    resolution: {integrity: sha512-bTX+Xb5Fl3AYK2c8E/Pm04i29n9gP+FGNzaT7AQp0q/5Bgq1z/4jEadSmg5hXvoJOlIFN0+HZyau9gWGq7DpCQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@napi-rs/simple-git-win32-ia32-msvc@0.1.20':
-    resolution: {integrity: sha512-zlr/EDVn92Zt9xwKI44lDVlTSRMMXKVtJVa4ZpuwiJmcmi6PCrsq3h+bjlxOAR7r74m7DnMwdYrswQoz3zOm4A==}
+  '@napi-rs/simple-git-win32-ia32-msvc@0.1.21':
+    resolution: {integrity: sha512-jGdFPAJYgUSrPTGaM9D7devuSXby6FL9NzKffB5AXcL0AeB5HpqxaxOiOikunP5NQil1vEow6YxD4SyDIX57Cg==}
     engines: {node: '>= 10'}
     cpu: [ia32]
     os: [win32]
 
-  '@napi-rs/simple-git-win32-x64-msvc@0.1.20':
-    resolution: {integrity: sha512-k2PBT41ULmN/14s+zvv7MuYRGR995eM2WsPjSullfNlG2Xx7ntXoxXkn8JKX7T63FKO86Ato7vqTcnHa1ciV+Q==}
+  '@napi-rs/simple-git-win32-x64-msvc@0.1.21':
+    resolution: {integrity: sha512-OEVKwZ4pEGSk3AxlEaEKba6bCepbV7w+v7BjeNgCscl0Evw8A81nV2ytNqajZAPk49bZZDSDzeNWe44kkaD96Q==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
 
-  '@napi-rs/simple-git@0.1.20':
-    resolution: {integrity: sha512-uuQ326ztG3oLvLDVTwCzPHq4Wkx3OStJbD5pfsImakUOdRkpH/89BHmfa3GqTHCPSxsiRSf8Zcm2sL8IDmH/Sg==}
+  '@napi-rs/simple-git@0.1.21':
+    resolution: {integrity: sha512-49ij3JTYr/eSqvUaAXORgohU7pARH7GpCn/8JrwQo/mIulSY+gc/Xj4FtZ2+RdJrK6dLD6jSGU5vI17Of0qtCw==}
     engines: {node: '>= 10'}
 
   '@next/env@15.4.3':
@@ -2136,68 +2136,68 @@ snapshots:
     dependencies:
       langium: 3.3.1
 
-  '@napi-rs/simple-git-android-arm-eabi@0.1.20':
+  '@napi-rs/simple-git-android-arm-eabi@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-android-arm64@0.1.20':
+  '@napi-rs/simple-git-android-arm64@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-darwin-arm64@0.1.20':
+  '@napi-rs/simple-git-darwin-arm64@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-darwin-x64@0.1.20':
+  '@napi-rs/simple-git-darwin-x64@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-freebsd-x64@0.1.20':
+  '@napi-rs/simple-git-freebsd-x64@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-linux-arm-gnueabihf@0.1.20':
+  '@napi-rs/simple-git-linux-arm-gnueabihf@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-linux-arm64-gnu@0.1.20':
+  '@napi-rs/simple-git-linux-arm64-gnu@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-linux-arm64-musl@0.1.20':
+  '@napi-rs/simple-git-linux-arm64-musl@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-linux-ppc64-gnu@0.1.20':
+  '@napi-rs/simple-git-linux-ppc64-gnu@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-linux-s390x-gnu@0.1.20':
+  '@napi-rs/simple-git-linux-s390x-gnu@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-linux-x64-gnu@0.1.20':
+  '@napi-rs/simple-git-linux-x64-gnu@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-linux-x64-musl@0.1.20':
+  '@napi-rs/simple-git-linux-x64-musl@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-win32-arm64-msvc@0.1.20':
+  '@napi-rs/simple-git-win32-arm64-msvc@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-win32-ia32-msvc@0.1.20':
+  '@napi-rs/simple-git-win32-ia32-msvc@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git-win32-x64-msvc@0.1.20':
+  '@napi-rs/simple-git-win32-x64-msvc@0.1.21':
     optional: true
 
-  '@napi-rs/simple-git@0.1.20':
+  '@napi-rs/simple-git@0.1.21':
     optionalDependencies:
-      '@napi-rs/simple-git-android-arm-eabi': 0.1.20
-      '@napi-rs/simple-git-android-arm64': 0.1.20
-      '@napi-rs/simple-git-darwin-arm64': 0.1.20
-      '@napi-rs/simple-git-darwin-x64': 0.1.20
-      '@napi-rs/simple-git-freebsd-x64': 0.1.20
-      '@napi-rs/simple-git-linux-arm-gnueabihf': 0.1.20
-      '@napi-rs/simple-git-linux-arm64-gnu': 0.1.20
-      '@napi-rs/simple-git-linux-arm64-musl': 0.1.20
-      '@napi-rs/simple-git-linux-ppc64-gnu': 0.1.20
-      '@napi-rs/simple-git-linux-s390x-gnu': 0.1.20
-      '@napi-rs/simple-git-linux-x64-gnu': 0.1.20
-      '@napi-rs/simple-git-linux-x64-musl': 0.1.20
-      '@napi-rs/simple-git-win32-arm64-msvc': 0.1.20
-      '@napi-rs/simple-git-win32-ia32-msvc': 0.1.20
-      '@napi-rs/simple-git-win32-x64-msvc': 0.1.20
+      '@napi-rs/simple-git-android-arm-eabi': 0.1.21
+      '@napi-rs/simple-git-android-arm64': 0.1.21
+      '@napi-rs/simple-git-darwin-arm64': 0.1.21
+      '@napi-rs/simple-git-darwin-x64': 0.1.21
+      '@napi-rs/simple-git-freebsd-x64': 0.1.21
+      '@napi-rs/simple-git-linux-arm-gnueabihf': 0.1.21
+      '@napi-rs/simple-git-linux-arm64-gnu': 0.1.21
+      '@napi-rs/simple-git-linux-arm64-musl': 0.1.21
+      '@napi-rs/simple-git-linux-ppc64-gnu': 0.1.21
+      '@napi-rs/simple-git-linux-s390x-gnu': 0.1.21
+      '@napi-rs/simple-git-linux-x64-gnu': 0.1.21
+      '@napi-rs/simple-git-linux-x64-musl': 0.1.21
+      '@napi-rs/simple-git-win32-arm64-msvc': 0.1.21
+      '@napi-rs/simple-git-win32-ia32-msvc': 0.1.21
+      '@napi-rs/simple-git-win32-x64-msvc': 0.1.21
 
   '@next/env@15.4.3': {}
 
@@ -3783,7 +3783,7 @@ snapshots:
       '@formatjs/intl-localematcher': 0.6.1
       '@headlessui/react': 2.2.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@mdx-js/mdx': 3.1.0(acorn@8.15.0)
-      '@napi-rs/simple-git': 0.1.20
+      '@napi-rs/simple-git': 0.1.21
       '@shikijs/twoslash': 2.5.0(typescript@5.8.3)
       '@theguild/remark-mermaid': 0.2.0(react@19.1.0)
       '@theguild/remark-npm2yarn': 0.3.3

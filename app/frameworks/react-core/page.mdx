@@ -11,10 +11,10 @@ import { Callout } from 'nextra/components'
 - [React性能优化](#react性能优化)
 - [React生态工具链](#react生态工具链)
 
-## ⚛️ React架构深度解析
+## React架构深度解析
 
 <Callout type="info">
-React的核心思想是将UI视为函数的纯粹输出，通过声明式编程和组件化思想构建用户界面。
+[React](https://react.dev/)的核心思想是将UI视为函数的纯粹输出，通过声明式编程和组件化思想构建用户界面。
 </Callout>
 
 ### React核心概念
@@ -134,7 +134,7 @@ function Counter() {
 }
 ```
 
-## 🧵 Fiber架构和调度机制
+## Fiber架构和调度机制
 
 <Callout type="info">
 Fiber架构是React 16引入的重大架构升级，它使React能够实现可中断的渲染和优先级调度。
@@ -206,7 +206,7 @@ const priorities = {
 };
 ```
 
-## 🎣 Hooks原理和最佳实践
+## Hooks原理和最佳实践
 
 ### Hooks实现原理
 
@@ -416,7 +416,7 @@ function ExampleComponent() {
 }
 ```
 
-## 🏪 状态管理方案对比
+## 状态管理方案对比
 
 ### Redux vs Zustand vs Jotai
 
@@ -485,7 +485,7 @@ function JotaiCounter() {
 | **Jotai** | 需要细粒度控制 | 原子化、避免不必要重渲染 | 概念相对新颖 |
 | **Context** | 简单全局状态 | React内置、无需依赖 | 性能问题、不适合频繁更新 |
 
-## ⚡ React性能优化
+## React性能优化
 
 ### 组件优化技巧
 
@@ -594,8 +594,194 @@ function VirtualList({ items, itemHeight = 50 }) {
 }
 ```
 
+## React生态工具链
+
+<Callout type="info">
+[React](https://react.dev/)拥有丰富的生态系统，包括开发工具、状态管理、路由、测试等各个方面的解决方案。
+</Callout>
+
+### 开发工具
+
+```bash
+# Create React App - 官方脚手架
+npx create-react-app my-app
+cd my-app
+npm start
+
+# Vite + React - 现代构建工具
+npm create vite@latest my-react-app -- --template react
+cd my-react-app
+npm install
+npm run dev
+
+# Next.js - 全栈React框架
+npx create-next-app@latest my-next-app
+cd my-next-app
+npm run dev
+```
+
+### 状态管理工具
+
+```javascript
+// Redux Toolkit - 现代Redux
+import { createSlice, configureStore } from '@reduxjs/toolkit';
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 },
+  reducers: {
+    increment: (state) => {
+      state.value += 1;
+    },
+    decrement: (state) => {
+      state.value -= 1;
+    }
+  }
+});
+
+export const { increment, decrement } = counterSlice.actions;
+export const store = configureStore({
+  reducer: {
+    counter: counterSlice.reducer
+  }
+});
+
+// Zustand - 轻量级状态管理
+import { create } from 'zustand';
+
+const useStore = create((set) => ({
+  count: 0,
+  increment: () => set((state) => ({ count: state.count + 1 })),
+  decrement: () => set((state) => ({ count: state.count - 1 }))
+}));
+```
+
+### 路由管理
+
+```javascript
+// React Router v6
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <nav>
+        <Link to="/">Home</Link>
+        <Link to="/about">About</Link>
+        <Link to="/contact">Contact</Link>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/users/:id" element={<UserProfile />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+### UI组件库
+
+```javascript
+// Ant Design
+import { Button, Table, Form, Input } from 'antd';
+
+function MyComponent() {
+  return (
+    <Form>
+      <Form.Item label="用户名" name="username">
+        <Input />
+      </Form.Item>
+      <Button type="primary" htmlType="submit">
+        提交
+      </Button>
+    </Form>
+  );
+}
+
+// Material-UI (MUI)
+import { Button, TextField, Box } from '@mui/material';
+
+function MyComponent() {
+  return (
+    <Box component="form">
+      <TextField label="用户名" variant="outlined" />
+      <Button variant="contained" color="primary">
+        提交
+      </Button>
+    </Box>
+  );
+}
+```
+
+### 测试工具
+
+```javascript
+// Jest + React Testing Library
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import Counter from './Counter';
+
+test('renders counter and increments', () => {
+  render(<Counter />);
+
+  const counter = screen.getByText(/count: 0/i);
+  expect(counter).toBeInTheDocument();
+
+  const button = screen.getByRole('button', { name: /increment/i });
+  fireEvent.click(button);
+
+  expect(screen.getByText(/count: 1/i)).toBeInTheDocument();
+});
+
+// Cypress E2E测试
+describe('Counter App', () => {
+  it('should increment counter', () => {
+    cy.visit('/');
+    cy.contains('Count: 0');
+    cy.get('[data-testid="increment-button"]').click();
+    cy.contains('Count: 1');
+  });
+});
+```
+
 ---
 
 <Callout type="success">
 理解React的核心原理和Fiber架构是成为React高级开发者的关键。这些知识将帮助你编写更高效、更可维护的React应用。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [React 官方文档](https://react.dev/) - React官方学习资源
+- [React API 参考](https://react.dev/reference/react) - 完整API文档
+- [React DevTools](https://react.dev/learn/react-developer-tools) - 官方调试工具
+
+### 🎓 优质教程
+- [React 官方教程](https://react.dev/learn) - 官方入门教程
+- [React Patterns](https://reactpatterns.com/) - React设计模式
+- [Epic React](https://epicreact.dev/) - Kent C. Dodds的React课程
+
+### 🛠️ 实践项目
+- [React 项目集合](https://github.com/facebook/create-react-app) - 官方脚手架
+- [React 示例项目](https://github.com/facebook/react/tree/main/packages/react-dom/src/__tests__) - 官方示例
+- [Awesome React](https://github.com/enaqx/awesome-react) - React资源集合
+
+### 🔧 开发工具
+- [Create React App](https://create-react-app.dev/) - 官方脚手架
+- [Vite React 模板](https://vitejs.dev/guide/#trying-vite-online) - 现代构建工具
+- [React DevTools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) - 浏览器扩展
+
+### 📝 深入阅读
+- [React Fiber 架构](https://github.com/acdlite/react-fiber-architecture) - Fiber原理解析
+- [React 源码解析](https://react.iamkasong.com/) - 源码学习指南
+- [React 性能优化](https://web.dev/react/) - Google Web.dev React指南
+
+<Callout type="tip">
+💡 **学习建议**：建议从官方文档开始，通过Create React App创建项目实践，然后深入学习Hooks和性能优化，最后了解Fiber架构原理。
 </Callout>

@@ -11,13 +11,13 @@ import { Callout } from 'nextra/components'
 - [开发效率工具](#开发效率工具)
 - [团队协作规范](#团队协作规范)
 
-## 💻 现代开发环境搭建
+## 现代开发环境搭建
 
 <Callout type="info">
 一个高效的开发环境能够显著提升开发效率，减少重复性工作，让开发者专注于核心业务逻辑。
 </Callout>
 
-### Node.js环境管理
+### [Node.js](https://nodejs.org/)环境管理
 
 ```bash
 # 使用nvm管理Node.js版本
@@ -256,7 +256,7 @@ EOF
 }
 ```
 
-## 🔧 版本控制和Git工作流
+## 版本控制和Git工作流
 
 ### Git配置和最佳实践
 
@@ -409,7 +409,7 @@ npx lint-staged
 npm run type-check
 ```
 
-## 🐛 调试工具和技巧
+## 调试工具和技巧
 
 ### 浏览器开发者工具
 
@@ -572,7 +572,7 @@ DebugFetch.request('/api/users', {
 });
 ```
 
-## 📦 包管理器深入
+## 包管理器深入
 
 ### npm vs yarn vs pnpm对比
 
@@ -676,6 +676,111 @@ pnpm run --filter @myorg/web-app dev
     ]
   }
 }
+```
+
+## 开发效率工具
+
+<Callout type="info">
+现代开发工具能够自动化重复性任务，提供智能提示，显著提升开发效率。
+</Callout>
+
+### 代码编辑器配置
+
+```json
+// VS Code settings.json
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": false,
+  "workbench.colorTheme": "One Dark Pro",
+  "terminal.integrated.fontSize": 14,
+  "extensions.autoUpdate": false
+}
+```
+
+### 自动化工具
+
+```javascript
+// Husky + lint-staged 配置
+// package.json
+{
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write",
+      "git add"
+    ],
+    "*.{css,scss,less}": [
+      "stylelint --fix",
+      "prettier --write",
+      "git add"
+    ]
+  }
+}
+```
+
+## 团队协作规范
+
+<Callout type="info">
+统一的团队协作规范能够减少沟通成本，提高代码质量，确保项目的可维护性。
+</Callout>
+
+### 代码规范
+
+```javascript
+// .eslintrc.js
+module.exports = {
+  extends: [
+    'eslint:recommended',
+    '@typescript-eslint/recommended',
+    'prettier'
+  ],
+  rules: {
+    'no-console': 'warn',
+    'no-unused-vars': 'error',
+    'prefer-const': 'error',
+    '@typescript-eslint/no-explicit-any': 'warn'
+  }
+};
+
+// .prettierrc
+{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2
+}
+```
+
+### Git提交规范
+
+```bash
+# Conventional Commits 规范
+feat: 新功能
+fix: 修复bug
+docs: 文档更新
+style: 代码格式调整
+refactor: 代码重构
+test: 测试相关
+chore: 构建过程或辅助工具的变动
+
+# 示例
+feat(auth): 添加用户登录功能
+fix(api): 修复数据获取错误
+docs(readme): 更新安装说明
 ```
 
 ---

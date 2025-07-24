@@ -11,10 +11,10 @@ import { Callout } from 'nextra/components'
 - [Vue3性能优化](#vue3性能优化)
 - [Vue3生态系统](#vue3生态系统)
 
-## 🔄 Vue3架构革新
+## Vue3架构革新
 
 <Callout type="info">
-Vue3带来了全新的架构设计，包括Composition API、更好的TypeScript支持、Tree-shaking友好的设计等重大改进。
+[Vue3](https://vuejs.org/)带来了全新的架构设计，包括[Composition API](https://vuejs.org/guide/extras/composition-api-faq.html)、更好的[TypeScript](https://www.typescriptlang.org/)支持、Tree-shaking友好的设计等重大改进。
 </Callout>
 
 ### Vue3 vs Vue2 核心差异
@@ -140,7 +140,7 @@ defineExpose({
 </script>
 ```
 
-## ⚡ 响应式系统原理
+## 响应式系统原理
 
 ### Proxy vs Object.defineProperty
 
@@ -339,7 +339,7 @@ const stop = watchEffect(() => {
 stop()
 ```
 
-## 🎯 Composition API深入
+## Composition API深入
 
 ### 组合式函数（Composables）
 
@@ -625,7 +625,7 @@ export function useInfiniteScroll(fetchMore, options = {}) {
 }
 ```
 
-## 🔄 组件通信和状态管理
+## 组件通信和状态管理
 
 ### 组件通信方式
 
@@ -830,8 +830,272 @@ store.$patch((state) => {
 </script>
 ```
 
+## Vue3性能优化
+
+<Callout type="info">
+Vue3在性能方面有显著提升，包括更小的包体积、更快的渲染速度和更好的Tree-shaking支持。
+</Callout>
+
+### 编译时优化
+
+```vue
+<template>
+  <!-- 静态提升 - 静态元素会被提升到渲染函数外部 -->
+  <div class="static-class">
+    <h1>静态标题</h1>
+    <!-- 动态内容 -->
+    <p>{{ message }}</p>
+
+    <!-- 补丁标记 - Vue3会标记动态内容 -->
+    <div :class="dynamicClass">{{ count }}</div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+
+const message = ref('Hello Vue3')
+const count = ref(0)
+const dynamicClass = computed(() => count.value > 10 ? 'large' : 'small')
+</script>
+```
+
+### 响应式优化
+
+```javascript
+// 使用shallowRef减少深度响应式开销
+import { shallowRef, triggerRef } from 'vue'
+
+const state = shallowRef({
+  count: 0,
+  nested: {
+    value: 'hello'
+  }
+})
+
+// 手动触发更新
+function updateNested() {
+  state.value.nested.value = 'world'
+  triggerRef(state) // 手动触发响应式更新
+}
+
+// 使用markRaw避免响应式转换
+import { markRaw, reactive } from 'vue'
+
+const state = reactive({
+  foo: markRaw({
+    // 这个对象不会被转换为响应式
+    nestedProperty: 'value'
+  })
+})
+```
+
+### 组件优化
+
+```vue
+<!-- 使用v-memo缓存子树 -->
+<template>
+  <div v-for="item in list" :key="item.id" v-memo="[item.id, item.selected]">
+    <p>{{ item.name }}</p>
+    <p>{{ item.description }}</p>
+  </div>
+</template>
+
+<script setup>
+// 使用defineAsyncComponent异步加载组件
+import { defineAsyncComponent } from 'vue'
+
+const AsyncComponent = defineAsyncComponent({
+  loader: () => import('./HeavyComponent.vue'),
+  loadingComponent: LoadingComponent,
+  errorComponent: ErrorComponent,
+  delay: 200,
+  timeout: 3000
+})
+</script>
+```
+
+## Vue3生态系统
+
+<Callout type="info">
+Vue3拥有丰富的生态系统，包括官方工具、第三方库和开发工具。
+</Callout>
+
+### 官方工具链
+
+```bash
+# Vite - 官方构建工具
+npm create vue@latest my-vue-app
+cd my-vue-app
+npm install
+npm run dev
+
+# Vue CLI (传统方式)
+npm install -g @vue/cli
+vue create my-project
+```
+
+### 路由管理
+
+```javascript
+// Vue Router 4
+import { createRouter, createWebHistory } from 'vue-router'
+import { defineAsyncComponent } from 'vue'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/',
+      name: 'Home',
+      component: () => import('./views/Home.vue')
+    },
+    {
+      path: '/about',
+      name: 'About',
+      component: defineAsyncComponent(() => import('./views/About.vue'))
+    },
+    {
+      path: '/user/:id',
+      name: 'User',
+      component: () => import('./views/User.vue'),
+      props: true
+    }
+  ]
+})
+
+export default router
+```
+
+### 状态管理
+
+```javascript
+// Pinia - 官方状态管理库
+import { defineStore } from 'pinia'
+
+export const useCounterStore = defineStore('counter', {
+  state: () => ({
+    count: 0,
+    name: 'Eduardo'
+  }),
+
+  getters: {
+    doubleCount: (state) => state.count * 2
+  },
+
+  actions: {
+    increment() {
+      this.count++
+    },
+
+    async fetchUserData(userId) {
+      try {
+        const userData = await api.getUser(userId)
+        this.name = userData.name
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+      }
+    }
+  }
+})
+
+// 在组件中使用
+import { useCounterStore } from '@/stores/counter'
+
+const counter = useCounterStore()
+counter.increment()
+```
+
+### UI组件库
+
+```javascript
+// Element Plus
+import { createApp } from 'vue'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+
+const app = createApp(App)
+app.use(ElementPlus)
+
+// Ant Design Vue
+import { createApp } from 'vue'
+import Antd from 'ant-design-vue'
+import 'ant-design-vue/dist/antd.css'
+
+const app = createApp(App)
+app.use(Antd)
+
+// Vuetify 3
+import { createApp } from 'vue'
+import { createVuetify } from 'vuetify'
+import 'vuetify/styles'
+
+const vuetify = createVuetify()
+const app = createApp(App)
+app.use(vuetify)
+```
+
+### 开发工具
+
+```javascript
+// Vue DevTools
+// 浏览器扩展，支持Vue3的Composition API调试
+
+// Volar - VS Code扩展
+// 提供Vue3和TypeScript的完整支持
+
+// 测试工具
+import { mount } from '@vue/test-utils'
+import { describe, it, expect } from 'vitest'
+import MyComponent from './MyComponent.vue'
+
+describe('MyComponent', () => {
+  it('renders properly', () => {
+    const wrapper = mount(MyComponent, {
+      props: { msg: 'Hello Vitest' }
+    })
+    expect(wrapper.text()).toContain('Hello Vitest')
+  })
+})
+```
+
 ---
 
 <Callout type="success">
 Vue3的Composition API和响应式系统为我们提供了更灵活、更强大的开发体验。通过合理使用组合式函数，我们可以构建更加模块化和可复用的代码。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [Vue3 官方文档](https://vuejs.org/) - Vue3权威学习资源
+- [Vue3 API 参考](https://vuejs.org/api/) - 完整API文档
+- [Vue Router 4](https://router.vuejs.org/) - 官方路由管理
+- [Pinia](https://pinia.vuejs.org/) - 官方状态管理库
+
+### 🎓 优质教程
+- [Vue3 官方教程](https://vuejs.org/tutorial/) - 官方交互式教程
+- [Vue Mastery](https://www.vuemastery.com/) - Vue专业课程平台
+- [Vue School](https://vueschool.io/) - Vue在线学习平台
+
+### 🛠️ 实践项目
+- [Vue3 示例项目](https://github.com/vuejs/petite-vue) - 官方示例
+- [Awesome Vue](https://github.com/vuejs/awesome-vue) - Vue资源集合
+- [Vue3 最佳实践](https://github.com/vuejs/vue-next) - 官方仓库
+
+### 🔧 开发工具
+- [Vite](https://vitejs.dev/) - 官方构建工具
+- [Vue CLI](https://cli.vuejs.org/) - 传统脚手架工具
+- [Vue DevTools](https://devtools.vuejs.org/) - 官方调试工具
+- [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) - VS Code扩展
+
+### 📝 深入阅读
+- [Vue3 设计理念](https://vuejs.org/guide/extras/composition-api-faq.html) - Composition API设计思路
+- [Vue3 响应式原理](https://vuejs.org/guide/extras/reactivity-in-depth.html) - 响应式系统深入
+- [Vue3 性能优化](https://vuejs.org/guide/best-practices/performance.html) - 官方性能指南
+
+<Callout type="tip">
+💡 **学习建议**：建议从官方文档开始，通过Vite创建项目实践，然后深入学习Composition API和响应式系统，最后了解Vue3生态系统。
 </Callout>

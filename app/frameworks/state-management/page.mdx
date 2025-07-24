@@ -11,7 +11,7 @@ import { Callout } from 'nextra/components'
 - [最佳实践和选择指南](#最佳实践和选择指南)
 - [服务端状态管理](#服务端状态管理)
 
-## 🧠 状态管理概念和模式
+## 状态管理概念和模式
 
 <Callout type="info">
 状态管理是现代前端应用的核心问题，选择合适的状态管理方案能够显著提升开发效率和应用性能。
@@ -199,7 +199,7 @@ userCount$.next(1); // 输出: 用户数量: 1
 userCount$.next(2); // 输出: 用户数量: 2, 偶数用户数量: 2
 ```
 
-## 🔄 Redux生态系统
+## Redux生态系统
 
 ### Redux Toolkit现代化实践
 
@@ -461,7 +461,7 @@ function UserList() {
 }
 ```
 
-## 🚀 现代状态管理方案
+## 现代状态管理方案
 
 ### Zustand - 轻量级状态管理
 
@@ -791,7 +791,7 @@ export const resetUsersAtom = atom(null, (get, set) => {
 });
 ```
 
-## 📊 状态管理方案对比
+## 状态管理方案对比
 
 ### 方案选择矩阵
 
@@ -918,6 +918,312 @@ function chooseStateManagement(requirements) {
     solution: 'Zustand',
     reason: '平衡了所有方面的需求'
   };
+}
+```
+
+## 最佳实践和选择指南
+
+<Callout type="info">
+选择状态管理方案需要考虑应用规模、团队经验、性能要求等多个维度。
+</Callout>
+
+### 选择决策树
+
+```javascript
+// 状态管理方案选择指南
+function chooseStateManagement(appContext) {
+  const {
+    teamSize,
+    appComplexity,
+    performanceRequirements,
+    teamExperience,
+    framework
+  } = appContext;
+
+  // 小型应用
+  if (appComplexity === 'simple' && teamSize <= 3) {
+    return framework === 'react'
+      ? 'useState + useContext'
+      : 'Vue reactive + provide/inject';
+  }
+
+  // 中型应用
+  if (appComplexity === 'medium' && teamSize <= 10) {
+    return framework === 'react'
+      ? ['Zustand', 'Jotai', 'Valtio']
+      : ['Pinia', 'Vuex'];
+  }
+
+  // 大型应用
+  if (appComplexity === 'complex' || teamSize > 10) {
+    return framework === 'react'
+      ? ['Redux Toolkit', 'MobX']
+      : ['Pinia', 'Vuex'];
+  }
+
+  // 高性能要求
+  if (performanceRequirements === 'high') {
+    return ['Valtio', 'Jotai', 'MobX'];
+  }
+}
+```
+
+### 最佳实践原则
+
+```javascript
+// 1. 状态结构设计
+const goodStateStructure = {
+  // 扁平化结构
+  users: {
+    byId: {
+      '1': { id: '1', name: 'John' },
+      '2': { id: '2', name: 'Jane' }
+    },
+    allIds: ['1', '2']
+  },
+
+  // 分离UI状态和业务状态
+  ui: {
+    loading: false,
+    selectedUserId: '1',
+    filters: {
+      status: 'active',
+      role: 'admin'
+    }
+  }
+};
+
+// 2. 避免深度嵌套
+const badStateStructure = {
+  users: [
+    {
+      id: '1',
+      profile: {
+        personal: {
+          name: 'John',
+          address: {
+            street: '123 Main St',
+            city: 'New York'
+          }
+        }
+      }
+    }
+  ]
+};
+
+// 3. 使用选择器优化性能
+import { createSelector } from '@reduxjs/toolkit';
+
+const selectUsers = (state) => state.users.byId;
+const selectUserIds = (state) => state.users.allIds;
+const selectActiveFilter = (state) => state.ui.filters.status;
+
+const selectActiveUsers = createSelector(
+  [selectUsers, selectUserIds, selectActiveFilter],
+  (users, userIds, activeFilter) => {
+    return userIds
+      .map(id => users[id])
+      .filter(user => user.status === activeFilter);
+  }
+);
+```
+
+## 服务端状态管理
+
+<Callout type="info">
+服务端状态管理专注于处理异步数据获取、缓存、同步等问题，与客户端状态管理有不同的关注点。
+</Callout>
+
+### React Query / TanStack Query
+
+```javascript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// 数据获取
+function UserProfile({ userId }) {
+  const {
+    data: user,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId),
+    staleTime: 5 * 60 * 1000, // 5分钟内数据被认为是新鲜的
+    cacheTime: 10 * 60 * 1000, // 10分钟后清除缓存
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return <div>{user.name}</div>;
+}
+
+// 数据变更
+function UpdateUserForm({ userId }) {
+  const queryClient = useQueryClient();
+
+  const updateUserMutation = useMutation({
+    mutationFn: updateUser,
+    onSuccess: (data) => {
+      // 更新缓存
+      queryClient.setQueryData(['user', userId], data);
+
+      // 或者重新获取
+      queryClient.invalidateQueries(['user', userId]);
+
+      // 乐观更新
+      queryClient.setQueryData(['users'], (oldData) => {
+        return oldData.map(user =>
+          user.id === userId ? { ...user, ...data } : user
+        );
+      });
+    },
+    onError: (error) => {
+      console.error('Update failed:', error);
+    }
+  });
+
+  const handleSubmit = (formData) => {
+    updateUserMutation.mutate({ userId, ...formData });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* 表单内容 */}
+      <button
+        type="submit"
+        disabled={updateUserMutation.isLoading}
+      >
+        {updateUserMutation.isLoading ? 'Updating...' : 'Update'}
+      </button>
+    </form>
+  );
+}
+```
+
+### SWR
+
+```javascript
+import useSWR, { mutate } from 'swr';
+
+const fetcher = (url) => fetch(url).then(res => res.json());
+
+function UserList() {
+  const { data: users, error, isLoading } = useSWR('/api/users', fetcher, {
+    refreshInterval: 30000, // 30秒自动刷新
+    revalidateOnFocus: true, // 窗口获得焦点时重新验证
+    revalidateOnReconnect: true, // 网络重连时重新验证
+    dedupingInterval: 2000, // 2秒内的重复请求会被去重
+  });
+
+  const deleteUser = async (userId) => {
+    // 乐观更新
+    const updatedUsers = users.filter(user => user.id !== userId);
+    mutate('/api/users', updatedUsers, false);
+
+    try {
+      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      // 重新验证数据
+      mutate('/api/users');
+    } catch (error) {
+      // 回滚乐观更新
+      mutate('/api/users');
+      console.error('Delete failed:', error);
+    }
+  };
+
+  if (error) return <div>Failed to load users</div>;
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <ul>
+      {users.map(user => (
+        <li key={user.id}>
+          {user.name}
+          <button onClick={() => deleteUser(user.id)}>Delete</button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Apollo Client (GraphQL)
+
+```javascript
+import { useQuery, useMutation, gql } from '@apollo/client';
+
+const GET_USERS = gql`
+  query GetUsers($filter: UserFilter) {
+    users(filter: $filter) {
+      id
+      name
+      email
+      status
+    }
+  }
+`;
+
+const UPDATE_USER = gql`
+  mutation UpdateUser($id: ID!, $input: UserInput!) {
+    updateUser(id: $id, input: $input) {
+      id
+      name
+      email
+      status
+    }
+  }
+`;
+
+function UserManagement() {
+  const { loading, error, data, refetch } = useQuery(GET_USERS, {
+    variables: { filter: { status: 'ACTIVE' } },
+    pollInterval: 30000, // 30秒轮询
+    errorPolicy: 'partial', // 部分数据也显示
+    fetchPolicy: 'cache-and-network' // 先显示缓存，然后网络请求
+  });
+
+  const [updateUser] = useMutation(UPDATE_USER, {
+    update(cache, { data: { updateUser } }) {
+      // 更新Apollo缓存
+      cache.modify({
+        fields: {
+          users(existingUsers = []) {
+            return existingUsers.map(user =>
+              user.__ref === cache.identify(updateUser)
+                ? updateUser
+                : user
+            );
+          }
+        }
+      });
+    },
+    optimisticResponse: (variables) => ({
+      updateUser: {
+        __typename: 'User',
+        id: variables.id,
+        ...variables.input
+      }
+    })
+  });
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <div>
+      {data.users.map(user => (
+        <UserCard
+          key={user.id}
+          user={user}
+          onUpdate={updateUser}
+        />
+      ))}
+    </div>
+  );
 }
 ```
 

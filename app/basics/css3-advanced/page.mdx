@@ -11,10 +11,10 @@ import { Callout } from 'nextra/components'
 - [预处理器深入](#预处理器深入)
 - [CSS-in-JS方案](#css-in-js方案)
 
-## 🎨 现代CSS布局系统
+## 现代CSS布局系统
 
 <Callout type="info">
-CSS3引入了Flexbox和Grid两大布局系统，彻底改变了Web布局的方式，让复杂布局变得简单直观。
+[CSS3](https://www.w3.org/Style/CSS/)引入了[Flexbox](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout)和[Grid](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Grid_Layout)两大布局系统，彻底改变了Web布局的方式，让复杂布局变得简单直观。
 </Callout>
 
 ### Flexbox布局详解
@@ -306,7 +306,7 @@ CSS Grid是二维布局系统，比Flexbox更适合复杂的网格布局。掌�
 </style>
 ```
 
-## 🎭 CSS动画和变换
+## CSS动画和变换
 
 ### Transform变换
 
@@ -491,7 +491,7 @@ CSS Grid是二维布局系统，比Flexbox更适合复杂的网格布局。掌�
 }
 ```
 
-## 📱 响应式设计深入
+## 响应式设计深入
 
 ### 媒体查询高级用法
 
@@ -631,7 +631,7 @@ CSS Grid是二维布局系统，比Flexbox更适合复杂的网格布局。掌�
 }
 ```
 
-## 🏗️ CSS架构方法论
+## CSS架构方法论
 
 ### BEM方法论
 
@@ -865,8 +865,252 @@ BEM（Block Element Modifier）是一种CSS命名约定，能够让CSS更加模�
 .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
 ```
 
+## 预处理器深入
+
+<Callout type="info">
+CSS预处理器如[Sass](https://sass-lang.com/)、[Less](https://lesscss.org/)等为CSS开发提供了变量、嵌套、混合等强大功能。
+</Callout>
+
+### Sass/SCSS 高级特性
+
+```scss
+// 变量和嵌套
+$primary-color: #007bff;
+$secondary-color: #6c757d;
+$border-radius: 4px;
+
+.card {
+  background: white;
+  border-radius: $border-radius;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  &__header {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+
+    h3 {
+      margin: 0;
+      color: $primary-color;
+    }
+  }
+
+  &__body {
+    padding: 1rem;
+  }
+
+  &--highlighted {
+    border-left: 4px solid $primary-color;
+  }
+}
+
+// 混合(Mixins)
+@mixin button-style($bg-color, $text-color: white) {
+  background-color: $bg-color;
+  color: $text-color;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: $border-radius;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: darken($bg-color, 10%);
+    transform: translateY(-1px);
+  }
+}
+
+.btn-primary {
+  @include button-style($primary-color);
+}
+
+.btn-secondary {
+  @include button-style($secondary-color);
+}
+```
+
+## CSS-in-JS方案
+
+<Callout type="info">
+CSS-in-JS允许在JavaScript中编写CSS，提供了动态样式、主题切换、作用域隔离等优势。
+</Callout>
+
+### Styled Components
+
+```javascript
+import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
+
+// 全局样式
+const GlobalStyle = createGlobalStyle`
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: ${props => props.theme.backgroundColor};
+    color: ${props => props.theme.textColor};
+  }
+`;
+
+// 主题定义
+const lightTheme = {
+  backgroundColor: '#ffffff',
+  textColor: '#333333',
+  primaryColor: '#007bff',
+  secondaryColor: '#6c757d'
+};
+
+const darkTheme = {
+  backgroundColor: '#1a1a1a',
+  textColor: '#ffffff',
+  primaryColor: '#0d6efd',
+  secondaryColor: '#6c757d'
+};
+
+// 样式组件
+const Button = styled.button`
+  background-color: ${props => props.theme.primaryColor};
+  color: white;
+  border: none;
+  padding: ${props => props.size === 'large' ? '12px 24px' : '8px 16px'};
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: ${props => props.size === 'large' ? '16px' : '14px'};
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: ${props => props.theme.primaryColor}dd;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    background-color: ${props => props.theme.secondaryColor};
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const Card = styled.div`
+  background: ${props => props.theme.backgroundColor};
+  border: 1px solid ${props => props.theme.textColor}20;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+// 使用示例
+function App() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  return (
+    <ThemeProvider theme={isDarkMode ? darkTheme : lightTheme}>
+      <GlobalStyle />
+      <Card>
+        <h2>CSS-in-JS 示例</h2>
+        <Button onClick={() => setIsDarkMode(!isDarkMode)}>
+          切换主题
+        </Button>
+        <Button size="large" disabled>
+          大按钮（禁用）
+        </Button>
+      </Card>
+    </ThemeProvider>
+  );
+}
+```
+
+### Emotion
+
+```javascript
+/** @jsxImportSource @emotion/react */
+import { css, Global, ThemeProvider } from '@emotion/react';
+import styled from '@emotion/styled';
+
+// 全局样式
+const globalStyles = css`
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+`;
+
+// CSS对象样式
+const buttonStyles = (theme) => css`
+  background-color: ${theme.primaryColor};
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: ${theme.primaryColor}dd;
+  }
+`;
+
+// Styled组件
+const StyledCard = styled.div`
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+function MyComponent() {
+  const theme = { primaryColor: '#007bff' };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Global styles={globalStyles} />
+      <StyledCard>
+        <button css={buttonStyles}>点击我</button>
+      </StyledCard>
+    </ThemeProvider>
+  );
+}
+```
+
 ---
 
 <Callout type="success">
 CSS3的强大功能让我们能够创建出美观、响应式、高性能的用户界面。掌握现代CSS布局、动画和架构方法论，是成为优秀前端开发者的必备技能。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [MDN CSS 参考](https://developer.mozilla.org/en-US/docs/Web/CSS) - CSS权威文档
+- [CSS 规范](https://www.w3.org/Style/CSS/) - W3C CSS标准
+- [Can I Use](https://caniuse.com/) - CSS特性兼容性查询
+
+### 🎓 优质教程
+- [CSS-Tricks](https://css-tricks.com/) - CSS技巧和教程
+- [Flexbox Froggy](https://flexboxfroggy.com/) - Flexbox游戏教程
+- [Grid Garden](https://cssgridgarden.com/) - CSS Grid游戏教程
+- [CSS Layout](https://learnlayout.com/) - CSS布局学习
+
+### 🛠️ 实践项目
+- [CSS Zen Garden](http://www.csszengarden.com/) - CSS设计展示
+- [30 Seconds of CSS](https://30-seconds.github.io/30-seconds-of-css/) - CSS代码片段
+- [Animate.css](https://animate.style/) - CSS动画库
+
+### 🔧 开发工具
+- [Sass](https://sass-lang.com/) - CSS预处理器
+- [PostCSS](https://postcss.org/) - CSS后处理器
+- [Tailwind CSS](https://tailwindcss.com/) - 实用优先的CSS框架
+- [CSS Grid Generator](https://cssgrid-generator.netlify.app/) - Grid布局生成器
+
+### 📝 深入阅读
+- [CSS 架构指南](https://philipwalton.com/articles/css-architecture/) - CSS架构最佳实践
+- [BEM 方法论](https://getbem.com/) - CSS命名规范
+- [CSS 性能优化](https://web.dev/fast/#optimize-your-css) - 性能优化指南
+
+<Callout type="tip">
+💡 **学习建议**：建议先掌握Flexbox和Grid布局，然后学习CSS动画和预处理器，最后了解CSS架构方法论和性能优化。
 </Callout>

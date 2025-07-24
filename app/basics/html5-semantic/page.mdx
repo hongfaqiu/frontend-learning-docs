@@ -11,10 +11,10 @@ import { Callout } from 'nextra/components'
 - [Web Components技术](#web-components技术)
 - [无障碍性最佳实践](#无障碍性最佳实践)
 
-## 🆕 HTML5新特性概览
+## HTML5新特性概览
 
 <Callout type="info">
-HTML5不仅仅是标记语言的升级，它代表了Web平台的重大进步，引入了语义化、多媒体、图形、存储等众多新特性。
+[HTML5](https://html.spec.whatwg.org/)不仅仅是标记语言的升级，它代表了[Web](https://www.w3.org/)平台的重大进步，引入了语义化、多媒体、图形、存储等众多新特性。
 </Callout>
 
 ### HTML5的设计原则
@@ -87,7 +87,7 @@ HTML5不仅仅是标记语言的升级，它代表了Web平台的重大进步，
 </html>
 ```
 
-## 🏗️ 语义化标签深入
+## 语义化标签深入
 
 ### 文档结构标签
 
@@ -236,7 +236,7 @@ function greet(name) {
 </p>
 ```
 
-## 📝 表单增强和验证
+## 表单增强和验证
 
 ### HTML5表单新特性
 
@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 ```
 
-## 🎬 多媒体和图形
+## 多媒体和图形
 
 ### 音频和视频
 
@@ -548,8 +548,365 @@ ctx.fillText('Hello Canvas!', 50, 200);
 </svg>
 ```
 
+## Web Components技术
+
+<Callout type="info">
+[Web Components](https://www.webcomponents.org/) 是一套不同的技术，允许您创建可重用的定制元素，并且在您的web应用中使用它们。
+</Callout>
+
+### Custom Elements
+
+```html
+<!-- 定义自定义元素 -->
+<script>
+class MyButton extends HTMLElement {
+  constructor() {
+    super();
+
+    // 创建Shadow DOM
+    this.attachShadow({ mode: 'open' });
+
+    // 创建按钮元素
+    const button = document.createElement('button');
+    button.textContent = this.getAttribute('text') || 'Click me';
+    button.addEventListener('click', () => {
+      this.dispatchEvent(new CustomEvent('my-click', {
+        detail: { message: 'Button clicked!' }
+      }));
+    });
+
+    // 添加样式
+    const style = document.createElement('style');
+    style.textContent = `
+      button {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: transform 0.2s;
+      }
+
+      button:hover {
+        transform: scale(1.05);
+      }
+
+      button:active {
+        transform: scale(0.95);
+      }
+    `;
+
+    // 添加到Shadow DOM
+    this.shadowRoot.appendChild(style);
+    this.shadowRoot.appendChild(button);
+  }
+
+  // 监听属性变化
+  static get observedAttributes() {
+    return ['text'];
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === 'text') {
+      const button = this.shadowRoot.querySelector('button');
+      if (button) {
+        button.textContent = newValue;
+      }
+    }
+  }
+}
+
+// 注册自定义元素
+customElements.define('my-button', MyButton);
+</script>
+
+<!-- 使用自定义元素 -->
+<my-button text="自定义按钮"></my-button>
+
+<script>
+document.querySelector('my-button').addEventListener('my-click', (e) => {
+  console.log(e.detail.message);
+});
+</script>
+```
+
+### HTML Templates
+
+```html
+<!-- 定义模板 -->
+<template id="user-card-template">
+  <style>
+    .user-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 8px;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .user-info {
+      margin-left: 16px;
+    }
+
+    .user-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .user-email {
+      color: #666;
+      margin: 4px 0 0 0;
+    }
+  </style>
+
+  <div class="user-card">
+    <img class="avatar" src="" alt="User Avatar">
+    <div class="user-info">
+      <h3 class="user-name"></h3>
+      <p class="user-email"></p>
+    </div>
+  </div>
+</template>
+
+<script>
+class UserCard extends HTMLElement {
+  constructor() {
+    super();
+
+    // 克隆模板内容
+    const template = document.getElementById('user-card-template');
+    const templateContent = template.content;
+
+    this.attachShadow({ mode: 'open' });
+    this.shadowRoot.appendChild(templateContent.cloneNode(true));
+
+    // 设置数据
+    this.updateUserInfo();
+  }
+
+  updateUserInfo() {
+    const avatar = this.shadowRoot.querySelector('.avatar');
+    const name = this.shadowRoot.querySelector('.user-name');
+    const email = this.shadowRoot.querySelector('.user-email');
+
+    avatar.src = this.getAttribute('avatar') || 'default-avatar.png';
+    name.textContent = this.getAttribute('name') || 'Unknown User';
+    email.textContent = this.getAttribute('email') || 'no-email@example.com';
+  }
+
+  static get observedAttributes() {
+    return ['avatar', 'name', 'email'];
+  }
+
+  attributeChangedCallback() {
+    this.updateUserInfo();
+  }
+}
+
+customElements.define('user-card', UserCard);
+</script>
+
+<!-- 使用用户卡片组件 -->
+<user-card
+  name="张三"
+  email="zhangsan@example.com"
+  avatar="https://via.placeholder.com/60">
+</user-card>
+```
+
+## 无障碍性最佳实践
+
+<Callout type="warning">
+无障碍性（[Accessibility](https://www.w3.org/WAI/)）不是可选功能，而是Web开发的基本要求。良好的无障碍性设计让所有用户都能平等地访问和使用您的网站。
+</Callout>
+
+### 语义化HTML的无障碍性
+
+```html
+<!-- 正确的语义化结构 -->
+<main role="main">
+  <header>
+    <h1>网站标题</h1>
+    <nav aria-label="主导航">
+      <ul>
+        <li><a href="#home" aria-current="page">首页</a></li>
+        <li><a href="#about">关于我们</a></li>
+        <li><a href="#contact">联系我们</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section aria-labelledby="news-heading">
+    <h2 id="news-heading">最新新闻</h2>
+    <article>
+      <h3>新闻标题</h3>
+      <time datetime="2024-01-15">2024年1月15日</time>
+      <p>新闻内容...</p>
+    </article>
+  </section>
+
+  <aside aria-label="侧边栏">
+    <h2>相关链接</h2>
+    <ul>
+      <li><a href="#link1">链接1</a></li>
+      <li><a href="#link2">链接2</a></li>
+    </ul>
+  </aside>
+</main>
+
+<footer>
+  <p>&copy; 2024 公司名称. 保留所有权利.</p>
+</footer>
+```
+
+### 表单无障碍性
+
+```html
+<form aria-labelledby="contact-form-title">
+  <h2 id="contact-form-title">联系表单</h2>
+
+  <!-- 必填字段指示 -->
+  <p><span aria-hidden="true">*</span> 表示必填字段</p>
+
+  <div class="form-group">
+    <label for="name">
+      姓名 <span aria-hidden="true">*</span>
+    </label>
+    <input
+      type="text"
+      id="name"
+      name="name"
+      required
+      aria-describedby="name-error"
+      aria-invalid="false">
+    <div id="name-error" class="error-message" aria-live="polite"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="email">
+      邮箱 <span aria-hidden="true">*</span>
+    </label>
+    <input
+      type="email"
+      id="email"
+      name="email"
+      required
+      aria-describedby="email-help email-error"
+      aria-invalid="false">
+    <div id="email-help" class="help-text">
+      我们不会分享您的邮箱地址
+    </div>
+    <div id="email-error" class="error-message" aria-live="polite"></div>
+  </div>
+
+  <fieldset>
+    <legend>联系方式偏好</legend>
+    <div class="radio-group">
+      <input type="radio" id="contact-email" name="contact-method" value="email">
+      <label for="contact-email">邮箱</label>
+    </div>
+    <div class="radio-group">
+      <input type="radio" id="contact-phone" name="contact-method" value="phone">
+      <label for="contact-phone">电话</label>
+    </div>
+  </fieldset>
+
+  <button type="submit" aria-describedby="submit-help">
+    提交表单
+  </button>
+  <div id="submit-help" class="help-text">
+    点击提交将发送您的信息
+  </div>
+</form>
+
+<script>
+// 表单验证和无障碍性反馈
+document.querySelector('form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const nameInput = document.getElementById('name');
+  const emailInput = document.getElementById('email');
+
+  // 验证姓名
+  if (!nameInput.value.trim()) {
+    showError(nameInput, 'name-error', '请输入您的姓名');
+    nameInput.focus();
+    return;
+  } else {
+    clearError(nameInput, 'name-error');
+  }
+
+  // 验证邮箱
+  if (!emailInput.value.trim()) {
+    showError(emailInput, 'email-error', '请输入您的邮箱');
+    emailInput.focus();
+    return;
+  } else {
+    clearError(emailInput, 'email-error');
+  }
+
+  // 表单提交成功
+  alert('表单提交成功！');
+});
+
+function showError(input, errorId, message) {
+  input.setAttribute('aria-invalid', 'true');
+  document.getElementById(errorId).textContent = message;
+}
+
+function clearError(input, errorId) {
+  input.setAttribute('aria-invalid', 'false');
+  document.getElementById(errorId).textContent = '';
+}
+</script>
+```
+
 ---
 
 <Callout type="success">
 HTML5的语义化标签和表单增强功能大大提升了Web开发的效率和用户体验。正确使用这些特性不仅能改善SEO，还能提升网站的可访问性。
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档
+- [MDN HTML 参考](https://developer.mozilla.org/en-US/docs/Web/HTML) - HTML权威文档
+- [HTML5 规范](https://html.spec.whatwg.org/) - WHATWG HTML标准
+- [Web Components 规范](https://www.webcomponents.org/) - Web组件标准
+
+### 🎓 优质教程
+- [HTML5 教程](https://www.w3schools.com/html/) - W3Schools HTML教程
+- [语义化 HTML 指南](https://webaim.org/techniques/semanticstructure/) - 无障碍性指南
+- [HTML5 新特性详解](https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5) - MDN HTML5指南
+
+### 🛠️ 实践项目
+- [HTML5 Boilerplate](https://html5boilerplate.com/) - HTML5项目模板
+- [Semantic HTML 示例](https://github.com/h5bp/html5-boilerplate) - 语义化示例
+- [无障碍性实践](https://www.a11yproject.com/) - 可访问性项目
+
+### 🔧 开发工具
+- [HTML5 验证器](https://validator.w3.org/) - W3C HTML验证
+- [Can I Use](https://caniuse.com/) - 浏览器兼容性查询
+- [WAVE](https://wave.webaim.org/) - 无障碍性检测工具
+
+### 📝 深入阅读
+- [语义化的重要性](https://alistapart.com/article/semanticsinhtml5/) - A List Apart文章
+- [HTML5 最佳实践](https://github.com/hail2u/html-best-practices) - 最佳实践指南
+- [Progressive Enhancement](https://alistapart.com/article/understandingprogressiveenhancement/) - 渐进增强理念
+
+<Callout type="tip">
+💡 **学习建议**：建议先掌握HTML5新标签的语义，然后学习无障碍性最佳实践，最后了解Web Components等现代技术。
 </Callout>

@@ -11,7 +11,7 @@ import { Callout } from 'nextra/components'
 - [面试准备指南](#面试准备指南)
 - [持续学习策略](#持续学习策略)
 
-## 🗺️ 前端技术栈全景图
+## 前端技术栈全景图
 
 <Callout type="info">
 前端开发是一个快速发展的领域，技术栈庞大且更新迅速。理解技术栈的全貌有助于制定合理的学习计划。
@@ -163,7 +163,7 @@ onMounted(async () => {
 - **Playwright**: 跨浏览器测试
 - **Testing Library**: 用户行为导向的测试
 
-## 🎯 学习路径规划
+## 学习路径规划
 
 ### 阶段一：基础夯实 (2-3个月)
 
@@ -264,7 +264,7 @@ const reactLearningPath = [
 - 监控和日志
 - 安全最佳实践
 
-## 💼 职业发展方向
+## 职业发展方向
 
 ### 技术专家路线
 
@@ -320,8 +320,225 @@ const reactLearningPath = [
 - 市场营销
 - 商业模式设计
 
+## 技能评估体系
+
+<Callout type="info">
+建立科学的技能评估体系有助于了解自己的技术水平，制定针对性的学习计划。
+</Callout>
+
+### 技能等级划分
+
+**初级前端开发者 (0-1年)**
+- 掌握HTML、CSS、JavaScript基础
+- 能够完成静态页面开发
+- 了解基本的响应式设计
+- 熟悉一种前端框架的基础用法
+
+**中级前端开发者 (1-3年)**
+- 深入理解JavaScript核心概念
+- 熟练使用至少一种主流框架
+- 掌握构建工具和包管理器
+- 具备基本的性能优化能力
+- 了解浏览器工作原理
+
+**高级前端开发者 (3-5年)**
+- 精通多种前端技术栈
+- 具备架构设计能力
+- 掌握前端工程化最佳实践
+- 能够解决复杂的技术问题
+- 具备团队协作和指导能力
+
+**资深前端专家 (5年以上)**
+- 技术视野广阔，能够选择合适的技术方案
+- 具备跨端开发能力
+- 能够设计和实现复杂的前端架构
+- 具备技术领导力和影响力
+- 能够推动技术创新和团队发展
+
+## 面试准备指南
+
+<Callout type="warning">
+前端面试不仅考察技术能力，还会评估解决问题的思路、沟通能力和团队协作精神。
+</Callout>
+
+### 技术面试准备
+
+**基础知识**
+- HTML语义化和无障碍性
+- CSS布局和动画原理
+- JavaScript核心概念和ES6+特性
+- 浏览器工作原理和性能优化
+- 网络协议和安全基础
+
+**框架和工具**
+- 主流框架的原理和最佳实践
+- 状态管理方案的选择和使用
+- 构建工具和工程化配置
+- 测试框架和调试技巧
+
+**项目经验**
+- 准备2-3个有代表性的项目
+- 能够清晰描述技术选型和架构设计
+- 总结项目中遇到的问题和解决方案
+- 展示代码质量和工程化实践
+
+### 常见面试题目
+
+```javascript
+// 1. 实现防抖函数
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// 2. 实现深拷贝
+function deepClone(obj, hash = new WeakMap()) {
+  if (obj === null) return obj;
+  if (obj instanceof Date) return new Date(obj);
+  if (obj instanceof RegExp) return new RegExp(obj);
+  if (typeof obj !== "object") return obj;
+  if (hash.get(obj)) return hash.get(obj);
+
+  let cloneObj = new obj.constructor();
+  hash.set(obj, cloneObj);
+
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      cloneObj[key] = deepClone(obj[key], hash);
+    }
+  }
+  return cloneObj;
+}
+
+// 3. 实现Promise
+class MyPromise {
+  constructor(executor) {
+    this.state = 'pending';
+    this.value = undefined;
+    this.reason = undefined;
+    this.onResolvedCallbacks = [];
+    this.onRejectedCallbacks = [];
+
+    const resolve = (value) => {
+      if (this.state === 'pending') {
+        this.state = 'fulfilled';
+        this.value = value;
+        this.onResolvedCallbacks.forEach(fn => fn());
+      }
+    };
+
+    const reject = (reason) => {
+      if (this.state === 'pending') {
+        this.state = 'rejected';
+        this.reason = reason;
+        this.onRejectedCallbacks.forEach(fn => fn());
+      }
+    };
+
+    try {
+      executor(resolve, reject);
+    } catch (error) {
+      reject(error);
+    }
+  }
+
+  then(onFulfilled, onRejected) {
+    // 实现链式调用...
+  }
+}
+```
+
+## 持续学习策略
+
+<Callout type="tip">
+前端技术发展迅速，建立有效的持续学习机制是保持竞争力的关键。
+</Callout>
+
+### 学习资源管理
+
+**信息获取渠道**
+- 技术博客和官方文档
+- 开源项目和代码仓库
+- 技术会议和在线课程
+- 技术社区和论坛讨论
+
+**学习计划制定**
+- 设定明确的学习目标
+- 制定可执行的时间计划
+- 平衡深度学习和广度探索
+- 定期回顾和调整学习方向
+
+**实践项目规划**
+- 选择有挑战性的项目
+- 尝试新技术和工具
+- 参与开源项目贡献
+- 分享学习成果和经验
+
+### 技术趋势跟踪
+
+**关注重点领域**
+- Web标准和浏览器新特性
+- 前端框架和工具的发展
+- 性能优化和用户体验
+- 跨端开发和新兴技术
+
+**学习方法建议**
+- 理论学习与实践相结合
+- 主动参与技术讨论
+- 定期总结和分享经验
+- 建立个人技术品牌
+
 ---
 
 <Callout type="success">
 前端学习是一个持续的过程，关键在于保持好奇心和实践精神。制定合理的学习计划，持续积累项目经验，积极参与技术社区，你一定能在前端开发的道路上走得更远！
+</Callout>
+
+---
+
+## 📚 参考学习资料
+
+### 📖 官方文档和标准
+- [MDN Web Docs](https://developer.mozilla.org/) - Web技术权威文档
+- [W3C 标准](https://www.w3.org/) - Web标准制定组织
+- [WHATWG](https://whatwg.org/) - HTML和DOM标准
+
+### 🎓 学习平台和课程
+- [freeCodeCamp](https://www.freecodecamp.org/) - 免费编程学习平台
+- [Frontend Masters](https://frontendmasters.com/) - 高质量前端课程
+- [Coursera 前端课程](https://www.coursera.org/browse/computer-science/web-development) - 大学级别课程
+- [edX 前端课程](https://www.edx.org/learn/front-end-web-development) - 在线教育平台
+
+### 🛠️ 实践项目和挑战
+- [Frontend Mentor](https://www.frontendmentor.io/) - 前端挑战项目
+- [Codepen Challenges](https://codepen.io/challenges) - 创意编程挑战
+- [JavaScript30](https://javascript30.com/) - 30天JavaScript项目
+- [100 Days CSS](https://100dayscss.com/) - CSS创意挑战
+
+### 🔧 开发工具和环境
+- [VS Code](https://code.visualstudio.com/) - 代码编辑器
+- [Chrome DevTools](https://developer.chrome.com/docs/devtools/) - 浏览器调试工具
+- [Git](https://git-scm.com/) - 版本控制系统
+- [GitHub](https://github.com/) - 代码托管平台
+
+### 📝 技术博客和资讯
+- [CSS-Tricks](https://css-tricks.com/) - CSS技术博客
+- [Smashing Magazine](https://www.smashingmagazine.com/) - 前端设计和开发
+- [A List Apart](https://alistapart.com/) - Web设计和开发文章
+- [Dev.to](https://dev.to/) - 开发者社区
+
+### 🏆 面试准备
+- [LeetCode](https://leetcode.com/) - 算法题练习
+- [前端面试题集](https://github.com/h5bp/Front-end-Developer-Interview-Questions) - 经典面试题
+- [JavaScript 面试题](https://github.com/sudheerj/javascript-interview-questions) - JS专项面试题
+
+<Callout type="tip">
+💡 **学习建议**：建议制定3-6个月的学习计划，每天保持1-2小时的学习时间，理论学习与项目实践相结合，定期参与开源项目和技术社区。
 </Callout>

@@ -11,10 +11,10 @@ import { Callout } from 'nextra/components'
 - [性能优化策略](#性能优化策略)
 - [浏览器安全机制](#浏览器安全机制)
 
-## 🏗️ 浏览器架构深入
+## 浏览器架构深入
 
 <Callout type="info">
-现代浏览器采用多进程架构，理解其工作原理有助于我们编写更高效的Web应用。
+现代浏览器采用多进程架构，理解其工作原理有助于我们编写更高效的[Web](https://developer.mozilla.org/en-US/docs/Web)应用。
 </Callout>
 
 ### 多进程架构
@@ -95,7 +95,7 @@ self.onmessage = function(e) {
 | **Safari** | WebKit | JavaScriptCore | 能耗优化，苹果生态 |
 | **Edge** | Blink | V8 | 集成Windows，企业友好 |
 
-## 🎨 渲染引擎工作原理
+## 渲染引擎工作原理
 
 ### 关键渲染路径
 
@@ -482,7 +482,7 @@ const container = document.getElementById('scroll-container');
 const virtualList = new VirtualScrollList(container, 50, 10000);
 ```
 
-## ⚡ JavaScript引擎和事件循环
+## JavaScript引擎和事件循环
 
 ### 事件循环机制
 
@@ -760,7 +760,7 @@ function isPrime(num) {
 }
 ```
 
-## 🌐 现代Web API详解
+## 现代Web API详解
 
 ### Fetch API和网络请求
 
@@ -1221,6 +1221,329 @@ await dbManager.init([
 
 await dbManager.add('users', { name: 'John', email: 'john@example.com' });
 const users = await dbManager.getAll('users');
+```
+
+## 性能优化策略
+
+<Callout type="info">
+浏览器性能优化是前端开发的核心技能，涉及加载优化、渲染优化、内存管理等多个方面。
+</Callout>
+
+### 关键渲染路径优化
+
+```html
+<!-- 优化CSS加载 -->
+<link rel="preload" href="critical.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="critical.css"></noscript>
+
+<!-- 优化字体加载 -->
+<link rel="preload" href="font.woff2" as="font" type="font/woff2" crossorigin>
+
+<!-- 优化图片加载 -->
+<img src="image.jpg" loading="lazy" decoding="async" alt="描述">
+
+<!-- 预连接重要域名 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://api.example.com">
+```
+
+```javascript
+// 资源优先级管理
+class ResourceManager {
+  constructor() {
+    this.criticalResources = new Set();
+    this.deferredResources = new Set();
+  }
+
+  // 预加载关键资源
+  preloadCritical(url, type) {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = url;
+    link.as = type;
+    document.head.appendChild(link);
+    this.criticalResources.add(url);
+  }
+
+  // 延迟加载非关键资源
+  loadDeferred(url, callback) {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        this.loadResource(url, callback);
+      });
+    } else {
+      setTimeout(() => {
+        this.loadResource(url, callback);
+      }, 0);
+    }
+  }
+
+  loadResource(url, callback) {
+    const script = document.createElement('script');
+    script.src = url;
+    script.onload = callback;
+    document.head.appendChild(script);
+    this.deferredResources.add(url);
+  }
+}
+
+// 使用示例
+const resourceManager = new ResourceManager();
+resourceManager.preloadCritical('/critical.js', 'script');
+resourceManager.loadDeferred('/analytics.js', () => {
+  console.log('Analytics loaded');
+});
+```
+
+### 内存管理和泄漏检测
+
+```javascript
+// 内存泄漏检测工具
+class MemoryLeakDetector {
+  constructor() {
+    this.listeners = new WeakMap();
+    this.timers = new Set();
+    this.observers = new Set();
+  }
+
+  // 安全的事件监听器管理
+  addEventListener(element, event, handler, options) {
+    element.addEventListener(event, handler, options);
+
+    if (!this.listeners.has(element)) {
+      this.listeners.set(element, new Map());
+    }
+    this.listeners.get(element).set(event, handler);
+  }
+
+  removeEventListener(element, event) {
+    if (this.listeners.has(element)) {
+      const elementListeners = this.listeners.get(element);
+      const handler = elementListeners.get(event);
+
+      if (handler) {
+        element.removeEventListener(event, handler);
+        elementListeners.delete(event);
+      }
+    }
+  }
+
+  // 定时器管理
+  setTimeout(callback, delay) {
+    const timerId = setTimeout(() => {
+      callback();
+      this.timers.delete(timerId);
+    }, delay);
+
+    this.timers.add(timerId);
+    return timerId;
+  }
+
+  clearTimeout(timerId) {
+    clearTimeout(timerId);
+    this.timers.delete(timerId);
+  }
+
+  // Observer管理
+  createObserver(type, callback, options) {
+    let observer;
+
+    switch (type) {
+      case 'intersection':
+        observer = new IntersectionObserver(callback, options);
+        break;
+      case 'mutation':
+        observer = new MutationObserver(callback);
+        break;
+      case 'resize':
+        observer = new ResizeObserver(callback);
+        break;
+    }
+
+    if (observer) {
+      this.observers.add(observer);
+    }
+
+    return observer;
+  }
+
+  // 清理所有资源
+  cleanup() {
+    // 清理定时器
+    for (const timerId of this.timers) {
+      clearTimeout(timerId);
+    }
+    this.timers.clear();
+
+    // 清理观察者
+    for (const observer of this.observers) {
+      observer.disconnect();
+    }
+    this.observers.clear();
+  }
+}
+```
+
+## 浏览器安全机制
+
+<Callout type="warning">
+Web安全是前端开发的重要组成部分，了解浏览器的安全机制有助于构建更安全的应用。
+</Callout>
+
+### 同源策略和CORS
+
+```javascript
+// CORS配置示例
+class APIClient {
+  constructor(baseURL) {
+    this.baseURL = baseURL;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      credentials: 'include', // 包含cookies
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...options.headers
+      },
+      ...options
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      // 检查CORS错误
+      if (!response.ok) {
+        if (response.status === 0) {
+          throw new Error('CORS错误：请求被阻止');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('网络错误或CORS配置问题');
+      }
+      throw error;
+    }
+  }
+}
+```
+
+### 内容安全策略 (CSP)
+
+```html
+<!-- CSP头部配置 -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' 'unsafe-inline' https://trusted-cdn.com;
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+               img-src 'self' data: https:;
+               font-src 'self' https://fonts.gstatic.com;">
+```
+
+```javascript
+// CSP违规报告处理
+window.addEventListener('securitypolicyviolation', (e) => {
+  console.warn('CSP违规:', {
+    blockedURI: e.blockedURI,
+    violatedDirective: e.violatedDirective,
+    originalPolicy: e.originalPolicy,
+    sourceFile: e.sourceFile,
+    lineNumber: e.lineNumber
+  });
+
+  // 发送违规报告到服务器
+  fetch('/csp-report', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      blockedURI: e.blockedURI,
+      violatedDirective: e.violatedDirective,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString()
+    })
+  });
+});
+```
+
+### XSS防护
+
+```javascript
+// XSS防护工具
+class XSSProtection {
+  // HTML转义
+  static escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // 安全的innerHTML设置
+  static safeSetHTML(element, html) {
+    // 创建临时容器
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // 移除危险元素和属性
+    const dangerousElements = temp.querySelectorAll('script, object, embed, iframe');
+    dangerousElements.forEach(el => el.remove());
+
+    const allElements = temp.querySelectorAll('*');
+    allElements.forEach(el => {
+      // 移除事件处理属性
+      const attributes = [...el.attributes];
+      attributes.forEach(attr => {
+        if (attr.name.startsWith('on') || attr.name === 'javascript:') {
+          el.removeAttribute(attr.name);
+        }
+      });
+    });
+
+    element.innerHTML = temp.innerHTML;
+  }
+
+  // URL验证
+  static isValidURL(url) {
+    try {
+      const urlObj = new URL(url);
+      return ['http:', 'https:', 'mailto:', 'tel:'].includes(urlObj.protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  // 安全的动态脚本加载
+  static loadScript(src, integrity) {
+    return new Promise((resolve, reject) => {
+      if (!this.isValidURL(src)) {
+        reject(new Error('Invalid script URL'));
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = src;
+
+      if (integrity) {
+        script.integrity = integrity;
+        script.crossOrigin = 'anonymous';
+      }
+
+      script.onload = resolve;
+      script.onerror = reject;
+
+      document.head.appendChild(script);
+    });
+  }
+}
+
+// 使用示例
+XSSProtection.safeSetHTML(document.getElementById('content'), userInput);
 ```
 
 ---

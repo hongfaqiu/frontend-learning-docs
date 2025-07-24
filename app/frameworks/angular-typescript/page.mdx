@@ -19,11 +19,20 @@ import { Callout } from 'nextra/components'
 
 ### Angular核心概念
 
-```typescript
-// 1. 组件（Component）
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
-import { Subject, takeUntil } from 'rxjs';
+#### 核心构建块对比
 
+| 构建块 | 作用 | 装饰器 | 使用场景 |
+|--------|------|--------|----------|
+| **Component** | UI组件 | `@Component` | 页面元素、可复用组件 |
+| **Service** | 业务逻辑 | `@Injectable` | 数据处理、API调用 |
+| **Directive** | DOM操作 | `@Directive` | 行为增强、DOM修改 |
+| **Pipe** | 数据转换 | `@Pipe` | 数据格式化、过滤 |
+| **Module** | 功能模块 | `@NgModule` | 功能组织、依赖管理 |
+
+#### 组件示例
+
+```typescript
+// 1. 基础组件
 @Component({
   selector: 'app-user-card',
   template: `
@@ -31,12 +40,8 @@ import { Subject, takeUntil } from 'rxjs';
       <img [src]="user.avatar" [alt]="user.name">
       <h3>{{ user.name }}</h3>
       <p>{{ user.email }}</p>
-      <button (click)="onEdit()" [disabled]="!canEdit">
-        编辑
-      </button>
-      <button (click)="onDelete()" class="danger">
-        删除
-      </button>
+      <button (click)="onEdit()" [disabled]="!canEdit">编辑</button>
+      <button (click)="onDelete()" class="danger">删除</button>
     </div>
   `,
   styleUrls: ['./user-card.component.scss']
@@ -45,36 +50,35 @@ export class UserCardComponent implements OnInit, OnDestroy {
   @Input() user!: User;
   @Input() canEdit: boolean = true;
   @Input() isActive: boolean = false;
-  
+
   @Output() edit = new EventEmitter<User>();
   @Output() delete = new EventEmitter<string>();
-  
+
   private destroy$ = new Subject<void>();
-  
+
   ngOnInit(): void {
     console.log('UserCard component initialized');
   }
-  
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
-  
+
   onEdit(): void {
     this.edit.emit(this.user);
   }
-  
+
   onDelete(): void {
     this.delete.emit(this.user.id);
   }
 }
+```
 
-// 2. 服务（Service）
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, BehaviorSubject } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+#### 服务示例
 
+```typescript
+// 2. 数据服务
 export interface User {
   id: string;
   name: string;
@@ -89,24 +93,18 @@ export interface User {
 export class UserService {
   private readonly apiUrl = '/api/users';
   private usersSubject = new BehaviorSubject<User[]>([]);
-  
+
   public users$ = this.usersSubject.asObservable();
-  
+
   constructor(private http: HttpClient) {}
-  
+
   getUsers(): Observable<User[]> {
     return this.http.get<User[]>(this.apiUrl).pipe(
       tap(users => this.usersSubject.next(users)),
       catchError(this.handleError)
     );
   }
-  
-  getUserById(id: string): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/${id}`).pipe(
-      catchError(this.handleError)
-    );
-  }
-  
+
   createUser(user: Omit<User, 'id'>): Observable<User> {
     return this.http.post<User>(this.apiUrl, user).pipe(
       tap(newUser => {
@@ -116,76 +114,45 @@ export class UserService {
       catchError(this.handleError)
     );
   }
-  
-  updateUser(id: string, user: Partial<User>): Observable<User> {
-    return this.http.put<User>(`${this.apiUrl}/${id}`, user).pipe(
-      tap(updatedUser => {
-        const currentUsers = this.usersSubject.value;
-        const index = currentUsers.findIndex(u => u.id === id);
-        if (index !== -1) {
-          currentUsers[index] = updatedUser;
-          this.usersSubject.next([...currentUsers]);
-        }
-      }),
-      catchError(this.handleError)
-    );
-  }
-  
-  deleteUser(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`).pipe(
-      tap(() => {
-        const currentUsers = this.usersSubject.value;
-        const filteredUsers = currentUsers.filter(u => u.id !== id);
-        this.usersSubject.next(filteredUsers);
-      }),
-      catchError(this.handleError)
-    );
-  }
-  
+
   private handleError(error: HttpErrorResponse): Observable<never> {
-    let errorMessage = '发生未知错误';
-    
-    if (error.error instanceof ErrorEvent) {
-      // 客户端错误
-      errorMessage = `客户端错误: ${error.error.message}`;
-    } else {
-      // 服务端错误
-      errorMessage = `服务端错误: ${error.status} - ${error.message}`;
-    }
-    
+    const errorMessage = error.error instanceof ErrorEvent
+      ? `客户端错误: ${error.error.message}`
+      : `服务端错误: ${error.status} - ${error.message}`;
+
     console.error(errorMessage);
     return throwError(() => new Error(errorMessage));
   }
 }
+```
 
-// 3. 指令（Directive）
-import { Directive, ElementRef, HostListener, Input } from '@angular/core';
+#### 指令和管道示例
 
+```typescript
+// 3. 自定义指令
 @Directive({
   selector: '[appHighlight]'
 })
 export class HighlightDirective {
   @Input() appHighlight = '';
   @Input() defaultColor = 'yellow';
-  
+
   constructor(private el: ElementRef) {}
-  
+
   @HostListener('mouseenter') onMouseEnter() {
     this.highlight(this.appHighlight || this.defaultColor);
   }
-  
+
   @HostListener('mouseleave') onMouseLeave() {
     this.highlight('');
   }
-  
+
   private highlight(color: string) {
     this.el.nativeElement.style.backgroundColor = color;
   }
 }
 
-// 4. 管道（Pipe）
-import { Pipe, PipeTransform } from '@angular/core';
-
+// 4. 自定义管道
 @Pipe({
   name: 'truncate',
   pure: true
@@ -193,33 +160,28 @@ import { Pipe, PipeTransform } from '@angular/core';
 export class TruncatePipe implements PipeTransform {
   transform(value: string, limit: number = 50, trail: string = '...'): string {
     if (!value) return '';
-    
-    return value.length > limit 
-      ? value.substring(0, limit) + trail 
-      : value;
+    return value.length > limit ? value.substring(0, limit) + trail : value;
   }
 }
 
-// 使用示例
-// <p>{{ longText | truncate:100:'...' }}</p>
+// 使用：<p>{{ longText | truncate:100:'...' }}</p>
 ```
 
 ### 模块系统
 
+#### 模块类型对比
+
+| 模块类型 | 作用 | 特点 | 使用场景 |
+|----------|------|------|----------|
+| **特性模块** | 组织相关功能 | 包含组件、服务、路由 | 用户管理、订单管理 |
+| **共享模块** | 共享通用组件 | 导出常用组件和指令 | UI组件库、工具函数 |
+| **核心模块** | 全局单例服务 | 只导入一次 | 认证、拦截器 |
+| **懒加载模块** | 按需加载 | 减少初始包大小 | 大型功能模块 |
+
+#### 模块示例
+
 ```typescript
 // 1. 特性模块
-import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
-
-import { UserListComponent } from './components/user-list/user-list.component';
-import { UserCardComponent } from './components/user-card/user-card.component';
-import { UserFormComponent } from './components/user-form/user-form.component';
-import { UserService } from './services/user.service';
-import { TruncatePipe } from './pipes/truncate.pipe';
-import { HighlightDirective } from './directives/highlight.directive';
-
 @NgModule({
   declarations: [
     UserListComponent,
@@ -237,13 +199,8 @@ import { HighlightDirective } from './directives/highlight.directive';
       { path: ':id/edit', component: UserFormComponent }
     ])
   ],
-  providers: [
-    UserService
-  ],
-  exports: [
-    UserCardComponent,
-    TruncatePipe
-  ]
+  providers: [UserService],
+  exports: [UserCardComponent, TruncatePipe]
 })
 export class UserModule {}
 
@@ -254,10 +211,7 @@ export class UserModule {}
     ConfirmDialogComponent,
     ToastComponent
   ],
-  imports: [
-    CommonModule,
-    MaterialModule
-  ],
+  imports: [CommonModule, MaterialModule],
   exports: [
     CommonModule,
     MaterialModule,
@@ -268,7 +222,7 @@ export class UserModule {}
 })
 export class SharedModule {}
 
-// 3. 核心模块
+// 3. 核心模块（单例）
 @NgModule({
   providers: [
     AuthService,
@@ -285,6 +239,13 @@ export class CoreModule {
 }
 ```
 
+#### 模块最佳实践
+
+- **特性模块**：按业务功能组织，包含相关的组件、服务和路由
+- **共享模块**：导出通用组件和第三方模块，避免重复导入
+- **核心模块**：包含全局单例服务，确保只导入一次
+- **懒加载**：大型功能模块使用懒加载，提升应用启动性能
+
 ## TypeScript在Angular中的应用
 
 ### 高级类型系统
@@ -292,6 +253,18 @@ export class CoreModule {
 <Callout type="warning">
 TypeScript的强类型系统是Angular的核心优势之一，能够在编译时发现错误，提高代码质量。
 </Callout>
+
+#### TypeScript特性在Angular中的应用
+
+| 特性 | 用途 | 优势 | 示例 |
+|------|------|------|------|
+| **接口定义** | 数据结构约束 | 编译时类型检查 | `interface User` |
+| **泛型** | 类型参数化 | 代码复用，类型安全 | `ApiResponse<T>` |
+| **联合类型** | 多种可能类型 | 精确的类型约束 | `'admin' \| 'user'` |
+| **映射类型** | 类型转换 | 基于现有类型生成新类型 | `Partial<T>` |
+| **类型守卫** | 运行时类型检查 | 类型安全的类型缩窄 | `obj is User` |
+
+#### 基础类型定义
 
 ```typescript
 // 1. 接口和类型定义
@@ -324,124 +297,57 @@ export interface User {
   updatedAt: Date;
   profile?: UserProfile;
 }
+```
 
-export interface UserProfile {
-  avatar?: string;
-  bio?: string;
-  location?: string;
-  website?: string;
-}
+#### 泛型服务
 
-// 2. 泛型服务
+```typescript
+// 2. 泛型API服务
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
   constructor(private http: HttpClient) {}
-  
+
   get<T>(url: string): Observable<ApiResponse<T>> {
     return this.http.get<ApiResponse<T>>(url);
   }
-  
+
   post<T, U = any>(url: string, data: U): Observable<ApiResponse<T>> {
     return this.http.post<ApiResponse<T>>(url, data);
   }
-  
-  put<T, U = any>(url: string, data: U): Observable<ApiResponse<T>> {
-    return this.http.put<ApiResponse<T>>(url, data);
-  }
-  
-  delete<T = any>(url: string): Observable<ApiResponse<T>> {
-    return this.http.delete<ApiResponse<T>>(url);
-  }
-  
+
   getPaginated<T>(
-    url: string, 
+    url: string,
     params: { page: number; limit: number }
   ): Observable<PaginatedResponse<T>> {
     const httpParams = new HttpParams()
       .set('page', params.page.toString())
       .set('limit', params.limit.toString());
-      
+
     return this.http.get<PaginatedResponse<T>>(url, { params: httpParams });
   }
 }
+```
 
-// 3. 装饰器和元数据
-function LogMethod(target: any, propertyName: string, descriptor: PropertyDescriptor) {
-  const method = descriptor.value;
-  
-  descriptor.value = function (...args: any[]) {
-    console.log(`调用方法 ${propertyName}，参数:`, args);
-    const result = method.apply(this, args);
-    console.log(`方法 ${propertyName} 返回:`, result);
-    return result;
-  };
-}
+#### 实用类型和类型守卫
 
-function Cacheable(ttl: number = 5000) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
-    const cache = new Map<string, { value: any; timestamp: number }>();
-    const method = descriptor.value;
-    
-    descriptor.value = function (...args: any[]) {
-      const key = JSON.stringify(args);
-      const cached = cache.get(key);
-      
-      if (cached && Date.now() - cached.timestamp < ttl) {
-        return cached.value;
-      }
-      
-      const result = method.apply(this, args);
-      cache.set(key, { value: result, timestamp: Date.now() });
-      
-      return result;
-    };
-  };
-}
-
-// 使用装饰器
-@Injectable({
-  providedIn: 'root'
-})
-export class DataService {
-  @LogMethod
-  @Cacheable(10000)
-  fetchData(id: string): Observable<any> {
-    return this.http.get(`/api/data/${id}`);
-  }
-}
-
-// 4. 条件类型和映射类型
-type NonNullable<T> = T extends null | undefined ? never : T;
-type Partial<T> = { [P in keyof T]?: T[P] };
-type Required<T> = { [P in keyof T]-?: T[P] };
-type Pick<T, K extends keyof T> = { [P in K]: T[P] };
-type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
-
-// 实用类型示例
+```typescript
+// 3. 实用类型示例
 export type CreateUserDto = Omit<User, 'id' | 'createdAt' | 'updatedAt'>;
 export type UpdateUserDto = Partial<Pick<User, 'name' | 'email' | 'role' | 'status'>>;
 export type UserSummary = Pick<User, 'id' | 'name' | 'email' | 'role'>;
 
-// 5. 类型守卫
+// 4. 类型守卫
 export function isUser(obj: any): obj is User {
-  return obj && 
+  return obj &&
          typeof obj.id === 'string' &&
          typeof obj.name === 'string' &&
          typeof obj.email === 'string' &&
          ['admin', 'moderator', 'user'].includes(obj.role);
 }
 
-export function isApiResponse<T>(obj: any): obj is ApiResponse<T> {
-  return obj &&
-         typeof obj.success === 'boolean' &&
-         typeof obj.message === 'string' &&
-         typeof obj.timestamp === 'number' &&
-         obj.data !== undefined;
-}
-
-// 使用类型守卫
+// 5. 使用类型守卫
 @Component({
   selector: 'app-user-detail',
   template: `
@@ -453,10 +359,10 @@ export function isApiResponse<T>(obj: any): obj is ApiResponse<T> {
 })
 export class UserDetailComponent {
   user: User | null = null;
-  
+
   loadUser(data: unknown): void {
     if (isUser(data)) {
-      this.user = data;
+      this.user = data; // TypeScript知道这里data是User类型
     } else {
       console.error('Invalid user data:', data);
     }
@@ -464,9 +370,28 @@ export class UserDetailComponent {
 }
 ```
 
+#### TypeScript最佳实践
+
+- **严格模式**：启用`strict: true`获得最佳类型检查
+- **接口优于类型别名**：对于对象结构使用interface
+- **泛型约束**：使用`extends`约束泛型参数
+- **类型守卫**：运行时类型检查确保类型安全
+- **实用类型**：充分利用内置实用类型简化类型定义
+
 ## 依赖注入系统
 
 ### 高级依赖注入
+
+#### 依赖注入提供者类型
+
+| 提供者类型 | 语法 | 用途 | 示例 |
+|------------|------|------|------|
+| **类提供者** | `useClass` | 提供类实例 | `{ provide: Service, useClass: MockService }` |
+| **值提供者** | `useValue` | 提供静态值 | `{ provide: CONFIG, useValue: config }` |
+| **工厂提供者** | `useFactory` | 动态创建实例 | `{ provide: Logger, useFactory: createLogger }` |
+| **别名提供者** | `useExisting` | 引用现有提供者 | `{ provide: NewService, useExisting: OldService }` |
+
+#### 注入令牌和配置
 
 ```typescript
 // 1. 注入令牌
@@ -488,17 +413,18 @@ export interface FeatureFlags {
 }
 
 // 2. 工厂提供者
-export function createApiService(
-  http: HttpClient,
-  config: ApiConfig
-): ApiService {
+export function createApiService(http: HttpClient, config: ApiConfig): ApiService {
   return new ApiService(http, config);
 }
 
 export function createLogger(isDevelopment: boolean): Logger {
   return isDevelopment ? new ConsoleLogger() : new RemoteLogger();
 }
+```
 
+#### 模块配置示例
+
+```typescript
 // 3. 模块配置
 @NgModule({
   providers: [
@@ -522,64 +448,39 @@ export function createLogger(isDevelopment: boolean): Logger {
       provide: ApiService,
       useFactory: createApiService,
       deps: [HttpClient, API_CONFIG]
-    },
-    {
-      provide: Logger,
-      useFactory: createLogger,
-      deps: [ENVIRONMENT]
     }
   ]
 })
 export class AppModule {}
+```
 
-// 4. 多提供者
-export const VALIDATORS = new InjectionToken<Validator[]>('validators');
+#### 注入装饰器
 
-@Injectable()
-export class EmailValidator implements Validator {
-  validate(value: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  }
-}
-
-@Injectable()
-export class PhoneValidator implements Validator {
-  validate(value: string): boolean {
-    return /^\d{10,11}$/.test(value);
-  }
-}
-
-@NgModule({
-  providers: [
-    { provide: VALIDATORS, useClass: EmailValidator, multi: true },
-    { provide: VALIDATORS, useClass: PhoneValidator, multi: true }
-  ]
-})
-export class ValidationModule {}
-
-// 5. 层级注入器
+```typescript
+// 4. 注入装饰器使用
 @Component({
   selector: 'app-user-list',
   providers: [
-    // 组件级提供者
     { provide: UserService, useClass: CachedUserService }
-  ],
-  template: `
-    <app-user-card 
-      *ngFor="let user of users" 
-      [user]="user">
-    </app-user-card>
-  `
+  ]
 })
 export class UserListComponent {
   constructor(
     private userService: UserService, // 使用CachedUserService
     @Inject(FEATURE_FLAGS) private featureFlags: FeatureFlags,
-    @Optional() private analytics: AnalyticsService,
-    @Self() private localService: LocalService
+    @Optional() private analytics: AnalyticsService, // 可选依赖
+    @Self() private localService: LocalService // 只在当前注入器查找
   ) {}
 }
 ```
+
+#### 依赖注入最佳实践
+
+- **使用接口**：定义服务契约，便于测试和替换
+- **注入令牌**：为非类依赖提供类型安全的注入
+- **工厂函数**：复杂对象创建逻辑
+- **层级注入**：合理利用注入器层级，避免不必要的单例
+- **可选依赖**：使用`@Optional()`处理可选服务
 
 ## RxJS响应式编程
 
@@ -589,20 +490,32 @@ export class UserListComponent {
 RxJS是Angular的核心依赖，掌握响应式编程对于构建高质量的Angular应用至关重要。
 </Callout>
 
+#### 常用RxJS操作符
+
+| 操作符类型 | 操作符 | 作用 | 使用场景 |
+|------------|--------|------|----------|
+| **创建** | `of`, `from`, `interval` | 创建Observable | 数据源创建 |
+| **转换** | `map`, `switchMap`, `mergeMap` | 数据转换 | 数据处理、API调用 |
+| **过滤** | `filter`, `debounceTime`, `distinctUntilChanged` | 数据过滤 | 搜索、去重 |
+| **组合** | `combineLatest`, `merge`, `zip` | 流组合 | 状态管理 |
+| **错误处理** | `catchError`, `retry`, `retryWhen` | 错误处理 | 异常恢复 |
+
+#### 搜索服务示例
+
 ```typescript
-// 1. 复杂的数据流处理
+// 1. 搜索服务
 @Injectable({
   providedIn: 'root'
 })
 export class SearchService {
   private searchTerms = new Subject<string>();
-  
+
   // 搜索结果流
   public searchResults$ = this.searchTerms.pipe(
     debounceTime(300),           // 防抖
     distinctUntilChanged(),      // 去重
     filter(term => term.length >= 2), // 过滤短查询
-    switchMap(term => 
+    switchMap(term =>
       this.apiService.search(term).pipe(
         catchError(error => {
           console.error('搜索错误:', error);
@@ -612,13 +525,17 @@ export class SearchService {
     ),
     shareReplay(1)               // 缓存最新结果
   );
-  
+
   search(term: string): void {
     this.searchTerms.next(term);
   }
 }
+```
 
-// 2. 状态管理
+#### 状态管理服务
+
+```typescript
+// 2. 状态管理服务
 @Injectable({
   providedIn: 'root'
 })
@@ -626,11 +543,11 @@ export class UserStateService {
   private usersSubject = new BehaviorSubject<User[]>([]);
   private loadingSubject = new BehaviorSubject<boolean>(false);
   private errorSubject = new BehaviorSubject<string | null>(null);
-  
+
   public users$ = this.usersSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
   public error$ = this.errorSubject.asObservable();
-  
+
   // 组合状态
   public state$ = combineLatest([
     this.users$,
@@ -645,11 +562,11 @@ export class UserStateService {
       isEmpty: users.length === 0 && !loading && !error
     }))
   );
-  
+
   loadUsers(): void {
     this.loadingSubject.next(true);
     this.errorSubject.next(null);
-    
+
     this.userService.getUsers().pipe(
       finalize(() => this.loadingSubject.next(false))
     ).subscribe({
@@ -657,44 +574,26 @@ export class UserStateService {
       error: error => this.errorSubject.next(error.message)
     });
   }
-  
-  addUser(user: CreateUserDto): Observable<User> {
-    return this.userService.createUser(user).pipe(
-      tap(newUser => {
-        const currentUsers = this.usersSubject.value;
-        this.usersSubject.next([...currentUsers, newUser]);
-      })
-    );
-  }
-  
-  updateUser(id: string, updates: UpdateUserDto): Observable<User> {
-    return this.userService.updateUser(id, updates).pipe(
-      tap(updatedUser => {
-        const currentUsers = this.usersSubject.value;
-        const index = currentUsers.findIndex(u => u.id === id);
-        if (index !== -1) {
-          currentUsers[index] = updatedUser;
-          this.usersSubject.next([...currentUsers]);
-        }
-      })
-    );
-  }
-  
-  deleteUser(id: string): Observable<void> {
-    return this.userService.deleteUser(id).pipe(
-      tap(() => {
-        const currentUsers = this.usersSubject.value;
-        const filteredUsers = currentUsers.filter(u => u.id !== id);
-        this.usersSubject.next(filteredUsers);
-      })
-    );
-  }
 }
+```
 
-// 3. 自定义操作符
+#### RxJS最佳实践
+
+- **内存泄漏防护**：使用`takeUntil`或`async`管道自动取消订阅
+- **错误处理**：使用`catchError`处理错误，避免流中断
+- **性能优化**：使用`shareReplay`缓存结果，避免重复请求
+- **操作符选择**：`switchMap`用于搜索，`mergeMap`用于并发请求
+- **状态管理**：使用`BehaviorSubject`管理组件状态
+
+## Angular企业级开发
+
+### 高级RxJS模式
+
+```typescript
+// 1. 自定义操作符
 export function retryWithBackoff(maxRetries: number = 3, baseDelay: number = 1000) {
   return <T>(source: Observable<T>) => source.pipe(
-    retryWhen(errors => 
+    retryWhen(errors =>
       errors.pipe(
         scan((retryCount, error) => {
           if (retryCount >= maxRetries) {
@@ -709,6 +608,7 @@ export function retryWithBackoff(maxRetries: number = 3, baseDelay: number = 100
   );
 }
 
+// 2. 缓存操作符
 export function cacheWithExpiry<T>(ttl: number = 5000) {
   return (source: Observable<T>) => {
     let cache: { value: T; timestamp: number } | null = null;
@@ -869,12 +769,6 @@ export class UserFormComponent implements OnInit, OnDestroy {
   }
 }
 ```
-
-## Angular企业级开发
-
-<Callout type="info">
-Angular特别适合企业级应用开发，提供了完整的解决方案包括架构模式、代码组织、测试策略等。
-</Callout>
 
 ### 企业级架构模式
 

@@ -19,484 +19,149 @@ import { Callout } from 'nextra/components'
 
 ### Core Web Vitals详解
 
+#### 核心性能指标
+
+| 指标 | 含义 | 优秀 | 需改进 | 较差 | 影响因素 |
+|------|------|------|--------|------|----------|
+| **LCP** | 最大内容绘制 | ≤2.5s | 2.5s-4.0s | >4.0s | 图片大小、服务器响应 |
+| **FID** | 首次输入延迟 | ≤100ms | 100ms-300ms | >300ms | JavaScript执行时间 |
+| **CLS** | 累积布局偏移 | ≤0.1 | 0.1-0.25 | >0.25 | 动态内容、字体加载 |
+| **FCP** | 首次内容绘制 | ≤1.8s | 1.8s-3.0s | >3.0s | 关键资源加载 |
+| **TTFB** | 首字节时间 | ≤800ms | 800ms-1.8s | >1.8s | 服务器性能、网络 |
+
+#### 性能监控实现
+
 ```javascript
-// 1. Core Web Vitals监控
-class WebVitalsMonitor {
+// 简化的性能监控
+import { onLCP, onFID, onCLS } from 'web-vitals';
+
+class SimpleWebVitalsMonitor {
   constructor() {
-    this.metrics = {
-      LCP: null, // Largest Contentful Paint
-      FID: null, // First Input Delay
-      CLS: null, // Cumulative Layout Shift
-      FCP: null, // First Contentful Paint
-      TTFB: null // Time to First Byte
-    };
-    
-    this.thresholds = {
-      LCP: { good: 2500, poor: 4000 },
-      FID: { good: 100, poor: 300 },
-      CLS: { good: 0.1, poor: 0.25 },
-      FCP: { good: 1800, poor: 3000 },
-      TTFB: { good: 800, poor: 1800 }
-    };
-    
-    this.initializeMonitoring();
+    this.initMonitoring();
   }
-  
-  initializeMonitoring() {
-    // 使用web-vitals库监控
-    import('web-vitals').then(({ onLCP, onFID, onCLS, onFCP, onTTFB }) => {
-      onLCP(this.handleMetric.bind(this, 'LCP'));
-      onFID(this.handleMetric.bind(this, 'FID'));
-      onCLS(this.handleMetric.bind(this, 'CLS'));
-      onFCP(this.handleMetric.bind(this, 'FCP'));
-      onTTFB(this.handleMetric.bind(this, 'TTFB'));
-    });
-    
-    // 自定义性能监控
-    this.monitorCustomMetrics();
+
+  initMonitoring() {
+    onLCP(this.sendMetric);
+    onFID(this.sendMetric);
+    onCLS(this.sendMetric);
   }
-  
-  handleMetric(name, metric) {
-    this.metrics[name] = metric.value;
-    
-    const threshold = this.thresholds[name];
-    const rating = this.getRating(metric.value, threshold);
-    
-    console.log(`${name}: ${metric.value}ms (${rating})`);
-    
+
+  sendMetric(metric) {
     // 发送到分析服务
-    this.sendToAnalytics({
-      name,
-      value: metric.value,
-      rating,
-      id: metric.id,
-      delta: metric.delta
-    });
-  }
-  
-  getRating(value, threshold) {
-    if (value <= threshold.good) return 'good';
-    if (value <= threshold.poor) return 'needs-improvement';
-    return 'poor';
-  }
-  
-  monitorCustomMetrics() {
-    // 监控资源加载时间
-    this.monitorResourceTiming();
-    
-    // 监控长任务
-    this.monitorLongTasks();
-    
-    // 监控内存使用
-    this.monitorMemoryUsage();
-    
-    // 监控用户交互
-    this.monitorUserInteractions();
-  }
-  
-  monitorResourceTiming() {
-    const observer = new PerformanceObserver((list) => {
-      list.getEntries().forEach((entry) => {
-        if (entry.duration > 1000) { // 超过1秒的资源
-          console.warn('慢资源:', {
-            name: entry.name,
-            duration: entry.duration,
-            size: entry.transferSize
-          });
-          
-          this.sendToAnalytics({
-            type: 'slow-resource',
-            name: entry.name,
-            duration: entry.duration,
-            size: entry.transferSize
-          });
-        }
-      });
-    });
-    
-    observer.observe({ entryTypes: ['resource'] });
-  }
-  
-  monitorLongTasks() {
-    if ('PerformanceObserver' in window) {
-      const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach((entry) => {
-          console.warn('长任务检测:', {
-            duration: entry.duration,
-            startTime: entry.startTime
-          });
-          
-          this.sendToAnalytics({
-            type: 'long-task',
-            duration: entry.duration,
-            startTime: entry.startTime
-          });
-        });
-      });
-      
-      observer.observe({ entryTypes: ['longtask'] });
-    }
-  }
-  
-  monitorMemoryUsage() {
-    if ('memory' in performance) {
-      setInterval(() => {
-        const memory = performance.memory;
-        const usage = {
-          used: memory.usedJSHeapSize,
-          total: memory.totalJSHeapSize,
-          limit: memory.jsHeapSizeLimit
-        };
-        
-        // 内存使用率超过80%时警告
-        if (usage.used / usage.limit > 0.8) {
-          console.warn('内存使用率过高:', usage);
-          
-          this.sendToAnalytics({
-            type: 'high-memory-usage',
-            ...usage
-          });
-        }
-      }, 30000); // 每30秒检查一次
-    }
-  }
-  
-  monitorUserInteractions() {
-    let interactionCount = 0;
-    
-    ['click', 'keydown', 'scroll'].forEach(eventType => {
-      document.addEventListener(eventType, () => {
-        interactionCount++;
-      }, { passive: true });
-    });
-    
-    // 每分钟报告交互次数
-    setInterval(() => {
-      if (interactionCount > 0) {
-        this.sendToAnalytics({
-          type: 'user-interactions',
-          count: interactionCount
-        });
-        interactionCount = 0;
-      }
-    }, 60000);
-  }
-  
-  sendToAnalytics(data) {
-    // 发送到Google Analytics
-    if (typeof gtag !== 'undefined') {
-      gtag('event', 'web_vitals', {
+    console.log(`${metric.name}: ${metric.value}`);
+
+    // 集成Google Analytics
+    if (window.gtag) {
+      window.gtag('event', 'web_vitals', {
         event_category: 'Performance',
-        event_label: data.name || data.type,
-        value: Math.round(data.value || data.duration || 0)
+        event_label: metric.name,
+        value: Math.round(metric.value)
       });
     }
-    
-    // 发送到自定义分析服务
-    fetch('/api/analytics/performance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...data,
-        timestamp: Date.now(),
-        url: window.location.href,
-        userAgent: navigator.userAgent
-      })
-    }).catch(console.error);
-  }
-  
-  // 生成性能报告
-  generateReport() {
-    return {
-      metrics: this.metrics,
-      timestamp: Date.now(),
-      url: window.location.href,
-      connection: this.getConnectionInfo(),
-      device: this.getDeviceInfo()
-    };
-  }
-  
-  getConnectionInfo() {
-    if ('connection' in navigator) {
-      const conn = navigator.connection;
-      return {
-        effectiveType: conn.effectiveType,
-        downlink: conn.downlink,
-        rtt: conn.rtt,
-        saveData: conn.saveData
-      };
-    }
-    return null;
-  }
-  
-  getDeviceInfo() {
-    return {
-      deviceMemory: navigator.deviceMemory || 'unknown',
-      hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
-      platform: navigator.platform,
-      userAgent: navigator.userAgent
-    };
   }
 }
+```
 
-// 2. 性能预算管理
+#### 性能预算策略
+
+性能预算是设定资源大小和性能指标的限制，确保应用保持良好性能。
+
+| 资源类型 | 推荐预算 | 说明 |
+|----------|----------|------|
+| **JavaScript** | ≤200KB | 包含所有JS文件压缩后大小 |
+| **CSS** | ≤100KB | 包含所有样式文件 |
+| **图片** | ≤500KB | 首屏图片总大小 |
+| **字体** | ≤100KB | Web字体文件大小 |
+| **总资源** | ≤1MB | 首屏所有资源总和 |
+
+```javascript
+// 简化的性能预算检查
 class PerformanceBudget {
   constructor() {
     this.budgets = {
-      // 资源大小预算 (KB)
-      javascript: 200,
+      javascript: 200, // KB
       css: 100,
       images: 500,
-      fonts: 100,
-      total: 1000,
-      
-      // 性能指标预算 (ms)
-      LCP: 2500,
-      FID: 100,
-      CLS: 0.1,
-      
-      // 网络请求预算
-      requests: 50
+      total: 1000
     };
-    
-    this.violations = [];
   }
-  
+
   checkBudgets() {
-    this.checkResourceBudgets();
-    this.checkMetricBudgets();
-    this.checkRequestBudgets();
-    
-    return this.violations;
-  }
-  
-  checkResourceBudgets() {
     const resources = performance.getEntriesByType('resource');
-    const sizes = {
-      javascript: 0,
-      css: 0,
-      images: 0,
-      fonts: 0,
-      total: 0
-    };
-    
+    const sizes = { javascript: 0, css: 0, images: 0, total: 0 };
+
     resources.forEach(resource => {
       const size = resource.transferSize || 0;
       sizes.total += size;
-      
-      if (resource.name.includes('.js')) {
-        sizes.javascript += size;
-      } else if (resource.name.includes('.css')) {
-        sizes.css += size;
-      } else if (/\.(jpg|jpeg|png|gif|webp|svg)/.test(resource.name)) {
-        sizes.images += size;
-      } else if (/\.(woff|woff2|ttf|otf)/.test(resource.name)) {
-        sizes.fonts += size;
-      }
+
+      if (resource.name.includes('.js')) sizes.javascript += size;
+      else if (resource.name.includes('.css')) sizes.css += size;
+      else if (/\.(jpg|jpeg|png|gif|webp)/.test(resource.name)) sizes.images += size;
     });
-    
+
     // 检查预算违规
+    const violations = [];
     Object.entries(sizes).forEach(([type, size]) => {
-      const budget = this.budgets[type] * 1024; // 转换为字节
-      if (size > budget) {
-        this.violations.push({
-          type: 'resource-budget',
-          category: type,
-          actual: Math.round(size / 1024),
-          budget: this.budgets[type],
-          excess: Math.round((size - budget) / 1024)
+      const budgetKB = this.budgets[type];
+      const actualKB = Math.round(size / 1024);
+
+      if (actualKB > budgetKB) {
+        violations.push({
+          type,
+          actual: actualKB,
+          budget: budgetKB,
+          excess: actualKB - budgetKB
         });
       }
     });
-  }
-  
-  checkMetricBudgets() {
-    const webVitalsMonitor = new WebVitalsMonitor();
-    const metrics = webVitalsMonitor.metrics;
-    
-    Object.entries(metrics).forEach(([metric, value]) => {
-      if (value && this.budgets[metric] && value > this.budgets[metric]) {
-        this.violations.push({
-          type: 'metric-budget',
-          metric,
-          actual: value,
-          budget: this.budgets[metric],
-          excess: value - this.budgets[metric]
-        });
-      }
-    });
-  }
-  
-  checkRequestBudgets() {
-    const resources = performance.getEntriesByType('resource');
-    const requestCount = resources.length;
-    
-    if (requestCount > this.budgets.requests) {
-      this.violations.push({
-        type: 'request-budget',
-        actual: requestCount,
-        budget: this.budgets.requests,
-        excess: requestCount - this.budgets.requests
-      });
-    }
-  }
-  
-  generateBudgetReport() {
-    const violations = this.checkBudgets();
-    
-    return {
-      passed: violations.length === 0,
-      violations,
-      summary: {
-        totalViolations: violations.length,
-        resourceViolations: violations.filter(v => v.type === 'resource-budget').length,
-        metricViolations: violations.filter(v => v.type === 'metric-budget').length,
-        requestViolations: violations.filter(v => v.type === 'request-budget').length
-      }
-    };
+
+    return violations;
   }
 }
-
-// 使用示例
-const webVitalsMonitor = new WebVitalsMonitor();
-const performanceBudget = new PerformanceBudget();
-
-// 页面加载完成后检查预算
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    const budgetReport = performanceBudget.generateBudgetReport();
-    console.log('性能预算报告:', budgetReport);
-    
-    if (!budgetReport.passed) {
-      console.warn('性能预算违规:', budgetReport.violations);
-    }
-  }, 5000); // 等待5秒确保所有资源加载完成
-});
 ```
 
 ## 加载性能优化
 
 ### 资源优化策略
 
+#### 图片优化最佳实践
+
+| 优化策略 | 实施方法 | 性能提升 |
+|----------|----------|----------|
+| **格式选择** | WebP > AVIF > JPEG | 减少30-50%文件大小 |
+| **懒加载** | Intersection Observer | 减少初始加载时间 |
+| **响应式图片** | srcset + sizes | 适配不同设备 |
+| **预加载** | `<link rel="preload">` | 关键图片优先加载 |
+| **压缩** | 质量80-90% | 平衡质量与大小 |
+
 ```javascript
-// 1. 图片优化管理器
-class ImageOptimizer {
+// 简化的图片懒加载
+class SimpleImageLazyLoader {
   constructor() {
-    this.lazyImages = new Set();
-    this.imageCache = new Map();
     this.setupLazyLoading();
-    this.setupImageFormats();
   }
-  
+
   setupLazyLoading() {
-    // Intersection Observer懒加载
-    this.observer = new IntersectionObserver((entries) => {
+    const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          this.loadImage(entry.target);
-          this.observer.unobserve(entry.target);
+          const img = entry.target;
+          img.src = img.dataset.src;
+          img.classList.add('loaded');
+          observer.unobserve(img);
         }
       });
-    }, {
-      rootMargin: '50px 0px',
-      threshold: 0.01
-    });
-    
+    }, { rootMargin: '50px' });
+
     // 监听所有懒加载图片
     document.querySelectorAll('img[data-src]').forEach(img => {
-      this.observer.observe(img);
+      observer.observe(img);
     });
   }
-  
-  async loadImage(img) {
-    const src = img.dataset.src;
-    if (!src) return;
-    
-    try {
-      // 显示加载占位符
-      img.style.filter = 'blur(5px)';
-      
-      // 预加载图片
-      const image = new Image();
-      image.onload = () => {
-        img.src = src;
-        img.style.filter = 'none';
-        img.classList.add('loaded');
-      };
-      
-      image.onerror = () => {
-        img.src = '/images/placeholder.jpg'; // 错误占位图
-        img.classList.add('error');
-      };
-      
-      // 选择最佳格式
-      const optimizedSrc = await this.getOptimizedImageSrc(src);
-      image.src = optimizedSrc;
-      
-    } catch (error) {
-      console.error('图片加载失败:', error);
-      img.src = '/images/placeholder.jpg';
-    }
-  }
-  
-  async getOptimizedImageSrc(originalSrc) {
-    // 检查浏览器支持的图片格式
-    const supportedFormats = await this.getSupportedFormats();
-    
-    // 根据设备像素比选择合适尺寸
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    const width = Math.round(300 * devicePixelRatio); // 假设基础宽度300px
-    
-    // 构建优化后的图片URL
-    let optimizedSrc = originalSrc;
-    
-    if (supportedFormats.webp) {
-      optimizedSrc = originalSrc.replace(/\.(jpg|jpeg|png)$/, '.webp');
-    } else if (supportedFormats.avif) {
-      optimizedSrc = originalSrc.replace(/\.(jpg|jpeg|png)$/, '.avif');
-    }
-    
-    // 添加尺寸参数（如果支持）
-    if (optimizedSrc.includes('cloudinary') || optimizedSrc.includes('imagekit')) {
-      optimizedSrc += `?w=${width}&q=auto&f=auto`;
-    }
-    
-    return optimizedSrc;
-  }
-  
-  async getSupportedFormats() {
-    if (this.supportedFormats) {
-      return this.supportedFormats;
-    }
-    
-    const formats = {
-      webp: false,
-      avif: false,
-      jpeg2000: false
-    };
-    
-    // 检测WebP支持
-    formats.webp = await this.canUseFormat('data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA');
-    
-    // 检测AVIF支持
-    formats.avif = await this.canUseFormat('data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADybWV0YQAAAAAAAAAoaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAGxpYmF2aWYAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAABGgAAAB0AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxQ29sb3IAAAAAamlwcnAAAABLaXBjbwAAABRpc3BlAAAAAAAAAAIAAAACAAAAEHBpeGkAAAAAAwgICAAAAAxhdjFDgQ0MAAAAABNjb2xybmNseAACAAIAAYAAAAAXaXBtYQAAAAAAAAABAAEEAQKDBAAAACVtZGF0EgAKCBgABogQEAwgMg8f8D///8WfhwB8+ErK42A=');
-    
-    this.supportedFormats = formats;
-    return formats;
-  }
-  
-  canUseFormat(dataUri) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      img.src = dataUri;
-    });
-  }
-  
+
   // 预加载关键图片
-  preloadCriticalImages(imageUrls) {
-    imageUrls.forEach(url => {
+  preloadImages(urls) {
+    urls.forEach(url => {
       const link = document.createElement('link');
       link.rel = 'preload';
       link.as = 'image';
@@ -504,225 +169,96 @@ class ImageOptimizer {
       document.head.appendChild(link);
     });
   }
-  
-  // 图片压缩（客户端）
-  async compressImage(file, quality = 0.8, maxWidth = 1920) {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      img.onload = () => {
-        // 计算新尺寸
-        let { width, height } = img;
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        // 绘制并压缩
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(resolve, 'image/jpeg', quality);
-      };
-      
-      img.src = URL.createObjectURL(file);
-    });
-  }
 }
+```
 
-// 2. 代码分割和懒加载
-class CodeSplittingManager {
-  constructor() {
-    this.loadedModules = new Set();
-    this.loadingPromises = new Map();
+#### 代码分割策略
+
+| 分割类型 | 实施方法 | 适用场景 |
+|----------|----------|----------|
+| **路由分割** | React.lazy + Suspense | 不同页面组件 |
+| **组件分割** | 动态import | 大型组件库 |
+| **第三方库分割** | Webpack splitChunks | 独立的vendor包 |
+| **按需加载** | 条件import | 功能模块 |
+
+```javascript
+// 简化的代码分割实现
+class SimpleCodeSplitting {
+  // 路由级懒加载
+  static createLazyRoute(importFn) {
+    return React.lazy(() => import(importFn));
   }
-  
+
   // 动态导入模块
-  async loadModule(modulePath) {
-    if (this.loadedModules.has(modulePath)) {
-      return;
+  static async loadModule(modulePath) {
+    try {
+      const module = await import(modulePath);
+      return module;
+    } catch (error) {
+      console.error(`模块加载失败: ${modulePath}`, error);
+      throw error;
     }
-    
-    if (this.loadingPromises.has(modulePath)) {
-      return this.loadingPromises.get(modulePath);
-    }
-    
-    const loadPromise = import(modulePath)
-      .then(module => {
-        this.loadedModules.add(modulePath);
-        this.loadingPromises.delete(modulePath);
-        return module;
-      })
-      .catch(error => {
-        this.loadingPromises.delete(modulePath);
-        console.error(`加载模块失败: ${modulePath}`, error);
-        throw error;
-      });
-    
-    this.loadingPromises.set(modulePath, loadPromise);
-    return loadPromise;
   }
-  
-  // 预加载模块
-  preloadModule(modulePath) {
+
+  // 预加载关键模块
+  static preloadModule(modulePath) {
     const link = document.createElement('link');
     link.rel = 'modulepreload';
     link.href = modulePath;
     document.head.appendChild(link);
   }
-  
-  // 基于路由的代码分割
-  setupRouteBasedSplitting() {
-    const routes = {
-      '/dashboard': () => import('./pages/Dashboard'),
-      '/profile': () => import('./pages/Profile'),
-      '/settings': () => import('./pages/Settings')
-    };
-    
-    // 预加载可能访问的路由
-    const currentPath = window.location.pathname;
-    const likelyNextRoutes = this.predictNextRoutes(currentPath);
-    
-    likelyNextRoutes.forEach(route => {
-      if (routes[route]) {
-        setTimeout(() => {
-          routes[route]().catch(console.error);
-        }, 2000); // 2秒后预加载
-      }
-    });
-  }
-  
-  predictNextRoutes(currentPath) {
-    // 基于用户行为预测下一个可能访问的路由
-    const predictions = {
-      '/': ['/dashboard', '/profile'],
-      '/dashboard': ['/profile', '/settings'],
-      '/profile': ['/settings', '/dashboard']
-    };
-    
-    return predictions[currentPath] || [];
-  }
-  
-  // 组件级懒加载
-  createLazyComponent(importFn) {
-    return React.lazy(() => {
-      return importFn().catch(error => {
-        console.error('组件加载失败:', error);
-        // 返回错误组件
-        return { default: () => React.createElement('div', null, '组件加载失败') };
-      });
-    });
-  }
 }
 
-// 3. 缓存策略优化
-class CacheOptimizer {
-  constructor() {
-    this.setupServiceWorker();
-    this.setupHTTPCache();
-  }
-  
-  async setupServiceWorker() {
+// React组件懒加载示例
+const LazyDashboard = React.lazy(() => import('./Dashboard'));
+const LazyProfile = React.lazy(() => import('./Profile'));
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Routes>
+        <Route path="/dashboard" element={<LazyDashboard />} />
+        <Route path="/profile" element={<LazyProfile />} />
+      </Routes>
+    </Suspense>
+  );
+}
+```
+
+#### 缓存策略
+
+| 资源类型 | 缓存策略 | 缓存时间 | 说明 |
+|----------|----------|----------|------|
+| **静态资源** | Cache First | 1年 | JS、CSS、图片、字体 |
+| **API数据** | Network First | 5分钟 | 动态数据，网络优先 |
+| **HTML页面** | Network First | 1小时 | 页面内容，支持离线 |
+| **用户数据** | No Cache | - | 敏感数据不缓存 |
+
+```javascript
+// 简化的缓存实现
+class SimpleCacheManager {
+  // 注册Service Worker
+  static async registerSW() {
     if ('serviceWorker' in navigator) {
       try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('Service Worker注册成功:', registration);
-        
-        // 监听更新
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // 有新版本可用
-              this.notifyUpdate();
-            }
-          });
-        });
+        await navigator.serviceWorker.register('/sw.js');
+        console.log('Service Worker注册成功');
       } catch (error) {
         console.error('Service Worker注册失败:', error);
       }
     }
   }
-  
-  setupHTTPCache() {
-    // 设置资源缓存策略
-    const cacheStrategies = {
-      // 静态资源：长期缓存
-      static: {
-        pattern: /\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2)$/,
-        strategy: 'cache-first',
-        maxAge: 31536000 // 1年
-      },
-      
-      // API数据：网络优先
-      api: {
-        pattern: /\/api\//,
-        strategy: 'network-first',
-        maxAge: 300 // 5分钟
-      },
-      
-      // HTML页面：网络优先，离线回退
-      pages: {
-        pattern: /\.html$/,
-        strategy: 'network-first',
-        maxAge: 3600 // 1小时
-      }
-    };
-    
-    // 在Service Worker中实现这些策略
-    this.sendMessageToSW('SET_CACHE_STRATEGIES', cacheStrategies);
-  }
-  
-  sendMessageToSW(type, data) {
-    if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type, data });
-    }
-  }
-  
-  notifyUpdate() {
-    // 通知用户有新版本
-    if (confirm('发现新版本，是否立即更新？')) {
-      window.location.reload();
-    }
-  }
-  
+
   // 预缓存关键资源
-  precacheResources(urls) {
-    this.sendMessageToSW('PRECACHE_RESOURCES', urls);
-  }
-  
-  // 清理过期缓存
-  cleanupCache() {
-    this.sendMessageToSW('CLEANUP_CACHE');
+  static precacheResources(urls) {
+    urls.forEach(url => {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = url;
+      document.head.appendChild(link);
+    });
   }
 }
-
-// 使用示例
-const imageOptimizer = new ImageOptimizer();
-const codeSplittingManager = new CodeSplittingManager();
-const cacheOptimizer = new CacheOptimizer();
-
-// 初始化优化
-document.addEventListener('DOMContentLoaded', () => {
-  // 预加载关键图片
-  imageOptimizer.preloadCriticalImages([
-    '/images/hero.jpg',
-    '/images/logo.png'
-  ]);
-  
-  // 设置路由分割
-  codeSplittingManager.setupRouteBasedSplitting();
-  
-  // 预缓存关键资源
-  cacheOptimizer.precacheResources([
-    '/',
-    '/dashboard',
-    '/offline.html'
-  ]);
-});
 ```
 
 ## 运行时性能优化
@@ -733,89 +269,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ### React性能优化
 
-```javascript
-// 1. 组件优化策略
-import React, { memo, useMemo, useCallback, useState, useEffect } from 'react';
-import { debounce } from 'lodash';
+#### React性能优化策略
 
-// 使用memo避免不必要的重渲染
-const UserCard = memo(({ user, onEdit, onDelete }) => {
+| 优化技术 | 使用场景 | 性能提升 |
+|----------|----------|----------|
+| **React.memo** | 避免不必要重渲染 | 减少渲染次数 |
+| **useMemo** | 缓存计算结果 | 避免重复计算 |
+| **useCallback** | 缓存函数引用 | 避免子组件重渲染 |
+| **虚拟滚动** | 长列表渲染 | 减少DOM节点 |
+| **代码分割** | 按需加载组件 | 减少初始包大小 |
+
+```javascript
+// 简化的React性能优化示例
+import React, { memo, useMemo, useCallback, useState } from 'react';
+
+// 1. 使用memo避免不必要的重渲染
+const UserCard = memo(({ user, onEdit }) => {
   const handleEdit = useCallback(() => {
     onEdit(user.id);
   }, [user.id, onEdit]);
 
-  const handleDelete = useCallback(() => {
-    onDelete(user.id);
-  }, [user.id, onDelete]);
-
-  // 计算属性使用useMemo
   const displayName = useMemo(() => {
     return `${user.firstName} ${user.lastName}`.trim();
   }, [user.firstName, user.lastName]);
 
-  const userStats = useMemo(() => {
-    return {
-      totalPosts: user.posts?.length || 0,
-      totalComments: user.comments?.length || 0,
-      joinDate: new Date(user.createdAt).toLocaleDateString()
-    };
-  }, [user.posts, user.comments, user.createdAt]);
-
   return (
     <div className="user-card">
       <h3>{displayName}</h3>
-      <p>Posts: {userStats.totalPosts}</p>
-      <p>Comments: {userStats.totalComments}</p>
-      <p>Joined: {userStats.joinDate}</p>
       <button onClick={handleEdit}>Edit</button>
-      <button onClick={handleDelete}>Delete</button>
     </div>
   );
 });
 
-// 2. 虚拟滚动实现
-import { FixedSizeList as List } from 'react-window';
-
-const VirtualizedList = ({ items, height = 400 }) => {
-  const Row = ({ index, style }) => (
-    <div style={style}>
-      <UserCard user={items[index]} />
-    </div>
-  );
-
-  return (
-    <List
-      height={height}
-      itemCount={items.length}
-      itemSize={100}
-      width="100%"
-    >
-      {Row}
-    </List>
-  );
-};
-
-// 3. 防抖搜索优化
+// 2. 防抖搜索优化
 const SearchInput = ({ onSearch }) => {
   const [value, setValue] = useState('');
 
   const debouncedSearch = useCallback(
-    debounce((searchTerm) => {
-      onSearch(searchTerm);
-    }, 300),
+    debounce((searchTerm) => onSearch(searchTerm), 300),
     [onSearch]
   );
 
   useEffect(() => {
     debouncedSearch(value);
-    return () => {
-      debouncedSearch.cancel();
-    };
   }, [value, debouncedSearch]);
 
   return (
     <input
-      type="text"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       placeholder="搜索用户..."
@@ -823,118 +323,56 @@ const SearchInput = ({ onSearch }) => {
   );
 };
 
-// 4. 内存泄漏防护
+// 3. 内存泄漏防护
 const DataFetcher = ({ userId }) => {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
 
     const fetchData = async () => {
-      setLoading(true);
       try {
-        const response = await fetch(`/api/users/${userId}`, {
-          signal: controller.signal
-        });
+        const response = await fetch(`/api/users/${userId}`);
         const result = await response.json();
 
         if (!cancelled) {
           setData(result);
         }
       } catch (error) {
-        if (!cancelled && error.name !== 'AbortError') {
-          console.error('Fetch error:', error);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        console.error('Fetch error:', error);
       }
     };
 
     fetchData();
 
     return () => {
-      cancelled = true;
-      controller.abort();
+      cancelled = true; // 防止内存泄漏
     };
   }, [userId]);
 
-  if (loading) return <div>Loading...</div>;
-  return <div>{data ? JSON.stringify(data) : 'No data'}</div>;
+  return <div>{data ? JSON.stringify(data) : 'Loading...'}</div>;
 };
 
-// 5. 长列表优化
-class VirtualScrollList {
-  constructor(container, itemHeight, renderItem) {
-    this.container = container;
-    this.itemHeight = itemHeight;
-    this.renderItem = renderItem;
-    this.scrollTop = 0;
-    this.visibleStart = 0;
-    this.visibleEnd = 0;
-    this.items = [];
+// 4. 虚拟滚动（使用react-window）
+import { FixedSizeList as List } from 'react-window';
 
-    this.init();
-  }
+const VirtualList = ({ items }) => {
+  const Row = ({ index, style }) => (
+    <div style={style}>
+      {items[index].name}
+    </div>
+  );
 
-  init() {
-    this.container.addEventListener('scroll', this.handleScroll.bind(this));
-    this.update();
-  }
-
-  handleScroll() {
-    this.scrollTop = this.container.scrollTop;
-    this.update();
-  }
-
-  update() {
-    const containerHeight = this.container.clientHeight;
-    const totalHeight = this.items.length * this.itemHeight;
-
-    // 计算可见范围
-    this.visibleStart = Math.floor(this.scrollTop / this.itemHeight);
-    this.visibleEnd = Math.min(
-      this.visibleStart + Math.ceil(containerHeight / this.itemHeight) + 1,
-      this.items.length
-    );
-
-    // 渲染可见项目
-    this.render();
-  }
-
-  render() {
-    const fragment = document.createDocumentFragment();
-
-    // 创建占位空间
-    const topSpacer = document.createElement('div');
-    topSpacer.style.height = `${this.visibleStart * this.itemHeight}px`;
-    fragment.appendChild(topSpacer);
-
-    // 渲染可见项目
-    for (let i = this.visibleStart; i < this.visibleEnd; i++) {
-      const item = this.renderItem(this.items[i], i);
-      fragment.appendChild(item);
-    }
-
-    // 创建底部占位空间
-    const bottomSpacer = document.createElement('div');
-    const remainingHeight = (this.items.length - this.visibleEnd) * this.itemHeight;
-    bottomSpacer.style.height = `${remainingHeight}px`;
-    fragment.appendChild(bottomSpacer);
-
-    // 更新容器内容
-    this.container.innerHTML = '';
-    this.container.appendChild(fragment);
-  }
-
-  setItems(items) {
-    this.items = items;
-    this.update();
-  }
-}
+  return (
+    <List
+      height={400}
+      itemCount={items.length}
+      itemSize={50}
+    >
+      {Row}
+    </List>
+  );
+};
 ```
 
 ## 性能监控和分析
@@ -943,1035 +381,94 @@ class VirtualScrollList {
 性能监控帮助我们了解应用在真实环境中的表现，及时发现和解决性能问题。
 </Callout>
 
-### Web Vitals监控
+### 性能监控实施
+
+#### 监控指标体系
+
+| 监控层面 | 关键指标 | 监控工具 |
+|----------|----------|----------|
+| **用户体验** | Core Web Vitals | web-vitals库 |
+| **资源加载** | 资源大小、加载时间 | Performance API |
+| **错误监控** | JavaScript错误 | Sentry, Bugsnag |
+| **业务指标** | 转化率、跳出率 | Google Analytics |
 
 ```javascript
-// 1. Web Vitals数据收集
-import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
+// 简化的性能监控实现
+import { onLCP, onFID, onCLS } from 'web-vitals';
 
-class PerformanceMonitor {
+class SimplePerformanceMonitor {
   constructor() {
-    this.metrics = new Map();
     this.setupWebVitals();
-    this.setupCustomMetrics();
   }
 
   setupWebVitals() {
-    // 收集Core Web Vitals
-    getCLS(this.handleMetric.bind(this, 'CLS'));
-    getFID(this.handleMetric.bind(this, 'FID'));
-    getFCP(this.handleMetric.bind(this, 'FCP'));
-    getLCP(this.handleMetric.bind(this, 'LCP'));
-    getTTFB(this.handleMetric.bind(this, 'TTFB'));
+    onLCP(this.sendMetric);
+    onFID(this.sendMetric);
+    onCLS(this.sendMetric);
   }
 
-  handleMetric(name, metric) {
-    this.metrics.set(name, metric);
-
-    // 计算评分
-    const rating = this.getRating(name, metric.value);
-
+  sendMetric(metric) {
     // 发送到分析服务
-    this.sendToAnalytics({
-      name,
-      value: metric.value,
-      rating,
-      id: metric.id,
-      delta: metric.delta,
-      timestamp: Date.now(),
-      url: window.location.href,
-      userAgent: navigator.userAgent
-    });
-  }
-
-  getRating(name, value) {
-    const thresholds = {
-      CLS: { good: 0.1, poor: 0.25 },
-      FID: { good: 100, poor: 300 },
-      FCP: { good: 1800, poor: 3000 },
-      LCP: { good: 2500, poor: 4000 },
-      TTFB: { good: 800, poor: 1800 }
-    };
-
-    const threshold = thresholds[name];
-    if (!threshold) return 'unknown';
-
-    if (value <= threshold.good) return 'good';
-    if (value <= threshold.poor) return 'needs-improvement';
-    return 'poor';
-  }
-
-  setupCustomMetrics() {
-    // 监控页面加载时间
-    window.addEventListener('load', () => {
-      const navigation = performance.getEntriesByType('navigation')[0];
-      this.sendToAnalytics({
-        name: 'page-load',
-        value: navigation.loadEventEnd - navigation.fetchStart,
+    fetch('/api/analytics/performance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: metric.name,
+        value: metric.value,
+        rating: metric.rating,
         timestamp: Date.now()
-      });
-    });
-
-    // 监控资源加载
-    const observer = new PerformanceObserver((list) => {
-      list.getEntries().forEach((entry) => {
-        if (entry.entryType === 'resource') {
-          this.analyzeResource(entry);
-        }
-      });
-    });
-    observer.observe({ entryTypes: ['resource'] });
-  }
-
-  analyzeResource(entry) {
-    const resourceData = {
-      name: entry.name,
-      type: this.getResourceType(entry.name),
-      size: entry.transferSize,
-      duration: entry.duration,
-      startTime: entry.startTime,
-      timestamp: Date.now()
-    };
-
-    // 检查慢资源
-    if (entry.duration > 1000) {
-      this.sendToAnalytics({
-        ...resourceData,
-        alert: 'slow-resource'
-      });
-    }
-
-    // 检查大文件
-    if (entry.transferSize > 1024 * 1024) { // 1MB
-      this.sendToAnalytics({
-        ...resourceData,
-        alert: 'large-resource'
-      });
-    }
-  }
-
-  getResourceType(url) {
-    if (url.match(/\.(js|mjs)$/)) return 'script';
-    if (url.match(/\.css$/)) return 'stylesheet';
-    if (url.match(/\.(png|jpg|jpeg|gif|webp|svg)$/)) return 'image';
-    if (url.match(/\.(woff|woff2|ttf|otf)$/)) return 'font';
-    return 'other';
-  }
-
-  async sendToAnalytics(data) {
-    try {
-      await fetch('/api/analytics/performance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-    } catch (error) {
-      console.warn('Failed to send analytics:', error);
-    }
-  }
-}
-
-// 2. 错误监控
-class ErrorMonitor {
-  constructor() {
-    this.setupErrorHandlers();
-    this.setupUnhandledRejectionHandler();
-  }
-
-  setupErrorHandlers() {
-    window.addEventListener('error', (event) => {
-      this.handleError({
-        type: 'javascript',
-        message: event.message,
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno,
-        stack: event.error?.stack,
-        timestamp: Date.now()
-      });
-    });
-
-    window.addEventListener('unhandledrejection', (event) => {
-      this.handleError({
-        type: 'promise',
-        message: event.reason?.message || 'Unhandled Promise Rejection',
-        stack: event.reason?.stack,
-        timestamp: Date.now()
-      });
-    });
-  }
-
-  setupUnhandledRejectionHandler() {
-    // React错误边界
-    const originalConsoleError = console.error;
-    console.error = (...args) => {
-      if (args[0]?.includes?.('React')) {
-        this.handleError({
-          type: 'react',
-          message: args.join(' '),
-          timestamp: Date.now()
-        });
-      }
-      originalConsoleError.apply(console, args);
-    };
-  }
-
-  handleError(errorData) {
-    // 过滤掉一些已知的无害错误
-    if (this.shouldIgnoreError(errorData)) {
-      return;
-    }
-
-    // 发送错误报告
-    this.sendErrorReport(errorData);
-  }
-
-  shouldIgnoreError(errorData) {
-    const ignoredMessages = [
-      'Script error',
-      'Non-Error promise rejection captured',
-      'ResizeObserver loop limit exceeded'
-    ];
-
-    return ignoredMessages.some(msg =>
-      errorData.message?.includes(msg)
-    );
-  }
-
-  async sendErrorReport(errorData) {
-    try {
-      await fetch('/api/errors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...errorData,
-          url: window.location.href,
-          userAgent: navigator.userAgent,
-          timestamp: Date.now()
-        })
-      });
-    } catch (error) {
-      console.warn('Failed to send error report:', error);
-    }
-  }
-}
-
-// 3. 用户行为分析
-class UserBehaviorTracker {
-  constructor() {
-    this.sessionStart = Date.now();
-    this.interactions = [];
-    this.setupTracking();
-  }
-
-  setupTracking() {
-    // 点击事件追踪
-    document.addEventListener('click', (event) => {
-      this.trackInteraction('click', {
-        target: this.getElementSelector(event.target),
-        timestamp: Date.now()
-      });
-    });
-
-    // 页面停留时间
-    window.addEventListener('beforeunload', () => {
-      this.trackInteraction('session-end', {
-        duration: Date.now() - this.sessionStart,
-        interactions: this.interactions.length
-      });
-    });
-
-    // 滚动深度
-    let maxScrollDepth = 0;
-    window.addEventListener('scroll', debounce(() => {
-      const scrollDepth = Math.round(
-        (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100
-      );
-      if (scrollDepth > maxScrollDepth) {
-        maxScrollDepth = scrollDepth;
-        this.trackInteraction('scroll-depth', {
-          depth: scrollDepth,
-          timestamp: Date.now()
-        });
-      }
-    }, 100));
-  }
-
-  getElementSelector(element) {
-    if (element.id) return `#${element.id}`;
-    if (element.className) return `.${element.className.split(' ')[0]}`;
-    return element.tagName.toLowerCase();
-  }
-
-  trackInteraction(type, data) {
-    this.interactions.push({ type, ...data });
-
-    // 批量发送，避免过多请求
-    if (this.interactions.length >= 10) {
-      this.flushInteractions();
-    }
-  }
-
-  async flushInteractions() {
-    if (this.interactions.length === 0) return;
-
-    try {
-      await fetch('/api/analytics/interactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          interactions: this.interactions,
-          sessionId: this.getSessionId(),
-          timestamp: Date.now()
-        })
-      });
-      this.interactions = [];
-    } catch (error) {
-      console.warn('Failed to send interactions:', error);
-    }
-  }
-
-  getSessionId() {
-    let sessionId = sessionStorage.getItem('sessionId');
-    if (!sessionId) {
-      sessionId = Math.random().toString(36).substr(2, 9);
-      sessionStorage.setItem('sessionId', sessionId);
-    }
-    return sessionId;
-  }
-}
-
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-```
-
-## 自动化性能测试
-
-<Callout type="warning">
-自动化性能测试确保应用在持续开发过程中保持良好的性能表现，及早发现性能回归问题。
-</Callout>
-
-### Lighthouse CI集成
-
-```yaml
-# .github/workflows/performance.yml
-name: Performance Testing
-
-on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-
-jobs:
-  lighthouse:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build
-
-      - name: Start server
-        run: npm start &
-
-      - name: Wait for server
-        run: npx wait-on http://localhost:3000
-
-      - name: Run Lighthouse CI
-        run: |
-          npm install -g @lhci/cli@0.12.x
-          lhci autorun
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-```
-
-```javascript
-// lighthouserc.js
-module.exports = {
-  ci: {
-    collect: {
-      url: [
-        'http://localhost:3000',
-        'http://localhost:3000/products',
-        'http://localhost:3000/about'
-      ],
-      numberOfRuns: 3,
-      settings: {
-        chromeFlags: '--no-sandbox --headless'
-      }
-    },
-    assert: {
-      assertions: {
-        'categories:performance': ['warn', { minScore: 0.8 }],
-        'categories:accessibility': ['error', { minScore: 0.9 }],
-        'categories:best-practices': ['warn', { minScore: 0.8 }],
-        'categories:seo': ['warn', { minScore: 0.8 }],
-        'first-contentful-paint': ['warn', { maxNumericValue: 2000 }],
-        'largest-contentful-paint': ['error', { maxNumericValue: 4000 }],
-        'cumulative-layout-shift': ['error', { maxNumericValue: 0.1 }],
-        'total-blocking-time': ['warn', { maxNumericValue: 300 }]
-      }
-    },
-    upload: {
-      target: 'temporary-public-storage'
-    },
-    server: {
-      port: 9001,
-      storage: './lighthouse-reports'
-    }
-  }
-};
-
-// 2. 自定义性能测试脚本
-// scripts/performance-test.js
-const puppeteer = require('puppeteer');
-const lighthouse = require('lighthouse');
-
-class PerformanceTester {
-  constructor() {
-    this.browser = null;
-    this.results = [];
-  }
-
-  async init() {
-    this.browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage']
-    });
-  }
-
-  async testPage(url, options = {}) {
-    const page = await this.browser.newPage();
-
-    try {
-      // 设置网络条件
-      if (options.networkConditions) {
-        await page.emulateNetworkConditions(options.networkConditions);
-      }
-
-      // 设置设备
-      if (options.device) {
-        await page.emulate(options.device);
-      }
-
-      // 开始性能监控
-      await page.tracing.start({ path: 'trace.json' });
-
-      const startTime = Date.now();
-
-      // 导航到页面
-      const response = await page.goto(url, {
-        waitUntil: 'networkidle0',
-        timeout: 30000
-      });
-
-      const loadTime = Date.now() - startTime;
-
-      // 停止追踪
-      await page.tracing.stop();
-
-      // 运行Lighthouse
-      const lighthouseResult = await lighthouse(url, {
-        port: new URL(this.browser.wsEndpoint()).port,
-        output: 'json',
-        logLevel: 'info'
-      });
-
-      // 收集自定义指标
-      const metrics = await page.evaluate(() => {
-        return new Promise((resolve) => {
-          new PerformanceObserver((list) => {
-            const entries = list.getEntries();
-            const paintEntries = entries.filter(entry =>
-              entry.entryType === 'paint'
-            );
-            resolve(paintEntries);
-          }).observe({ entryTypes: ['paint'] });
-        });
-      });
-
-      const result = {
-        url,
-        loadTime,
-        lighthouse: lighthouseResult.lhr,
-        customMetrics: metrics,
-        networkConditions: options.networkConditions,
-        device: options.device?.name,
-        timestamp: new Date().toISOString()
-      };
-
-      this.results.push(result);
-      return result;
-
-    } finally {
-      await page.close();
-    }
-  }
-
-  async testMultiplePages(urls, options = {}) {
-    const results = [];
-
-    for (const url of urls) {
-      console.log(`Testing ${url}...`);
-      try {
-        const result = await this.testPage(url, options);
-        results.push(result);
-        console.log(`✓ ${url} - Performance Score: ${result.lighthouse.categories.performance.score * 100}`);
-      } catch (error) {
-        console.error(`✗ ${url} - Error: ${error.message}`);
-        results.push({
-          url,
-          error: error.message,
-          timestamp: new Date().toISOString()
-        });
-      }
-    }
-
-    return results;
-  }
-
-  async generateReport() {
-    const report = {
-      summary: {
-        totalTests: this.results.length,
-        passedTests: this.results.filter(r => !r.error).length,
-        averagePerformanceScore: this.calculateAverageScore('performance'),
-        averageAccessibilityScore: this.calculateAverageScore('accessibility'),
-        timestamp: new Date().toISOString()
-      },
-      details: this.results,
-      recommendations: this.generateRecommendations()
-    };
-
-    // 保存报告
-    const fs = require('fs');
-    fs.writeFileSync(
-      `performance-report-${Date.now()}.json`,
-      JSON.stringify(report, null, 2)
-    );
-
-    return report;
-  }
-
-  calculateAverageScore(category) {
-    const validResults = this.results.filter(r => !r.error && r.lighthouse);
-    if (validResults.length === 0) return 0;
-
-    const totalScore = validResults.reduce((sum, result) => {
-      return sum + (result.lighthouse.categories[category]?.score || 0);
-    }, 0);
-
-    return Math.round((totalScore / validResults.length) * 100);
-  }
-
-  generateRecommendations() {
-    const recommendations = [];
-
-    this.results.forEach(result => {
-      if (result.error) return;
-
-      const audits = result.lighthouse.audits;
-
-      // 检查常见性能问题
-      if (audits['largest-contentful-paint']?.score < 0.5) {
-        recommendations.push({
-          url: result.url,
-          type: 'LCP',
-          message: 'Largest Contentful Paint需要优化',
-          suggestions: [
-            '优化图片大小和格式',
-            '减少服务器响应时间',
-            '移除阻塞渲染的资源'
-          ]
-        });
-      }
-
-      if (audits['cumulative-layout-shift']?.score < 0.5) {
-        recommendations.push({
-          url: result.url,
-          type: 'CLS',
-          message: 'Cumulative Layout Shift需要优化',
-          suggestions: [
-            '为图片和视频设置尺寸属性',
-            '避免在现有内容上方插入内容',
-            '使用transform动画而不是改变布局的属性'
-          ]
-        });
-      }
-
-      if (audits['unused-javascript']?.score < 0.5) {
-        recommendations.push({
-          url: result.url,
-          type: 'JavaScript',
-          message: '存在未使用的JavaScript代码',
-          suggestions: [
-            '移除未使用的代码',
-            '实现代码分割',
-            '延迟加载非关键JavaScript'
-          ]
-        });
-      }
-    });
-
-    return recommendations;
-  }
-
-  async close() {
-    if (this.browser) {
-      await this.browser.close();
-    }
-  }
-}
-
-// 使用示例
-async function runPerformanceTests() {
-  const tester = new PerformanceTester();
-  await tester.init();
-
-  const urls = [
-    'http://localhost:3000',
-    'http://localhost:3000/products',
-    'http://localhost:3000/about'
-  ];
-
-  // 测试不同网络条件
-  const networkConditions = [
-    { name: 'Fast 3G', downloadThroughput: 1.6 * 1024 * 1024 / 8, uploadThroughput: 750 * 1024 / 8, latency: 150 },
-    { name: 'Slow 3G', downloadThroughput: 500 * 1024 / 8, uploadThroughput: 500 * 1024 / 8, latency: 400 }
-  ];
-
-  for (const condition of networkConditions) {
-    console.log(`\nTesting with ${condition.name} network...`);
-    await tester.testMultiplePages(urls, { networkConditions: condition });
-  }
-
-  const report = await tester.generateReport();
-  console.log('\nPerformance Test Summary:');
-  console.log(`Total Tests: ${report.summary.totalTests}`);
-  console.log(`Passed Tests: ${report.summary.passedTests}`);
-  console.log(`Average Performance Score: ${report.summary.averagePerformanceScore}`);
-
-  await tester.close();
-  return report;
-}
-
-module.exports = { PerformanceTester, runPerformanceTests };
-```
-
-## 性能预算和持续优化
-
-<Callout type="info">
-性能预算帮助团队在开发过程中保持性能意识，确保新功能不会影响应用的整体性能表现。
-</Callout>
-
-### 性能预算配置
-
-```javascript
-// performance-budget.config.js
-module.exports = {
-  // 资源大小预算
-  resourceBudgets: {
-    javascript: {
-      total: 500 * 1024, // 500KB
-      individual: 100 * 1024, // 单个文件100KB
-      warning: 400 * 1024,
-      error: 600 * 1024
-    },
-    css: {
-      total: 100 * 1024, // 100KB
-      individual: 50 * 1024,
-      warning: 80 * 1024,
-      error: 120 * 1024
-    },
-    images: {
-      total: 2 * 1024 * 1024, // 2MB
-      individual: 500 * 1024,
-      warning: 1.5 * 1024 * 1024,
-      error: 2.5 * 1024 * 1024
-    },
-    fonts: {
-      total: 200 * 1024, // 200KB
-      individual: 100 * 1024,
-      warning: 150 * 1024,
-      error: 250 * 1024
-    }
-  },
-
-  // 性能指标预算
-  performanceBudgets: {
-    'first-contentful-paint': {
-      target: 1500,
-      warning: 2000,
-      error: 3000
-    },
-    'largest-contentful-paint': {
-      target: 2500,
-      warning: 3000,
-      error: 4000
-    },
-    'cumulative-layout-shift': {
-      target: 0.05,
-      warning: 0.1,
-      error: 0.25
-    },
-    'total-blocking-time': {
-      target: 200,
-      warning: 300,
-      error: 600
-    },
-    'speed-index': {
-      target: 3000,
-      warning: 4000,
-      error: 5500
-    }
-  },
-
-  // 网络条件
-  networkConditions: {
-    '3g': {
-      downloadThroughput: 1.6 * 1024 * 1024 / 8,
-      uploadThroughput: 750 * 1024 / 8,
-      latency: 150
-    },
-    'slow-3g': {
-      downloadThroughput: 500 * 1024 / 8,
-      uploadThroughput: 500 * 1024 / 8,
-      latency: 400
-    }
-  }
-};
-
-// 2. 性能预算检查器
-class PerformanceBudgetChecker {
-  constructor(config) {
-    this.config = config;
-    this.violations = [];
-  }
-
-  async checkResourceBudgets(buildStats) {
-    const { resourceBudgets } = this.config;
-
-    Object.entries(resourceBudgets).forEach(([type, budget]) => {
-      const resources = this.getResourcesByType(buildStats, type);
-      const totalSize = resources.reduce((sum, resource) => sum + resource.size, 0);
-
-      // 检查总大小
-      if (totalSize > budget.error) {
-        this.violations.push({
-          type: 'resource-budget',
-          severity: 'error',
-          resourceType: type,
-          message: `${type} total size (${this.formatBytes(totalSize)}) exceeds error threshold (${this.formatBytes(budget.error)})`,
-          actual: totalSize,
-          threshold: budget.error
-        });
-      } else if (totalSize > budget.warning) {
-        this.violations.push({
-          type: 'resource-budget',
-          severity: 'warning',
-          resourceType: type,
-          message: `${type} total size (${this.formatBytes(totalSize)}) exceeds warning threshold (${this.formatBytes(budget.warning)})`,
-          actual: totalSize,
-          threshold: budget.warning
-        });
-      }
-
-      // 检查单个文件大小
-      resources.forEach(resource => {
-        if (resource.size > budget.individual) {
-          this.violations.push({
-            type: 'individual-resource',
-            severity: 'warning',
-            resourceType: type,
-            fileName: resource.name,
-            message: `${resource.name} size (${this.formatBytes(resource.size)}) exceeds individual limit (${this.formatBytes(budget.individual)})`,
-            actual: resource.size,
-            threshold: budget.individual
-          });
-        }
-      });
-    });
-  }
-
-  async checkPerformanceBudgets(lighthouseResults) {
-    const { performanceBudgets } = this.config;
-
-    Object.entries(performanceBudgets).forEach(([metric, budget]) => {
-      const audit = lighthouseResults.audits[metric];
-      if (!audit) return;
-
-      const value = audit.numericValue;
-
-      if (value > budget.error) {
-        this.violations.push({
-          type: 'performance-budget',
-          severity: 'error',
-          metric,
-          message: `${metric} (${Math.round(value)}ms) exceeds error threshold (${budget.error}ms)`,
-          actual: value,
-          threshold: budget.error
-        });
-      } else if (value > budget.warning) {
-        this.violations.push({
-          type: 'performance-budget',
-          severity: 'warning',
-          metric,
-          message: `${metric} (${Math.round(value)}ms) exceeds warning threshold (${budget.warning}ms)`,
-          actual: value,
-          threshold: budget.warning
-        });
-      }
-    });
-  }
-
-  getResourcesByType(buildStats, type) {
-    const extensions = {
-      javascript: ['.js', '.mjs', '.jsx', '.ts', '.tsx'],
-      css: ['.css', '.scss', '.sass', '.less'],
-      images: ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'],
-      fonts: ['.woff', '.woff2', '.ttf', '.otf', '.eot']
-    };
-
-    return buildStats.assets
-      .filter(asset => {
-        const ext = asset.name.substring(asset.name.lastIndexOf('.'));
-        return extensions[type]?.includes(ext);
       })
-      .map(asset => ({
-        name: asset.name,
-        size: asset.size
-      }));
-  }
-
-  formatBytes(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-
-  generateReport() {
-    const errorCount = this.violations.filter(v => v.severity === 'error').length;
-    const warningCount = this.violations.filter(v => v.severity === 'warning').length;
-
-    return {
-      passed: errorCount === 0,
-      summary: {
-        total: this.violations.length,
-        errors: errorCount,
-        warnings: warningCount
-      },
-      violations: this.violations,
-      recommendations: this.generateRecommendations()
-    };
-  }
-
-  generateRecommendations() {
-    const recommendations = [];
-
-    // 资源优化建议
-    const resourceViolations = this.violations.filter(v => v.type === 'resource-budget');
-    if (resourceViolations.length > 0) {
-      recommendations.push({
-        category: 'Resource Optimization',
-        suggestions: [
-          '启用Gzip/Brotli压缩',
-          '使用代码分割减少初始包大小',
-          '移除未使用的代码',
-          '优化图片格式和大小',
-          '使用CDN加速资源加载'
-        ]
-      });
-    }
-
-    // 性能优化建议
-    const performanceViolations = this.violations.filter(v => v.type === 'performance-budget');
-    if (performanceViolations.length > 0) {
-      recommendations.push({
-        category: 'Performance Optimization',
-        suggestions: [
-          '优化关键渲染路径',
-          '实现资源预加载',
-          '减少主线程工作',
-          '优化第三方脚本',
-          '使用Service Worker缓存'
-        ]
-      });
-    }
-
-    return recommendations;
+    });
   }
 }
 
-// 3. 持续优化工作流
-class ContinuousOptimization {
-  constructor() {
-    this.metrics = new Map();
-    this.trends = new Map();
-  }
+```
 
-  recordMetrics(url, metrics) {
-    const key = `${url}-${new Date().toDateString()}`;
-    this.metrics.set(key, {
-      ...metrics,
-      timestamp: Date.now()
+### 性能优化工具链
+
+#### 开发阶段工具
+
+| 工具 | 用途 | 特点 |
+|------|------|------|
+| **Lighthouse** | 性能审计 | 全面的性能评估 |
+| **Chrome DevTools** | 性能调试 | 实时性能分析 |
+| **Webpack Bundle Analyzer** | 包分析 | 可视化包大小 |
+| **React DevTools Profiler** | React性能 | 组件渲染分析 |
+
+#### 生产环境监控
+
+| 工具 | 用途 | 特点 |
+|------|------|------|
+| **Google Analytics** | 用户体验监控 | Core Web Vitals |
+| **Sentry** | 错误监控 | 性能问题追踪 |
+| **New Relic** | APM监控 | 全栈性能监控 |
+| **DataDog** | 基础设施监控 | 服务器性能 |
+
+```javascript
+// 简化的性能监控初始化
+class PerformanceTracker {
+  static init() {
+    // 初始化Web Vitals监控
+    new SimplePerformanceMonitor();
+
+    // 初始化错误监控
+    window.addEventListener('error', (event) => {
+      console.error('JavaScript Error:', event.error);
     });
 
-    this.updateTrends(url, metrics);
-  }
-
-  updateTrends(url, metrics) {
-    if (!this.trends.has(url)) {
-      this.trends.set(url, []);
-    }
-
-    const trend = this.trends.get(url);
-    trend.push({
-      ...metrics,
-      timestamp: Date.now()
-    });
-
-    // 保留最近30天的数据
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    this.trends.set(url, trend.filter(m => m.timestamp > thirtyDaysAgo));
-  }
-
-  analyzePerformanceTrends(url) {
-    const trend = this.trends.get(url) || [];
-    if (trend.length < 2) return null;
-
-    const recent = trend.slice(-7); // 最近7次测量
-    const previous = trend.slice(-14, -7); // 之前7次测量
-
-    const analysis = {};
-
-    ['fcp', 'lcp', 'cls', 'fid', 'ttfb'].forEach(metric => {
-      const recentAvg = recent.reduce((sum, m) => sum + (m[metric] || 0), 0) / recent.length;
-      const previousAvg = previous.reduce((sum, m) => sum + (m[metric] || 0), 0) / previous.length;
-
-      const change = ((recentAvg - previousAvg) / previousAvg) * 100;
-
-      analysis[metric] = {
-        current: recentAvg,
-        previous: previousAvg,
-        change: change,
-        trend: change > 5 ? 'degrading' : change < -5 ? 'improving' : 'stable'
-      };
-    });
-
-    return analysis;
-  }
-
-  generateOptimizationPlan(trendAnalysis) {
-    const plan = {
-      priority: 'medium',
-      actions: [],
-      timeline: '2 weeks'
-    };
-
-    Object.entries(trendAnalysis).forEach(([metric, data]) => {
-      if (data.trend === 'degrading') {
-        plan.priority = 'high';
-        plan.timeline = '1 week';
-
-        switch (metric) {
-          case 'fcp':
-          case 'lcp':
-            plan.actions.push({
-              metric,
-              action: '优化关键资源加载',
-              details: [
-                '检查并优化关键CSS',
-                '压缩和优化图片',
-                '实现资源预加载'
-              ]
-            });
-            break;
-          case 'cls':
-            plan.actions.push({
-              metric,
-              action: '修复布局偏移问题',
-              details: [
-                '为图片和广告设置尺寸',
-                '避免在现有内容上方插入内容',
-                '使用CSS transform进行动画'
-              ]
-            });
-            break;
-          case 'fid':
-            plan.actions.push({
-              metric,
-              action: '减少主线程阻塞',
-              details: [
-                '拆分长任务',
-                '延迟非关键JavaScript',
-                '优化第三方脚本'
-              ]
-            });
-            break;
-          case 'ttfb':
-            plan.actions.push({
-              metric,
-              action: '优化服务器响应时间',
-              details: [
-                '优化数据库查询',
-                '实现服务器端缓存',
-                '使用CDN'
-              ]
-            });
-            break;
+    // 初始化资源监控
+    new PerformanceObserver((list) => {
+      list.getEntries().forEach((entry) => {
+        if (entry.duration > 1000) {
+          console.warn('Slow resource:', entry.name);
         }
-      }
-    });
-
-    return plan;
+      });
+    }).observe({ entryTypes: ['resource'] });
   }
 }
 
-// 使用示例
-const budgetConfig = require('./performance-budget.config.js');
-const checker = new PerformanceBudgetChecker(budgetConfig);
-
-// 在CI/CD中使用
-async function checkPerformanceBudget(buildStats, lighthouseResults) {
-  await checker.checkResourceBudgets(buildStats);
-  await checker.checkPerformanceBudgets(lighthouseResults);
-
-  const report = checker.generateReport();
-
-  if (!report.passed) {
-    console.error('Performance budget violations detected:');
-    report.violations.forEach(violation => {
-      console.error(`${violation.severity.toUpperCase()}: ${violation.message}`);
-    });
-
-    if (report.summary.errors > 0) {
-      process.exit(1); // 失败CI构建
-    }
-  }
-
-  return report;
-}
+// 初始化性能监控
+PerformanceTracker.init();
 ```
 
 ---

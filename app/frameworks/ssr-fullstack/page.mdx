@@ -19,104 +19,57 @@ import { Callout } from 'nextra/components'
 
 ### 渲染策略对比
 
-```javascript
-// 渲染策略详解
-const renderingStrategies = {
-  // 1. 客户端渲染 (CSR - Client-Side Rendering)
-  CSR: {
-    description: '在浏览器中使用JavaScript渲染页面',
-    advantages: [
-      '丰富的交互体验',
-      '减少服务器负载',
-      '页面切换流畅'
-    ],
-    disadvantages: [
-      'SEO不友好',
-      '首屏加载慢',
-      '依赖JavaScript'
-    ],
-    useCase: '复杂的单页应用，如管理后台'
-  },
-  
-  // 2. 服务端渲染 (SSR - Server-Side Rendering)
-  SSR: {
-    description: '在服务器上渲染HTML，发送完整页面到浏览器',
-    advantages: [
-      'SEO友好',
-      '首屏加载快',
-      '更好的性能感知'
-    ],
-    disadvantages: [
-      '服务器负载高',
-      '页面切换可能较慢',
-      '复杂的状态管理'
-    ],
-    useCase: '内容驱动的网站，如新闻、博客'
-  },
-  
-  // 3. 静态站点生成 (SSG - Static Site Generation)
-  SSG: {
-    description: '构建时预渲染所有页面为静态HTML',
-    advantages: [
-      '极快的加载速度',
-      'CDN友好',
-      '高安全性',
-      '低服务器成本'
-    ],
-    disadvantages: [
-      '构建时间长',
-      '动态内容支持有限',
-      '更新需要重新构建'
-    ],
-    useCase: '文档网站、营销页面、博客'
-  },
-  
-  // 4. 增量静态再生 (ISR - Incremental Static Regeneration)
-  ISR: {
-    description: '结合SSG和SSR，按需更新静态页面',
-    advantages: [
-      '静态页面的性能',
-      '动态内容支持',
-      '自动缓存管理'
-    ],
-    disadvantages: [
-      '复杂的缓存策略',
-      '可能的数据不一致',
-      '调试困难'
-    ],
-    useCase: '电商网站、内容管理系统'
-  }
-};
+#### 渲染策略对比
 
-// 渲染策略选择决策树
+| 策略 | 全称 | 渲染时机 | SEO | 性能 | 适用场景 |
+|------|------|----------|-----|------|----------|
+| **CSR** | Client-Side Rendering | 浏览器运行时 | ❌ 差 | ⚡ 交互快 | 管理后台、复杂SPA |
+| **SSR** | Server-Side Rendering | 每次请求时 | ✅ 优秀 | 🚀 首屏快 | 新闻网站、电商 |
+| **SSG** | Static Site Generation | 构建时 | ✅ 优秀 | ⚡ 极快 | 文档、博客、营销页 |
+| **ISR** | Incremental Static Regeneration | 构建时+按需 | ✅ 优秀 | ⚡ 快速 | 内容管理、电商 |
+
+#### 各策略优缺点详解
+
+| 策略 | 优势 | 劣势 | 服务器负载 |
+|------|------|------|------------|
+| **CSR** | 丰富交互、页面切换流畅、减少服务器负载 | SEO不友好、首屏慢、依赖JS | 低 |
+| **SSR** | SEO友好、首屏快、更好的性能感知 | 服务器负载高、页面切换慢 | 高 |
+| **SSG** | 极快加载、CDN友好、高安全性、低成本 | 构建时间长、动态内容有限 | 极低 |
+| **ISR** | 静态性能、动态内容、自动缓存 | 复杂缓存策略、可能数据不一致 | 中等 |
+
+#### 渲染策略选择指南
+
+```javascript
+// 渲染策略选择决策
 function chooseRenderingStrategy(requirements) {
-  const {
-    seoImportant,
-    contentDynamic,
-    userInteraction,
-    performanceCritical,
-    serverResources
-  } = requirements;
-  
-  // SEO重要且内容相对静态
-  if (seoImportant && !contentDynamic) {
-    return 'SSG';
-  }
-  
-  // SEO重要且内容动态
-  if (seoImportant && contentDynamic) {
-    return serverResources === 'limited' ? 'ISR' : 'SSR';
-  }
-  
-  // 高交互性应用
-  if (userInteraction === 'high') {
-    return 'CSR';
-  }
-  
-  // 性能关键且内容半动态
-  if (performanceCritical && contentDynamic) {
-    return 'ISR';
-  }
+  const { seoImportant, contentDynamic, userInteraction, performanceCritical } = requirements;
+
+  // SEO重要 + 静态内容 → SSG
+  if (seoImportant && !contentDynamic) return 'SSG';
+
+  // SEO重要 + 动态内容 → SSR/ISR
+  if (seoImportant && contentDynamic) return 'SSR/ISR';
+
+  // 高交互性 → CSR
+  if (userInteraction === 'high') return 'CSR';
+
+  // 性能关键 + 半动态 → ISR
+  if (performanceCritical && contentDynamic) return 'ISR';
+
+  return 'SSG'; // 默认推荐
+}
+```
+
+#### 实际应用场景
+
+| 应用类型 | 推荐策略 | 理由 |
+|----------|----------|------|
+| **企业官网** | SSG | 内容相对静态，SEO重要 |
+| **电商网站** | SSR + ISR | 产品信息动态，SEO关键 |
+| **新闻网站** | SSR | 内容实时更新，SEO重要 |
+| **管理后台** | CSR | 交互复杂，SEO不重要 |
+| **文档网站** | SSG | 内容静态，性能优先 |
+| **博客** | SSG + ISR | 文章静态，评论动态 |
   
   // 默认推荐
   return 'SSR';

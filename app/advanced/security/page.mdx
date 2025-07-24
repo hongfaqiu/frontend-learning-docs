@@ -9,6 +9,9 @@ import { Callout } from 'nextra/components'
 - [CSRF攻击防护](#csrf攻击防护)
 - [内容安全策略CSP](#内容安全策略csp)
 - [数据传输安全](#数据传输安全)
+- [数据加密与安全存储](#数据加密与安全存储)
+- [身份认证与授权](#身份认证与授权)
+- [安全测试与监控](#安全测试与监控)
 - [安全开发最佳实践](#安全开发最佳实践)
 
 ## 前端安全威胁概览
@@ -19,300 +22,91 @@ import { Callout } from 'nextra/components'
 
 ### 常见安全威胁分类
 
-```javascript
-// 前端安全威胁分类和防护策略
-const securityThreats = {
-  // 1. 注入攻击
-  injection: {
-    types: ['XSS', 'SQL注入', 'NoSQL注入', 'LDAP注入'],
-    description: '恶意代码注入到应用中执行',
-    impact: '数据泄露、会话劫持、恶意操作',
-    prevention: [
-      '输入验证和过滤',
-      '输出编码',
-      '使用参数化查询',
-      '内容安全策略'
-    ]
-  },
-  
-  // 2. 身份认证缺陷
-  authentication: {
-    types: ['弱密码', '会话管理缺陷', '暴力破解'],
-    description: '身份验证机制存在漏洞',
-    impact: '账户被盗、未授权访问',
-    prevention: [
-      '强密码策略',
-      '多因素认证',
-      '会话超时',
-      '账户锁定机制'
-    ]
-  },
-  
-  // 3. 敏感数据暴露
-  dataExposure: {
-    types: ['明文传输', '不当存储', '缓存泄露'],
-    description: '敏感数据未得到适当保护',
-    impact: '隐私泄露、合规风险',
-    prevention: [
-      'HTTPS传输',
-      '数据加密',
-      '安全存储',
-      '访问控制'
-    ]
-  },
-  
-  // 4. 跨站请求伪造
-  csrf: {
-    types: ['GET型CSRF', 'POST型CSRF', 'JSON CSRF'],
-    description: '诱导用户执行非预期操作',
-    impact: '恶意操作、数据篡改',
-    prevention: [
-      'CSRF Token',
-      'SameSite Cookie',
-      '验证Referer',
-      '双重提交Cookie'
-    ]
-  },
-  
-  // 5. 安全配置错误
-  misconfiguration: {
-    types: ['默认配置', '错误权限', '调试信息泄露'],
-    description: '安全配置不当导致的漏洞',
-    impact: '系统暴露、信息泄露',
-    prevention: [
-      '安全配置检查',
-      '最小权限原则',
-      '定期安全审计',
-      '错误处理优化'
-    ]
-  }
-};
+#### 前端安全威胁概览
 
-// 安全评估工具
-class SecurityAssessment {
-  constructor() {
-    this.vulnerabilities = [];
-    this.securityScore = 0;
-  }
-  
-  // 执行安全评估
-  async performAssessment() {
-    console.log('开始安全评估...');
-    
-    await this.checkXSSVulnerabilities();
-    await this.checkCSRFProtection();
-    await this.checkHTTPSUsage();
-    await this.checkContentSecurityPolicy();
-    await this.checkCookieSecurity();
-    await this.checkDependencyVulnerabilities();
-    
-    this.calculateSecurityScore();
-    return this.generateReport();
-  }
-  
-  async checkXSSVulnerabilities() {
-    // 检查潜在的XSS漏洞
-    const inputs = document.querySelectorAll('input, textarea');
-    const outputs = document.querySelectorAll('[data-user-content]');
-    
-    inputs.forEach(input => {
-      if (!input.hasAttribute('data-sanitized')) {
-        this.vulnerabilities.push({
-          type: 'XSS',
-          severity: 'high',
-          element: input,
-          description: '用户输入未进行适当的验证和过滤'
-        });
-      }
-    });
-    
-    outputs.forEach(output => {
-      if (output.innerHTML.includes('<script>')) {
-        this.vulnerabilities.push({
-          type: 'XSS',
-          severity: 'critical',
-          element: output,
-          description: '检测到可能的脚本注入'
-        });
-      }
-    });
-  }
-  
-  async checkCSRFProtection() {
-    // 检查CSRF保护
-    const forms = document.querySelectorAll('form');
-    
-    forms.forEach(form => {
-      const csrfToken = form.querySelector('input[name="csrf_token"], input[name="_token"]');
-      if (!csrfToken && form.method.toLowerCase() === 'post') {
-        this.vulnerabilities.push({
-          type: 'CSRF',
-          severity: 'medium',
-          element: form,
-          description: 'POST表单缺少CSRF令牌保护'
-        });
-      }
-    });
-  }
-  
-  async checkHTTPSUsage() {
-    // 检查HTTPS使用情况
-    if (location.protocol !== 'https:') {
-      this.vulnerabilities.push({
-        type: 'Transport Security',
-        severity: 'high',
-        description: '网站未使用HTTPS加密传输'
-      });
-    }
-    
-    // 检查混合内容
-    const resources = performance.getEntriesByType('resource');
-    resources.forEach(resource => {
-      if (resource.name.startsWith('http://')) {
-        this.vulnerabilities.push({
-          type: 'Mixed Content',
-          severity: 'medium',
-          description: `检测到HTTP资源: ${resource.name}`
-        });
-      }
-    });
-  }
-  
-  async checkContentSecurityPolicy() {
-    // 检查CSP配置
-    const cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-    const cspHeader = this.getResponseHeader('Content-Security-Policy');
-    
-    if (!cspMeta && !cspHeader) {
-      this.vulnerabilities.push({
-        type: 'CSP',
-        severity: 'medium',
-        description: '未配置内容安全策略(CSP)'
-      });
-    }
-  }
-  
-  async checkCookieSecurity() {
-    // 检查Cookie安全属性
-    const cookies = document.cookie.split(';');
-    
-    cookies.forEach(cookie => {
-      const [name] = cookie.trim().split('=');
-      
-      // 这里简化检查，实际应该检查Set-Cookie头
-      if (name && !cookie.includes('Secure')) {
-        this.vulnerabilities.push({
-          type: 'Cookie Security',
-          severity: 'low',
-          description: `Cookie ${name} 缺少Secure属性`
-        });
-      }
-      
-      if (name && !cookie.includes('HttpOnly')) {
-        this.vulnerabilities.push({
-          type: 'Cookie Security',
-          severity: 'medium',
-          description: `Cookie ${name} 缺少HttpOnly属性`
-        });
-      }
-    });
-  }
-  
-  async checkDependencyVulnerabilities() {
-    // 检查已知的依赖漏洞（需要后端支持）
-    try {
-      const response = await fetch('/api/security/check-dependencies');
-      const vulnerabilities = await response.json();
-      
-      vulnerabilities.forEach(vuln => {
-        this.vulnerabilities.push({
-          type: 'Dependency',
-          severity: vuln.severity,
-          description: `依赖 ${vuln.package} 存在已知漏洞: ${vuln.title}`
-        });
-      });
-    } catch (error) {
-      console.warn('无法检查依赖漏洞:', error);
-    }
-  }
-  
-  calculateSecurityScore() {
-    const severityWeights = {
-      critical: 10,
-      high: 7,
-      medium: 4,
-      low: 1
+| 威胁类型 | 常见形式 | 影响 | 防护措施 |
+|----------|----------|------|----------|
+| **注入攻击** | XSS、SQL注入、代码注入 | 数据泄露、会话劫持 | 输入验证、输出编码、CSP |
+| **身份认证缺陷** | 弱密码、会话劫持、暴力破解 | 账户被盗、未授权访问 | 强密码策略、MFA、会话管理 |
+| **敏感数据暴露** | 明文传输、不当存储、缓存泄露 | 隐私泄露、合规风险 | HTTPS、数据加密、访问控制 |
+| **CSRF攻击** | 跨站请求伪造 | 恶意操作、数据篡改 | CSRF Token、SameSite Cookie |
+| **安全配置错误** | 默认配置、权限错误、信息泄露 | 系统暴露、攻击面扩大 | 安全配置检查、最小权限原则 |
+
+#### 安全威胁严重程度
+
+| 严重程度 | 描述 | 示例 | 处理优先级 |
+|----------|------|------|------------|
+| **严重** | 可直接获取系统控制权 | 远程代码执行、SQL注入 | 立即修复 |
+| **高** | 可获取敏感数据 | XSS、CSRF、数据泄露 | 24小时内修复 |
+| **中** | 可影响系统可用性 | 拒绝服务、信息泄露 | 1周内修复 |
+| **低** | 影响有限 | 配置问题、弱加密 | 1个月内修复 |
+
+#### 安全评估流程
+
+| 评估阶段 | 检查项目 | 工具/方法 | 频率 |
+|----------|----------|-----------|------|
+| **代码审查** | XSS、CSRF、注入漏洞 | ESLint Security、人工审查 | 每次提交 |
+| **依赖扫描** | 已知漏洞、过期依赖 | npm audit、Snyk | 每日 |
+| **配置检查** | 安全头、CSP、HTTPS | Security Headers工具 | 每周 |
+| **渗透测试** | 综合安全评估 | OWASP ZAP、专业测试 | 每月 |
+
+```javascript
+// 简化的安全检查示例
+class SimpleSecurityChecker {
+  static checkBasicSecurity() {
+    const checks = {
+      https: location.protocol === 'https:',
+      csp: !!document.querySelector('meta[http-equiv*="Content-Security-Policy"]'),
+      xFrameOptions: this.hasSecurityHeader('X-Frame-Options'),
+      noSniff: this.hasSecurityHeader('X-Content-Type-Options')
     };
-    
-    const totalDeductions = this.vulnerabilities.reduce((sum, vuln) => {
-      return sum + (severityWeights[vuln.severity] || 0);
-    }, 0);
-    
-    this.securityScore = Math.max(0, 100 - totalDeductions);
+
+    const score = Object.values(checks).filter(Boolean).length;
+    return { checks, score: (score / 4) * 100 };
   }
-  
-  generateReport() {
-    return {
-      score: this.securityScore,
-      grade: this.getSecurityGrade(),
-      vulnerabilities: this.vulnerabilities,
-      summary: {
-        total: this.vulnerabilities.length,
-        critical: this.vulnerabilities.filter(v => v.severity === 'critical').length,
-        high: this.vulnerabilities.filter(v => v.severity === 'high').length,
-        medium: this.vulnerabilities.filter(v => v.severity === 'medium').length,
-        low: this.vulnerabilities.filter(v => v.severity === 'low').length
-      },
-      recommendations: this.getRecommendations()
-    };
-  }
-  
-  getSecurityGrade() {
-    if (this.securityScore >= 90) return 'A';
-    if (this.securityScore >= 80) return 'B';
-    if (this.securityScore >= 70) return 'C';
-    if (this.securityScore >= 60) return 'D';
-    return 'F';
-  }
-  
-  getRecommendations() {
-    const recommendations = [];
-    
-    if (this.vulnerabilities.some(v => v.type === 'XSS')) {
-      recommendations.push('实施输入验证和输出编码');
-    }
-    
-    if (this.vulnerabilities.some(v => v.type === 'CSRF')) {
-      recommendations.push('添加CSRF令牌保护');
-    }
-    
-    if (this.vulnerabilities.some(v => v.type === 'Transport Security')) {
-      recommendations.push('启用HTTPS并配置HSTS');
-    }
-    
-    if (this.vulnerabilities.some(v => v.type === 'CSP')) {
-      recommendations.push('配置内容安全策略(CSP)');
-    }
-    
-    return recommendations;
-  }
-  
-  getResponseHeader(name) {
-    // 简化实现，实际需要从响应头获取
-    return null;
+
+  static hasSecurityHeader(header) {
+    // 简化检查，实际需要检查HTTP响应头
+    return document.querySelector(`meta[http-equiv="${header}"]`) !== null;
   }
 }
+
+
 ```
 
 ## XSS攻击防护
 
-### XSS防护实现
+<Callout type="warning">
+XSS（跨站脚本攻击）是最常见的Web安全威胁之一，通过注入恶意脚本来窃取用户信息或执行恶意操作。
+</Callout>
+
+### XSS攻击类型
+
+| 类型 | 描述 | 示例 | 防护方法 |
+|------|------|------|----------|
+| **存储型XSS** | 恶意脚本存储在服务器 | 评论、留言板 | 服务端过滤、输出编码 |
+| **反射型XSS** | 恶意脚本通过URL参数传递 | 搜索结果页面 | 输入验证、输出编码 |
+| **DOM型XSS** | 客户端脚本直接操作DOM | innerHTML赋值 | 避免危险API、使用安全方法 |
+
+### XSS防护策略
+
+#### 输入验证和输出编码
+
+| 防护层面 | 方法 | 实施位置 | 效果 |
+|----------|------|----------|------|
+| **输入验证** | 白名单过滤、长度限制 | 客户端+服务端 | 阻止恶意输入 |
+| **输出编码** | HTML实体编码 | 模板引擎 | 防止脚本执行 |
+| **CSP策略** | 内容安全策略 | HTTP头 | 限制脚本来源 |
+| **安全API** | textContent替代innerHTML | 客户端代码 | 避免HTML解析 |
+
+#### 简化的XSS防护实现
 
 ```javascript
-// 1. XSS防护工具类
-class XSSProtection {
-  constructor() {
-    this.htmlEntities = {
+// 简单的XSS防护工具
+class SimpleXSSProtection {
+  // HTML实体编码
+  static escapeHTML(str) {
+    const entityMap = {
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
@@ -320,1297 +114,1324 @@ class XSSProtection {
       "'": '&#x27;',
       '/': '&#x2F;'
     };
-    
-    this.setupGlobalProtection();
-  }
-  
-  // 设置全局XSS防护
-  setupGlobalProtection() {
-    // 重写innerHTML setter
-    this.protectInnerHTML();
-    
-    // 监控动态内容插入
-    this.monitorDOMChanges();
-    
-    // 保护事件处理器
-    this.protectEventHandlers();
-  }
-  
-  protectInnerHTML() {
-    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
-    
-    Object.defineProperty(Element.prototype, 'innerHTML', {
-      set: function(value) {
-        // 检查是否包含潜在的XSS代码
-        if (typeof value === 'string' && this.containsXSS(value)) {
-          console.warn('检测到潜在XSS攻击，内容已被过滤');
-          value = this.sanitizeHTML(value);
-        }
-        
-        originalInnerHTML.set.call(this, value);
-      }.bind(this),
-      get: originalInnerHTML.get
-    });
-  }
-  
-  containsXSS(html) {
-    const xssPatterns = [
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      /javascript:/gi,
-      /on\w+\s*=/gi,
-      /<iframe\b[^>]*>/gi,
-      /<object\b[^>]*>/gi,
-      /<embed\b[^>]*>/gi,
-      /<link\b[^>]*>/gi,
-      /<meta\b[^>]*>/gi
-    ];
-    
-    return xssPatterns.some(pattern => pattern.test(html));
-  }
-  
-  // HTML内容清理
-  sanitizeHTML(html) {
-    // 移除危险标签
-    const dangerousTags = [
-      'script', 'iframe', 'object', 'embed', 'link', 'meta',
-      'form', 'input', 'button', 'textarea', 'select'
-    ];
-    
-    let sanitized = html;
-    
-    dangerousTags.forEach(tag => {
-      const regex = new RegExp(`<${tag}\\b[^>]*>.*?<\\/${tag}>`, 'gi');
-      sanitized = sanitized.replace(regex, '');
-      
-      const selfClosingRegex = new RegExp(`<${tag}\\b[^>]*\\/?>`, 'gi');
-      sanitized = sanitized.replace(selfClosingRegex, '');
-    });
-    
-    // 移除危险属性
-    sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
-    sanitized = sanitized.replace(/javascript:/gi, '');
-    
-    // HTML实体编码
-    return this.escapeHTML(sanitized);
-  }
-  
-  // HTML实体编码
-  escapeHTML(text) {
-    return String(text).replace(/[&<>"'\/]/g, (char) => {
-      return this.htmlEntities[char] || char;
-    });
-  }
-  
-  // 解码HTML实体
-  unescapeHTML(text) {
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-  }
-  
-  // 安全的DOM操作
-  safeSetTextContent(element, text) {
-    element.textContent = text;
-  }
-  
-  safeSetHTML(element, html) {
-    element.innerHTML = this.sanitizeHTML(html);
-  }
-  
-  // 创建安全的元素
-  createSafeElement(tagName, attributes = {}, textContent = '') {
-    const element = document.createElement(tagName);
-    
-    // 安全设置属性
-    Object.entries(attributes).forEach(([key, value]) => {
-      if (this.isSafeAttribute(key, value)) {
-        element.setAttribute(key, value);
-      }
-    });
-    
-    // 安全设置文本内容
-    if (textContent) {
-      element.textContent = textContent;
-    }
-    
-    return element;
-  }
-  
-  isSafeAttribute(name, value) {
-    // 危险属性黑名单
-    const dangerousAttributes = [
-      'onclick', 'onload', 'onerror', 'onmouseover',
-      'onfocus', 'onblur', 'onchange', 'onsubmit'
-    ];
-    
-    if (dangerousAttributes.includes(name.toLowerCase())) {
-      return false;
-    }
-    
-    // 检查属性值
-    if (typeof value === 'string') {
-      if (value.toLowerCase().includes('javascript:')) {
-        return false;
-      }
-      
-      if (value.toLowerCase().includes('data:text/html')) {
-        return false;
-      }
-    }
-    
-    return true;
-  }
-  
-  monitorDOMChanges() {
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            this.scanElementForXSS(node);
-          }
-        });
-      });
-    });
-    
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  }
-  
-  scanElementForXSS(element) {
-    // 检查元素的innerHTML
-    if (element.innerHTML && this.containsXSS(element.innerHTML)) {
-      console.warn('检测到动态插入的XSS内容:', element);
-      element.innerHTML = this.sanitizeHTML(element.innerHTML);
-    }
-    
-    // 检查属性
-    Array.from(element.attributes).forEach(attr => {
-      if (!this.isSafeAttribute(attr.name, attr.value)) {
-        console.warn('移除危险属性:', attr.name, attr.value);
-        element.removeAttribute(attr.name);
-      }
-    });
-  }
-  
-  protectEventHandlers() {
-    // 重写addEventListener
-    const originalAddEventListener = EventTarget.prototype.addEventListener;
-    
-    EventTarget.prototype.addEventListener = function(type, listener, options) {
-      // 检查事件处理器是否安全
-      if (typeof listener === 'string') {
-        console.warn('阻止字符串形式的事件处理器:', listener);
-        return;
-      }
-      
-      return originalAddEventListener.call(this, type, listener, options);
-    };
-  }
-}
 
-// 2. 内容安全策略(CSP)助手
-class CSPHelper {
-  constructor() {
-    this.policy = {
-      'default-src': ["'self'"],
-      'script-src': ["'self'"],
-      'style-src': ["'self'", "'unsafe-inline'"],
-      'img-src': ["'self'", 'data:', 'https:'],
-      'font-src': ["'self'"],
-      'connect-src': ["'self'"],
-      'frame-src': ["'none'"],
-      'object-src': ["'none'"],
-      'base-uri': ["'self'"],
-      'form-action': ["'self'"]
-    };
+    return String(str).replace(/[&<>"'/]/g, (s) => entityMap[s]);
   }
-  
-  // 生成CSP字符串
-  generateCSP() {
-    return Object.entries(this.policy)
-      .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
-      .join('; ');
-  }
-  
-  // 添加允许的源
-  addSource(directive, source) {
-    if (this.policy[directive]) {
-      if (!this.policy[directive].includes(source)) {
-        this.policy[directive].push(source);
-      }
-    }
-  }
-  
-  // 移除源
-  removeSource(directive, source) {
-    if (this.policy[directive]) {
-      this.policy[directive] = this.policy[directive].filter(s => s !== source);
-    }
-  }
-  
-  // 应用CSP
-  applyCSP() {
-    const csp = this.generateCSP();
-    
-    // 通过meta标签应用
-    const meta = document.createElement('meta');
-    meta.httpEquiv = 'Content-Security-Policy';
-    meta.content = csp;
-    document.head.appendChild(meta);
-    
-    console.log('应用CSP:', csp);
-  }
-  
-  // 监听CSP违规
-  monitorViolations() {
-    document.addEventListener('securitypolicyviolation', (event) => {
-      console.error('CSP违规:', {
-        directive: event.violatedDirective,
-        blockedURI: event.blockedURI,
-        sourceFile: event.sourceFile,
-        lineNumber: event.lineNumber
-      });
-      
-      // 发送违规报告
-      this.reportViolation(event);
-    });
-  }
-  
-  reportViolation(event) {
-    fetch('/api/security/csp-violation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        directive: event.violatedDirective,
-        blockedURI: event.blockedURI,
-        sourceFile: event.sourceFile,
-        lineNumber: event.lineNumber,
-        timestamp: Date.now(),
-        userAgent: navigator.userAgent
-      })
-    }).catch(console.error);
-  }
-}
 
-// 3. 安全的模板渲染
-class SecureTemplateRenderer {
-  constructor() {
-    this.xssProtection = new XSSProtection();
+  // 安全地设置文本内容
+  static safeSetText(element, text) {
+    element.textContent = text; // 使用textContent而不是innerHTML
   }
-  
-  // 安全渲染模板
-  render(template, data) {
-    let rendered = template;
-    
-    // 替换变量
-    Object.entries(data).forEach(([key, value]) => {
-      const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-      const escapedValue = this.xssProtection.escapeHTML(String(value));
-      rendered = rendered.replace(placeholder, escapedValue);
-    });
-    
-    // 处理原始HTML（需要特殊标记）
-    rendered = rendered.replace(/{{{(\w+)}}}/g, (match, key) => {
-      const value = data[key];
-      if (value) {
-        return this.xssProtection.sanitizeHTML(String(value));
-      }
-      return '';
-    });
-    
-    return rendered;
+
+  // 安全地设置HTML内容（使用DOMPurify等库）
+  static safeSetHTML(element, html) {
+    // 实际项目中应使用DOMPurify库
+    element.innerHTML = this.escapeHTML(html);
   }
-  
-  // 创建安全的模板函数
-  compile(template) {
-    return (data) => this.render(template, data);
-  }
-}
+```
 
-// 使用示例
-const xssProtection = new XSSProtection();
-const cspHelper = new CSPHelper();
-const templateRenderer = new SecureTemplateRenderer();
+### 内容安全策略 (CSP)
 
-// 应用安全策略
-cspHelper.applyCSP();
-cspHelper.monitorViolations();
+CSP是防止XSS攻击的重要安全机制，通过限制资源加载来源来防止恶意脚本执行。
 
-// 安全渲染用户内容
-const userContent = '<script>alert("XSS")</script>Hello World';
-const safeContent = xssProtection.sanitizeHTML(userContent);
-console.log('安全内容:', safeContent); // Hello World
+#### CSP配置示例
 
-// 安全模板渲染
-const template = '<div>Hello {{name}}, your message: {{message}}</div>';
-const rendered = templateRenderer.render(template, {
-  name: '<script>alert("XSS")</script>John',
-  message: 'Welcome to our site!'
-});
-console.log('渲染结果:', rendered);
+| 指令 | 作用 | 示例值 | 说明 |
+|------|------|--------|------|
+| **default-src** | 默认资源策略 | 'self' | 只允许同源资源 |
+| **script-src** | 脚本资源策略 | 'self' 'unsafe-inline' | 允许同源和内联脚本 |
+| **style-src** | 样式资源策略 | 'self' 'unsafe-inline' | 允许同源和内联样式 |
+| **img-src** | 图片资源策略 | 'self' data: https: | 允许同源、data和HTTPS图片 |
+
+```html
+<!-- CSP配置示例 -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' 'unsafe-inline' https://cdn.example.com;
+               style-src 'self' 'unsafe-inline';
+               img-src 'self' data: https:;">
+```
+
+```javascript
+// 动态设置CSP
+function setCSP() {
+  const meta = document.createElement('meta');
+  meta.httpEquiv = 'Content-Security-Policy';
+  meta.content = "default-src 'self'; script-src 'self' 'unsafe-inline'";
+  document.head.appendChild(meta);
 ```
 
 ## CSRF攻击防护
 
 <Callout type="warning">
-CSRF（跨站请求伪造）攻击利用用户的身份执行未授权的操作，需要通过多种手段进行防护。
+CSRF（跨站请求伪造）攻击通过诱导用户在已认证的网站上执行非预期的操作，是常见的Web安全威胁。
 </Callout>
 
-### CSRF防护实现
+### CSRF攻击原理
+
+| 攻击步骤 | 描述 | 示例 |
+|----------|------|------|
+| **1. 用户登录** | 用户登录目标网站 | 银行网站、社交平台 |
+| **2. 获取凭证** | 浏览器保存认证信息 | Session Cookie |
+| **3. 访问恶意网站** | 用户访问攻击者网站 | 钓鱼邮件、恶意链接 |
+| **4. 发起请求** | 恶意网站向目标网站发请求 | 转账、修改密码 |
+| **5. 自动认证** | 浏览器自动携带凭证 | Cookie自动发送 |
+
+### CSRF防护策略
+
+#### 防护方法对比
+
+| 防护方法 | 安全性 | 实施难度 | 用户体验 | 适用场景 |
+|----------|--------|----------|----------|----------|
+| **CSRF Token** | 高 | 中 | 好 | 表单提交 |
+| **SameSite Cookie** | 高 | 低 | 好 | 现代浏览器 |
+| **双重提交Cookie** | 中 | 低 | 好 | API接口 |
+| **验证Referer** | 低 | 低 | 好 | 辅助验证 |
+
+#### 简化的CSRF防护实现
 
 ```javascript
-// 1. CSRF Token管理
-class CSRFProtection {
-  constructor() {
-    this.token = null;
-    this.tokenExpiry = null;
-    this.init();
+// 简单的CSRF防护工具
+class SimpleCSRFProtection {
+  // 生成CSRF Token
+  static generateToken() {
+    return Math.random().toString(36).substring(2) + Date.now().toString(36);
   }
 
-  init() {
-    this.generateToken();
-    this.setupTokenRefresh();
+  // 设置CSRF Token到表单
+  static addTokenToForm(form) {
+    const token = this.generateToken();
+    sessionStorage.setItem('csrf_token', token);
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
   }
 
-  generateToken() {
-    // 生成随机token
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    this.token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-    this.tokenExpiry = Date.now() + (30 * 60 * 1000); // 30分钟过期
-
-    // 存储到meta标签
-    this.updateMetaToken();
+  // 验证CSRF Token
+  static validateToken(submittedToken) {
+    const storedToken = sessionStorage.getItem('csrf_token');
+    return submittedToken === storedToken;
   }
+```
 
-  updateMetaToken() {
-    let metaTag = document.querySelector('meta[name="csrf-token"]');
-    if (!metaTag) {
-      metaTag = document.createElement('meta');
-      metaTag.name = 'csrf-token';
-      document.head.appendChild(metaTag);
-    }
-    metaTag.content = this.token;
-  }
+### SameSite Cookie配置
 
-  getToken() {
-    if (this.isTokenExpired()) {
-      this.generateToken();
-    }
-    return this.token;
-  }
+SameSite属性是防止CSRF攻击的现代方法，通过限制Cookie的跨站发送来提供保护。
 
-  isTokenExpired() {
-    return Date.now() > this.tokenExpiry;
-  }
+#### SameSite属性值
 
-  async refreshToken() {
-    try {
-      const response = await fetch('/api/csrf/refresh', {
-        method: 'POST',
-        credentials: 'same-origin'
-      });
+| 值 | 行为 | 安全性 | 兼容性 | 适用场景 |
+|----|------|--------|--------|----------|
+| **Strict** | 完全禁止跨站发送 | 最高 | 好 | 高安全要求 |
+| **Lax** | 导航请求可发送 | 高 | 好 | 平衡安全与体验 |
+| **None** | 允许跨站发送 | 低 | 需HTTPS | 第三方集成 |
 
-      if (response.ok) {
-        const data = await response.json();
-        this.token = data.token;
-        this.tokenExpiry = Date.now() + (30 * 60 * 1000);
-        this.updateMetaToken();
-      }
-    } catch (error) {
-      console.error('Failed to refresh CSRF token:', error);
-    }
-  }
-}
+```javascript
+// 设置安全的Cookie
+function setSecureCookie(name, value, options = {}) {
+  const defaults = {
+    secure: true,        // 仅HTTPS传输
+    httpOnly: true,      // 防止XSS访问
+    sameSite: 'Lax',     // 防止CSRF
+    maxAge: 3600         // 1小时过期
+  };
 
-// 2. 安全的HTTP客户端
-class SecureHttpClient {
-  constructor() {
-    this.csrfProtection = new CSRFProtection();
-    this.setupInterceptors();
-  }
+  const config = { ...defaults, ...options };
+  const cookieString = `${name}=${value}; ${Object.entries(config)
+    .map(([key, val]) => `${key}=${val}`)
+    .join('; ')}`;
 
-  setupInterceptors() {
-    // 拦截所有fetch请求
-    const originalFetch = window.fetch;
-    window.fetch = (url, options = {}) => {
-      return this.secureRequest(url, options, originalFetch);
-    };
-  }
-
-  async secureRequest(url, options, originalFetch) {
-    // 只对同源请求添加CSRF保护
-    if (this.isSameOrigin(url)) {
-      options.headers = {
-        ...options.headers,
-        'X-CSRF-Token': this.csrfProtection.getToken(),
-        'X-Requested-With': 'XMLHttpRequest'
-      };
-
-      options.credentials = options.credentials || 'same-origin';
-    }
-
-    const response = await originalFetch(url, options);
-
-    if (response.status === 403 && response.headers.get('X-CSRF-Error')) {
-      await this.csrfProtection.refreshToken();
-      options.headers['X-CSRF-Token'] = this.csrfProtection.getToken();
-      return originalFetch(url, options);
-    }
-
-    return response;
-  }
-
-  isSameOrigin(url) {
-    try {
-      const requestUrl = new URL(url, window.location.origin);
-      return requestUrl.origin === window.location.origin;
-    } catch {
-      return true;
-    }
-  }
-}
+  document.cookie = cookieString;
 ```
 
 ## 内容安全策略CSP
 
 <Callout type="info">
-CSP（Content Security Policy）是一个重要的安全层，帮助检测和缓解某些类型的攻击。
+内容安全策略（Content Security Policy, CSP）是一个重要的安全层，用于检测和减轻某些类型的攻击，包括跨站脚本（XSS）和数据注入攻击。
 </Callout>
 
-### CSP配置和实现
+### CSP基础概念
+
+CSP通过指定浏览器应该信任的内容来源，帮助防止恶意内容的执行。
+
+#### CSP指令类型
+
+| 指令 | 作用 | 示例 | 说明 |
+|------|------|------|------|
+| **default-src** | 默认策略 | 'self' | 为其他指令提供默认值 |
+| **script-src** | 脚本来源 | 'self' 'unsafe-inline' | 控制JavaScript执行 |
+| **style-src** | 样式来源 | 'self' 'unsafe-inline' | 控制CSS加载 |
+| **img-src** | 图片来源 | 'self' data: https: | 控制图片资源 |
+| **connect-src** | 连接来源 | 'self' https://api.example.com | 控制Ajax、WebSocket等 |
+| **font-src** | 字体来源 | 'self' https://fonts.googleapis.com | 控制字体资源 |
+| **object-src** | 对象来源 | 'none' | 控制插件（Flash等） |
+| **media-src** | 媒体来源 | 'self' | 控制音视频资源 |
+
+#### CSP值类型
+
+| 值 | 含义 | 安全性 | 使用场景 |
+|----|------|--------|----------|
+| **'none'** | 禁止所有来源 | 最高 | 完全禁用某类资源 |
+| **'self'** | 同源策略 | 高 | 只允许同源资源 |
+| **'unsafe-inline'** | 允许内联 | 低 | 兼容内联脚本/样式 |
+| **'unsafe-eval'** | 允许eval | 极低 | 兼容动态代码执行 |
+| **域名** | 指定域名 | 中 | 信任的第三方域名 |
+| **'nonce-xxx'** | 随机数验证 | 高 | 动态内联内容 |
+| **'sha256-xxx'** | 哈希验证 | 高 | 静态内联内容 |
+
+### CSP配置实践
+
+#### 渐进式CSP部署
+
+| 阶段 | 策略 | 目标 | 风险 |
+|------|------|------|------|
+| **1. 监控模式** | Report-Only | 收集违规报告 | 无 |
+| **2. 宽松策略** | 允许unsafe-inline | 确保功能正常 | 中 |
+| **3. 严格策略** | 禁用unsafe-inline | 提高安全性 | 高 |
+| **4. 最严策略** | 使用nonce/hash | 最大安全性 | 最高 |
+
+```html
+<!-- 阶段1：监控模式 -->
+<meta http-equiv="Content-Security-Policy-Report-Only"
+      content="default-src 'self'; report-uri /csp-report">
+
+<!-- 阶段2：宽松策略 -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' 'unsafe-inline' https://cdn.example.com;
+               style-src 'self' 'unsafe-inline';">
+
+<!-- 阶段3：严格策略 -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' https://cdn.example.com;
+               style-src 'self';">
+```
+
+#### 动态CSP管理
 
 ```javascript
-// 1. CSP策略生成器
-class CSPPolicyBuilder {
+// CSP管理工具
+class CSPManager {
   constructor() {
-    this.directives = new Map();
-    this.reportUri = null;
-    this.reportOnly = false;
-  }
-
-  // 设置默认源
-  defaultSrc(...sources) {
-    this.directives.set('default-src', sources);
-    return this;
-  }
-
-  // 设置脚本源
-  scriptSrc(...sources) {
-    this.directives.set('script-src', sources);
-    return this;
-  }
-
-  // 设置样式源
-  styleSrc(...sources) {
-    this.directives.set('style-src', sources);
-    return this;
-  }
-
-  // 设置图片源
-  imgSrc(...sources) {
-    this.directives.set('img-src', sources);
-    return this;
-  }
-
-  // 设置连接源
-  connectSrc(...sources) {
-    this.directives.set('connect-src', sources);
-    return this;
-  }
-
-  // 设置字体源
-  fontSrc(...sources) {
-    this.directives.set('font-src', sources);
-    return this;
-  }
-
-  // 设置对象源
-  objectSrc(...sources) {
-    this.directives.set('object-src', sources);
-    return this;
-  }
-
-  // 设置媒体源
-  mediaSrc(...sources) {
-    this.directives.set('media-src', sources);
-    return this;
-  }
-
-  // 设置框架源
-  frameSrc(...sources) {
-    this.directives.set('frame-src', sources);
-    return this;
-  }
-
-  // 设置报告URI
-  setReportUri(uri) {
-    this.reportUri = uri;
-    return this;
-  }
-
-  // 设置为仅报告模式
-  setReportOnly(reportOnly = true) {
-    this.reportOnly = reportOnly;
-    return this;
-  }
-
-  // 生成CSP字符串
-  build() {
-    const policies = [];
-
-    for (const [directive, sources] of this.directives) {
-      policies.push(`${directive} ${sources.join(' ')}`);
-    }
-
-    if (this.reportUri) {
-      policies.push(`report-uri ${this.reportUri}`);
-    }
-
-    return policies.join('; ');
-  }
-
-  // 应用到页面
-  apply() {
-    const policy = this.build();
-    const headerName = this.reportOnly ?
-      'Content-Security-Policy-Report-Only' :
-      'Content-Security-Policy';
-
-    // 创建meta标签
-    const meta = document.createElement('meta');
-    meta.httpEquiv = headerName;
-    meta.content = policy;
-    document.head.appendChild(meta);
-
-    return policy;
-  }
-}
-
-// 2. CSP违规报告处理
-class CSPReportHandler {
-  constructor(reportEndpoint) {
-    this.reportEndpoint = reportEndpoint;
-    this.setupReportListener();
-  }
-
-  setupReportListener() {
-    // 监听CSP违规事件
-    document.addEventListener('securitypolicyviolation', (event) => {
-      this.handleViolation(event);
-    });
-  }
-
-  handleViolation(event) {
-    const report = {
-      'document-uri': event.documentURI,
-      'referrer': event.referrer,
-      'violated-directive': event.violatedDirective,
-      'effective-directive': event.effectiveDirective,
-      'original-policy': event.originalPolicy,
-      'blocked-uri': event.blockedURI,
-      'line-number': event.lineNumber,
-      'column-number': event.columnNumber,
-      'source-file': event.sourceFile,
-      'status-code': event.statusCode,
-      'timestamp': new Date().toISOString(),
-      'user-agent': navigator.userAgent
-    };
-
-    this.sendReport(report);
-  }
-
-  async sendReport(report) {
-    try {
-      await fetch(this.reportEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/csp-report'
-        },
-        body: JSON.stringify({ 'csp-report': report })
-      });
-    } catch (error) {
-      console.error('Failed to send CSP report:', error);
-    }
-  }
-}
-
-// 3. 动态CSP管理
-class DynamicCSP {
-  constructor() {
-    this.nonces = new Set();
-    this.hashes = new Set();
+    this.policies = new Map();
+    this.nonces = new Map();
   }
 
   // 生成随机nonce
   generateNonce() {
     const array = new Uint8Array(16);
     crypto.getRandomValues(array);
-    const nonce = btoa(String.fromCharCode.apply(null, array));
-    this.nonces.add(nonce);
-    return nonce;
+    return btoa(String.fromCharCode.apply(null, array));
   }
 
-  // 计算脚本hash
-  calculateHash(script, algorithm = 'sha256') {
-    return crypto.subtle.digest(algorithm, new TextEncoder().encode(script))
-      .then(hashBuffer => {
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        const hash = `${algorithm}-${btoa(hashHex)}`;
-        this.hashes.add(hash);
-        return hash;
-      });
+  // 设置页面级CSP
+  setPageCSP(policies) {
+    const cspString = Object.entries(policies)
+      .map(([directive, sources]) => {
+        const sourceList = Array.isArray(sources) ? sources.join(' ') : sources;
+        return `${directive} ${sourceList}`;
+      })
+      .join('; ');
+
+    const meta = document.createElement('meta');
+    meta.httpEquiv = 'Content-Security-Policy';
+    meta.content = cspString;
+    document.head.appendChild(meta);
   }
 
-  // 安全地添加内联脚本
-  addInlineScript(scriptContent, parent = document.head) {
+  // 为内联脚本生成nonce
+  createInlineScript(code, nonce = null) {
+    if (!nonce) {
+      nonce = this.generateNonce();
+    }
+
     const script = document.createElement('script');
-    const nonce = this.generateNonce();
-
     script.nonce = nonce;
-    script.textContent = scriptContent;
-    parent.appendChild(script);
+    script.textContent = code;
 
-    return nonce;
+    return { script, nonce };
   }
 
-  // 安全地添加内联样式
-  addInlineStyle(styleContent, parent = document.head) {
-    const style = document.createElement('style');
-    const nonce = this.generateNonce();
+  // 验证CSP违规
+  handleCSPViolation(event) {
+    const violation = {
+      documentURI: event.documentURI,
+      violatedDirective: event.violatedDirective,
+      blockedURI: event.blockedURI,
+      lineNumber: event.lineNumber,
+      sourceFile: event.sourceFile,
+      timestamp: Date.now()
+    };
 
-    style.nonce = nonce;
-    style.textContent = styleContent;
-    parent.appendChild(style);
-
-    return nonce;
+    // 发送违规报告
+    this.reportViolation(violation);
   }
 
-  // 更新CSP策略
-  updateCSP() {
-    const nonceList = Array.from(this.nonces).map(nonce => `'nonce-${nonce}'`);
-    const hashList = Array.from(this.hashes).map(hash => `'${hash}'`);
-
-    const csp = new CSPPolicyBuilder()
-      .defaultSrc("'self'")
-      .scriptSrc("'self'", ...nonceList, ...hashList)
-      .styleSrc("'self'", "'unsafe-inline'", ...nonceList)
-      .imgSrc("'self'", "data:", "https:")
-      .connectSrc("'self'")
-      .fontSrc("'self'", "https://fonts.gstatic.com")
-      .objectSrc("'none'")
-      .frameSrc("'none'")
-      .setReportUri('/api/csp-report');
-
-    return csp.apply();
+  // 发送违规报告
+  async reportViolation(violation) {
+    try {
+      await fetch('/api/csp-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(violation)
+      });
+    } catch (error) {
+      console.error('Failed to report CSP violation:', error);
+    }
   }
 }
 
 // 使用示例
-const csp = new CSPPolicyBuilder()
-  .defaultSrc("'self'")
-  .scriptSrc("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net")
-  .styleSrc("'self'", "'unsafe-inline'", "https://fonts.googleapis.com")
-  .imgSrc("'self'", "data:", "https:")
-  .connectSrc("'self'", "https://api.example.com")
-  .fontSrc("'self'", "https://fonts.gstatic.com")
-  .objectSrc("'none'")
-  .frameSrc("'none'")
-  .setReportUri('/api/csp-report')
-  .apply();
+const cspManager = new CSPManager();
 
-// 设置CSP报告处理
-const reportHandler = new CSPReportHandler('/api/csp-report');
+// 设置严格的CSP策略
+cspManager.setPageCSP({
+  'default-src': "'self'",
+  'script-src': "'self' 'nonce-abc123'",
+  'style-src': "'self' 'unsafe-inline'",
+  'img-src': "'self' data: https:",
+  'connect-src': "'self' https://api.example.com"
+});
 
-// 动态CSP管理
-const dynamicCSP = new DynamicCSP();
+// 监听CSP违规事件
+document.addEventListener('securitypolicyviolation', (event) => {
+  cspManager.handleCSPViolation(event);
+});
+```
+
+### CSP最佳实践
+
+#### 常见CSP配置模板
+
+```javascript
+// CSP配置模板
+const CSPTemplates = {
+  // 严格模式 - 最高安全性
+  strict: {
+    'default-src': "'none'",
+    'script-src': "'self'",
+    'style-src': "'self'",
+    'img-src': "'self' data:",
+    'font-src': "'self'",
+    'connect-src': "'self'",
+    'object-src': "'none'",
+    'base-uri': "'self'",
+    'form-action': "'self'"
+  },
+
+  // 平衡模式 - 安全性与兼容性平衡
+  balanced: {
+    'default-src': "'self'",
+    'script-src': "'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    'style-src': "'self' 'unsafe-inline' https://fonts.googleapis.com",
+    'img-src': "'self' data: https:",
+    'font-src': "'self' https://fonts.gstatic.com",
+    'connect-src': "'self' https://api.example.com"
+  },
+
+  // 宽松模式 - 兼容性优先
+  permissive: {
+    'default-src': "'self'",
+    'script-src': "'self' 'unsafe-inline' 'unsafe-eval'",
+    'style-src': "'self' 'unsafe-inline'",
+    'img-src': "*",
+    'font-src': "*"
+  }
+};
 ```
 
 ## 数据传输安全
 
 <Callout type="warning">
-数据传输安全确保敏感信息在客户端和服务器之间安全传输，防止数据泄露和篡改。
+数据传输安全是Web应用安全的基础，包括HTTPS配置、数据加密和安全通信协议的实施。
 </Callout>
 
-### HTTPS和加密传输
+### HTTPS配置最佳实践
+
+#### SSL/TLS配置
+
+| 配置项 | 推荐值 | 安全级别 | 说明 |
+|--------|--------|----------|------|
+| **TLS版本** | TLS 1.2+ | 高 | 禁用TLS 1.0/1.1 |
+| **加密套件** | AEAD优先 | 高 | 使用现代加密算法 |
+| **密钥长度** | RSA 2048+, ECDSA 256+ | 高 | 足够的密钥强度 |
+| **证书类型** | EV/OV证书 | 中 | 增强用户信任 |
+
+#### 安全头配置
 
 ```javascript
-// 1. 强制HTTPS重定向
-class HTTPSEnforcer {
-  static enforceHTTPS() {
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      location.replace(`https:${location.href.substring(location.protocol.length)}`);
+// 安全头配置
+const SecurityHeaders = {
+  // 强制HTTPS
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+
+  // 防止点击劫持
+  'X-Frame-Options': 'DENY',
+
+  // 防止MIME类型嗅探
+  'X-Content-Type-Options': 'nosniff',
+
+  // XSS保护
+  'X-XSS-Protection': '1; mode=block',
+
+  // 引用策略
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+
+  // 权限策略
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+};
+
+// 检查安全头
+class SecurityHeaderChecker {
+  static async checkHeaders(url) {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const headers = {};
+
+      for (const [key, value] of response.headers.entries()) {
+        headers[key] = value;
+      }
+
+      return this.analyzeHeaders(headers);
+    } catch (error) {
+      return { error: error.message };
     }
   }
 
-  static setupHSTS() {
-    // 通过meta标签设置HSTS（实际应该在服务器端设置）
-    const meta = document.createElement('meta');
-    meta.httpEquiv = 'Strict-Transport-Security';
-    meta.content = 'max-age=31536000; includeSubDomains; preload';
-    document.head.appendChild(meta);
-  }
+  static analyzeHeaders(headers) {
+    const analysis = {
+      score: 0,
+      maxScore: 0,
+      details: {}
+    };
 
-  static checkMixedContent() {
-    // 检查混合内容
-    const insecureResources = [];
-
-    document.querySelectorAll('img, script, link, iframe').forEach(element => {
-      const src = element.src || element.href;
-      if (src && src.startsWith('http://')) {
-        insecureResources.push({
-          element: element.tagName,
-          url: src
-        });
+    const checks = [
+      {
+        name: 'HTTPS Enforcement',
+        header: 'strict-transport-security',
+        weight: 20,
+        check: (value) => value && value.includes('max-age')
+      },
+      {
+        name: 'Clickjacking Protection',
+        header: 'x-frame-options',
+        weight: 15,
+        check: (value) => value && (value.includes('DENY') || value.includes('SAMEORIGIN'))
+      },
+      {
+        name: 'MIME Sniffing Protection',
+        header: 'x-content-type-options',
+        weight: 10,
+        check: (value) => value === 'nosniff'
+      },
+      {
+        name: 'XSS Protection',
+        header: 'x-xss-protection',
+        weight: 10,
+        check: (value) => value && value.includes('1')
+      },
+      {
+        name: 'Content Security Policy',
+        header: 'content-security-policy',
+        weight: 25,
+        check: (value) => value && value.length > 0
       }
+    ];
+
+    checks.forEach(check => {
+      analysis.maxScore += check.weight;
+      const headerValue = headers[check.header];
+      const passed = check.check(headerValue);
+
+      if (passed) {
+        analysis.score += check.weight;
+      }
+
+      analysis.details[check.name] = {
+        passed,
+        value: headerValue || 'Not set',
+        weight: check.weight
+      };
     });
 
-    if (insecureResources.length > 0) {
-      console.warn('Mixed content detected:', insecureResources);
-    }
+    analysis.grade = this.calculateGrade(analysis.score, analysis.maxScore);
+    return analysis;
+  }
 
-    return insecureResources;
+  static calculateGrade(score, maxScore) {
+    const percentage = (score / maxScore) * 100;
+    if (percentage >= 90) return 'A';
+    if (percentage >= 80) return 'B';
+    if (percentage >= 70) return 'C';
+    if (percentage >= 60) return 'D';
+    return 'F';
   }
 }
+```
 
-// 2. 客户端加密
-class ClientSideEncryption {
-  constructor() {
-    this.keyPair = null;
-    this.init();
-  }
+## 数据加密与安全存储
 
-  async init() {
-    // 生成RSA密钥对
-    this.keyPair = await crypto.subtle.generateKey(
-      {
-        name: 'RSA-OAEP',
-        modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: 'SHA-256'
-      },
-      true,
-      ['encrypt', 'decrypt']
-    );
-  }
+<Callout type="info">
+前端数据加密主要用于敏感信息的临时保护，真正的安全应该依赖服务端加密和HTTPS传输。
+</Callout>
 
-  async encryptData(data) {
-    const encoder = new TextEncoder();
-    const encodedData = encoder.encode(data);
+### 前端加密场景
 
-    const encrypted = await crypto.subtle.encrypt(
-      {
-        name: 'RSA-OAEP'
-      },
-      this.keyPair.publicKey,
-      encodedData
-    );
+| 场景 | 加密目的 | 推荐方案 | 安全级别 |
+|------|----------|----------|----------|
+| **本地存储** | 防止本地数据泄露 | AES-GCM | 中 |
+| **传输前加密** | 额外传输保护 | RSA + AES | 高 |
+| **密码处理** | 客户端预处理 | bcrypt, PBKDF2 | 高 |
+| **Token保护** | 防止XSS窃取 | 加密存储 | 中 |
 
-    return btoa(String.fromCharCode.apply(null, new Uint8Array(encrypted)));
-  }
+### Web Crypto API使用
 
-  async decryptData(encryptedData) {
-    const binaryString = atob(encryptedData);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
+现代浏览器提供了Web Crypto API用于加密操作，比自定义实现更安全。
 
-    const decrypted = await crypto.subtle.decrypt(
-      {
-        name: 'RSA-OAEP'
-      },
-      this.keyPair.privateKey,
-      bytes
-    );
+#### 加密算法对比
 
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
-  }
+| 算法 | 类型 | 密钥长度 | 性能 | 安全性 | 适用场景 |
+|------|------|----------|------|--------|----------|
+| **AES-GCM** | 对称加密 | 128/256位 | 高 | 高 | 数据加密 |
+| **RSA-OAEP** | 非对称加密 | 2048/4096位 | 低 | 高 | 密钥交换 |
+| **ECDSA** | 数字签名 | 256/384位 | 中 | 高 | 身份验证 |
+| **PBKDF2** | 密钥派生 | 可变 | 低 | 高 | 密码处理 |
 
-  async exportPublicKey() {
-    const exported = await crypto.subtle.exportKey('spki', this.keyPair.publicKey);
-    const exportedAsString = String.fromCharCode.apply(null, new Uint8Array(exported));
-    return btoa(exportedAsString);
-  }
-}
+#### 简化的加密工具
 
-// 3. 安全的数据存储
-class SecureStorage {
-  constructor(password) {
-    this.password = password;
-    this.salt = new Uint8Array(16);
-    crypto.getRandomValues(this.salt);
-  }
-
-  async deriveKey() {
-    const encoder = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(this.password),
-      { name: 'PBKDF2' },
-      false,
-      ['deriveBits', 'deriveKey']
-    );
-
-    return crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: this.salt,
-        iterations: 100000,
-        hash: 'SHA-256'
-      },
-      keyMaterial,
+```javascript
+// 简单的前端加密工具
+class SimpleCrypto {
+  // 生成随机密钥
+  static async generateKey() {
+    return await crypto.subtle.generateKey(
       { name: 'AES-GCM', length: 256 },
       true,
       ['encrypt', 'decrypt']
     );
   }
 
-  async encryptAndStore(key, data) {
-    const encoder = new TextEncoder();
-    const encodedData = encoder.encode(JSON.stringify(data));
-
-    const derivedKey = await this.deriveKey();
+  // 加密数据
+  static async encrypt(data, key) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encodedData = new TextEncoder().encode(data);
 
     const encrypted = await crypto.subtle.encrypt(
-      {
-        name: 'AES-GCM',
-        iv: iv
-      },
-      derivedKey,
+      { name: 'AES-GCM', iv },
+      key,
       encodedData
     );
 
-    const encryptedData = {
-      data: Array.from(new Uint8Array(encrypted)),
-      iv: Array.from(iv),
-      salt: Array.from(this.salt)
-    };
-
-    localStorage.setItem(key, JSON.stringify(encryptedData));
+    return { encrypted, iv };
   }
 
-  async decryptAndRetrieve(key) {
+  // 解密数据
+  static async decrypt(encryptedData, key, iv) {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encryptedData
+    );
+
+    return new TextDecoder().decode(decrypted);
+  }
+```
+
+### 安全存储方案
+
+| 存储方式 | 安全性 | 持久性 | 容量 | 适用数据 |
+|----------|--------|--------|------|----------|
+| **Memory** | 最高 | 会话期间 | 无限制 | 临时敏感数据 |
+| **SessionStorage** | 高 | 标签页期间 | 5-10MB | 会话数据 |
+| **LocalStorage** | 中 | 永久 | 5-10MB | 用户偏好 |
+| **IndexedDB** | 中 | 永久 | 大容量 | 离线数据 |
+| **Cookie** | 低 | 可设置 | 4KB | 认证信息 |
+
+```javascript
+// 安全存储工具
+class SecureStorage {
+  // 加密存储到localStorage
+  static async setEncrypted(key, data, password) {
+    const cryptoKey = await this.deriveKey(password);
+    const { encrypted, iv } = await SimpleCrypto.encrypt(JSON.stringify(data), cryptoKey);
+
+    localStorage.setItem(key, JSON.stringify({
+      data: Array.from(new Uint8Array(encrypted)),
+      iv: Array.from(iv)
+    }));
+  }
+
+  // 从localStorage解密读取
+  static async getEncrypted(key, password) {
     const stored = localStorage.getItem(key);
     if (!stored) return null;
 
-    const { data, iv, salt } = JSON.parse(stored);
-    this.salt = new Uint8Array(salt);
+    const { data, iv } = JSON.parse(stored);
+    const cryptoKey = await this.deriveKey(password);
 
-    const derivedKey = await this.deriveKey();
-
-    const decrypted = await crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: new Uint8Array(iv)
-      },
-      derivedKey,
-      new Uint8Array(data)
+    const decrypted = await SimpleCrypto.decrypt(
+      new Uint8Array(data),
+      cryptoKey,
+      new Uint8Array(iv)
     );
 
-    const decoder = new TextDecoder();
-    return JSON.parse(decoder.decode(decrypted));
+    return JSON.parse(decrypted);
+  }
+
+  // 从密码派生密钥
+  static async deriveKey(password) {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+
+    return await crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: encoder.encode('salt'), // 实际应用中应使用随机salt
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+```
+
+## 身份认证与授权
+
+<Callout type="info">
+前端身份认证主要负责用户界面的访问控制，真正的安全验证应该在服务端进行。
+</Callout>
+
+### 认证方案对比
+
+| 方案 | 安全性 | 复杂度 | 扩展性 | 适用场景 |
+|------|--------|--------|--------|----------|
+| **Session Cookie** | 高 | 低 | 中 | 传统Web应用 |
+| **JWT Token** | 中 | 中 | 高 | SPA、API |
+| **OAuth 2.0** | 高 | 高 | 高 | 第三方登录 |
+| **WebAuthn** | 最高 | 高 | 中 | 无密码认证 |
+
+### Token管理最佳实践
+
+#### Token存储策略
+
+| 存储位置 | 安全性 | XSS风险 | CSRF风险 | 推荐度 |
+|----------|--------|---------|----------|--------|
+| **Memory** | 最高 | 无 | 无 | ⭐⭐⭐⭐⭐ |
+| **HttpOnly Cookie** | 高 | 无 | 有 | ⭐⭐⭐⭐ |
+| **LocalStorage** | 低 | 有 | 无 | ⭐⭐ |
+| **SessionStorage** | 中 | 有 | 无 | ⭐⭐⭐ |
+
+#### 简化的认证管理
+
+```javascript
+// 简单的认证管理器
+class SimpleAuthManager {
+  constructor() {
+    this.token = null;
+    this.user = null;
+    this.refreshTimer = null;
+  }
+
+  // 登录
+  async login(credentials) {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.setAuth(data.token, data.user);
+        return { success: true, user: data.user };
+      }
+
+      return { success: false, error: 'Invalid credentials' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // 设置认证信息
+  setAuth(token, user) {
+    this.token = token;
+    this.user = user;
+    this.scheduleRefresh();
+  }
+
+  // 登出
+  logout() {
+    this.token = null;
+    this.user = null;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+  }
+
+  // 检查是否已认证
+  isAuthenticated() {
+    return !!this.token && !!this.user;
+  }
+
+  // 获取当前用户
+  getCurrentUser() {
+    return this.user;
+  }
+
+  // 定时刷新token
+  scheduleRefresh() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+
+    // 15分钟后刷新
+    this.refreshTimer = setTimeout(() => {
+      this.refreshToken();
+    }, 15 * 60 * 1000);
+  }
+
+  // 刷新token
+  async refreshToken() {
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.setAuth(data.token, data.user);
+      } else {
+        this.logout();
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      this.logout();
+    }
+  }
+```
+
+### 权限控制
+
+前端权限控制主要用于用户界面的显示逻辑，不能替代服务端的权限验证。
+
+#### 权限模型
+
+| 模型 | 描述 | 适用场景 | 复杂度 |
+|------|------|----------|--------|
+| **RBAC** | 基于角色的访问控制 | 企业应用 | 中 |
+| **ABAC** | 基于属性的访问控制 | 复杂权限场景 | 高 |
+| **ACL** | 访问控制列表 | 简单权限场景 | 低 |
+
+```javascript
+// 简单的权限控制
+class SimplePermissionManager {
+  constructor(user) {
+    this.user = user;
+    this.permissions = user?.permissions || [];
+    this.roles = user?.roles || [];
+  }
+
+  // 检查权限
+  hasPermission(permission) {
+    return this.permissions.includes(permission);
+  }
+
+  // 检查角色
+  hasRole(role) {
+    return this.roles.includes(role);
+  }
+
+  // 检查多个权限（任一）
+  hasAnyPermission(permissions) {
+    return permissions.some(p => this.hasPermission(p));
+  }
+
+  // 检查多个权限（全部）
+  hasAllPermissions(permissions) {
+    return permissions.every(p => this.hasPermission(p));
   }
 }
 
-// 4. API请求签名
-class APIRequestSigner {
-  constructor(secretKey) {
-    this.secretKey = secretKey;
+// React权限组件示例
+function ProtectedComponent({ permission, children }) {
+  const { user } = useAuth();
+  const permissionManager = new SimplePermissionManager(user);
+
+  if (!permissionManager.hasPermission(permission)) {
+    return <div>Access Denied</div>;
   }
 
-  async signRequest(method, url, body = '', timestamp = Date.now()) {
-    const message = `${method}\n${url}\n${body}\n${timestamp}`;
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
+  return children;
+```
 
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(this.secretKey),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
+## 安全测试与监控
 
-    const signature = await crypto.subtle.sign('HMAC', key, data);
-    return btoa(String.fromCharCode.apply(null, new Uint8Array(signature)));
+<Callout type="warning">
+安全测试应该贯穿整个开发生命周期，包括静态代码分析、动态测试和持续监控。
+</Callout>
+
+### 安全测试类型
+
+| 测试类型 | 测试阶段 | 工具示例 | 检测内容 |
+|----------|----------|----------|----------|
+| **静态分析** | 开发阶段 | ESLint Security, SonarQube | 代码漏洞、安全规则 |
+| **依赖扫描** | 构建阶段 | npm audit, Snyk | 已知漏洞、许可证 |
+| **动态测试** | 测试阶段 | OWASP ZAP, Burp Suite | 运行时漏洞 |
+| **渗透测试** | 上线前 | 专业测试团队 | 综合安全评估 |
+
+### 安全监控指标
+
+#### 关键监控项
+
+| 监控项 | 指标 | 阈值建议 | 处理方式 |
+|--------|------|----------|----------|
+| **异常登录** | 失败次数、地理位置 | 5次/小时 | 账户锁定 |
+| **XSS尝试** | 恶意脚本检测 | 任何检测 | 立即阻止 |
+| **CSRF攻击** | Token验证失败 | 10次/小时 | IP封禁 |
+| **暴力破解** | 密码尝试频率 | 20次/小时 | 验证码 |
+
+#### 简化的安全监控
+
+```javascript
+// 简单的安全事件监控
+class SimpleSecurityMonitor {
+  constructor() {
+    this.events = [];
+    this.thresholds = {
+      loginFailures: 5,
+      xssAttempts: 1,
+      csrfFailures: 10
+    };
   }
 
-  async makeSignedRequest(url, options = {}) {
-    const timestamp = Date.now();
-    const method = options.method || 'GET';
-    const body = options.body || '';
-
-    const signature = await this.signRequest(method, url, body, timestamp);
-
-    const headers = {
-      ...options.headers,
-      'X-Timestamp': timestamp.toString(),
-      'X-Signature': signature
+  // 记录安全事件
+  logEvent(type, details) {
+    const event = {
+      type,
+      details,
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent,
+      ip: this.getClientIP()
     };
 
-    return fetch(url, {
-      ...options,
-      headers
+    this.events.push(event);
+    this.checkThresholds(type);
+    this.sendToServer(event);
+  }
+
+  // 检查阈值
+  checkThresholds(type) {
+    const recentEvents = this.getRecentEvents(type, 3600000); // 1小时内
+    const threshold = this.thresholds[type];
+
+    if (threshold && recentEvents.length >= threshold) {
+      this.triggerAlert(type, recentEvents.length);
+    }
+  }
+
+  // 获取最近事件
+  getRecentEvents(type, timeWindow) {
+    const cutoff = Date.now() - timeWindow;
+    return this.events.filter(event =>
+      event.type === type && event.timestamp > cutoff
+    );
+  }
+
+  // 触发警报
+  triggerAlert(type, count) {
+    console.warn(`Security Alert: ${type} threshold exceeded (${count} events)`);
+    // 实际应用中应发送到监控系统
+  }
+
+  // 发送到服务器
+  async sendToServer(event) {
+    try {
+      await fetch('/api/security/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(event)
+      });
+    } catch (error) {
+      console.error('Failed to send security event:', error);
+    }
+  }
+
+  // 获取客户端IP（简化实现）
+  getClientIP() {
+    // 实际应用中需要服务端配合
+    return 'unknown';
+  }
+```
+
+### 安全开发流程
+
+#### DevSecOps集成
+
+| 阶段 | 安全活动 | 工具 | 自动化程度 |
+|------|----------|------|------------|
+| **开发** | 安全编码、代码审查 | ESLint Security | 高 |
+| **构建** | 依赖扫描、SAST | npm audit, SonarQube | 高 |
+| **测试** | 安全测试、DAST | OWASP ZAP | 中 |
+| **部署** | 配置检查、监控 | 自定义脚本 | 中 |
+| **运维** | 持续监控、应急响应 | 监控平台 | 低 |
+
+## 安全开发最佳实践
+
+<Callout type="success">
+安全开发最佳实践涵盖了从代码编写到部署运维的全生命周期，建立系统性的安全保障体系。
+</Callout>
+
+### 安全编码规范
+
+#### 输入验证原则
+
+| 验证类型 | 验证方法 | 实施位置 | 安全级别 |
+|----------|----------|----------|----------|
+| **白名单验证** | 允许已知安全的输入 | 客户端+服务端 | 最高 |
+| **黑名单过滤** | 阻止已知危险的输入 | 客户端+服务端 | 中 |
+| **格式验证** | 检查数据格式和类型 | 客户端+服务端 | 高 |
+| **长度限制** | 限制输入数据长度 | 客户端+服务端 | 中 |
+| **编码转换** | 统一字符编码 | 服务端 | 高 |
+
+#### 安全编码检查清单
+
+```javascript
+// 安全编码检查工具
+class SecureCodingChecker {
+  static checkCode(code) {
+    const issues = [];
+
+    // 检查危险函数使用
+    const dangerousFunctions = [
+      'eval', 'Function', 'setTimeout', 'setInterval',
+      'innerHTML', 'outerHTML', 'insertAdjacentHTML'
+    ];
+
+    dangerousFunctions.forEach(func => {
+      const regex = new RegExp(`\\b${func}\\s*\\(`, 'g');
+      const matches = code.match(regex);
+      if (matches) {
+        issues.push({
+          type: 'dangerous-function',
+          function: func,
+          count: matches.length,
+          severity: 'high',
+          message: `使用了危险函数 ${func}，可能导致代码注入`
+        });
+      }
     });
+
+    // 检查硬编码敏感信息
+    const sensitivePatterns = [
+      { name: 'API Key', pattern: /api[_-]?key\s*[:=]\s*['"][^'"]+['"]/gi },
+      { name: 'Password', pattern: /password\s*[:=]\s*['"][^'"]+['"]/gi },
+      { name: 'Token', pattern: /token\s*[:=]\s*['"][^'"]+['"]/gi },
+      { name: 'Secret', pattern: /secret\s*[:=]\s*['"][^'"]+['"]/gi }
+    ];
+
+    sensitivePatterns.forEach(pattern => {
+      const matches = code.match(pattern.pattern);
+      if (matches) {
+        issues.push({
+          type: 'hardcoded-secret',
+          pattern: pattern.name,
+          count: matches.length,
+          severity: 'critical',
+          message: `发现硬编码的${pattern.name}，应使用环境变量`
+        });
+      }
+    });
+
+    // 检查不安全的随机数生成
+    if (code.includes('Math.random()')) {
+      issues.push({
+        type: 'weak-random',
+        severity: 'medium',
+        message: 'Math.random()不适用于安全场景，应使用crypto.getRandomValues()'
+      });
+    }
+
+    return {
+      totalIssues: issues.length,
+      criticalIssues: issues.filter(i => i.severity === 'critical').length,
+      highIssues: issues.filter(i => i.severity === 'high').length,
+      mediumIssues: issues.filter(i => i.severity === 'medium').length,
+      issues
+    };
+  }
+
+  // 生成安全报告
+  static generateReport(checkResult) {
+    const { totalIssues, criticalIssues, highIssues, mediumIssues, issues } = checkResult;
+
+    let grade = 'A';
+    if (criticalIssues > 0) grade = 'F';
+    else if (highIssues > 3) grade = 'D';
+    else if (highIssues > 1) grade = 'C';
+    else if (highIssues > 0 || mediumIssues > 3) grade = 'B';
+
+    return {
+      grade,
+      summary: {
+        total: totalIssues,
+        critical: criticalIssues,
+        high: highIssues,
+        medium: mediumIssues
+      },
+      recommendations: this.getRecommendations(issues)
+    };
+  }
+
+  static getRecommendations(issues) {
+    const recommendations = [];
+
+    if (issues.some(i => i.type === 'dangerous-function')) {
+      recommendations.push('使用安全的DOM操作方法，如textContent替代innerHTML');
+    }
+
+    if (issues.some(i => i.type === 'hardcoded-secret')) {
+      recommendations.push('将敏感信息移至环境变量或安全配置文件');
+    }
+
+    if (issues.some(i => i.type === 'weak-random')) {
+      recommendations.push('使用crypto.getRandomValues()生成安全随机数');
+    }
+
+    return recommendations;
   }
 }
 ```
 
-## 安全开发最佳实践
+### 依赖安全管理
 
-<Callout type="info">
-安全开发最佳实践帮助开发团队在整个开发生命周期中保持安全意识，构建更安全的应用。
-</Callout>
+#### 依赖风险评估
 
-### 安全开发流程
+| 风险类型 | 评估指标 | 工具 | 处理策略 |
+|----------|----------|------|----------|
+| **已知漏洞** | CVE数量、CVSS评分 | npm audit, Snyk | 立即更新 |
+| **维护状态** | 最后更新时间、活跃度 | npm outdated | 考虑替换 |
+| **许可证风险** | 许可证类型、兼容性 | license-checker | 法务审查 |
+| **供应链风险** | 依赖深度、维护者信誉 | 人工审查 | 谨慎选择 |
+
+#### 自动化依赖检查
 
 ```javascript
-// 1. 安全代码审查清单
-class SecurityCodeReview {
-  static getChecklist() {
-    return {
-      inputValidation: [
-        '所有用户输入都经过验证',
-        '使用白名单而不是黑名单验证',
-        '对文件上传进行类型和大小限制',
-        '验证URL和重定向目标'
-      ],
-      outputEncoding: [
-        '所有输出都经过适当编码',
-        '使用模板引擎的自动转义',
-        '避免使用innerHTML等危险API',
-        '正确处理JSON输出'
-      ],
-      authentication: [
-        '实现强密码策略',
-        '使用多因素认证',
-        '正确处理会话管理',
-        '实现账户锁定机制'
-      ],
-      authorization: [
-        '实现最小权限原则',
-        '验证用户权限',
-        '避免直接对象引用',
-        '实现RBAC或ABAC'
-      ],
-      dataProtection: [
-        '敏感数据加密存储',
-        '使用HTTPS传输',
-        '实现数据脱敏',
-        '定期备份和恢复测试'
-      ],
-      errorHandling: [
-        '不泄露敏感信息',
-        '记录安全事件',
-        '实现优雅降级',
-        '提供用户友好的错误信息'
-      ]
-    };
-  }
-
-  static reviewCode(codeSnippet, category) {
-    const checklist = this.getChecklist()[category] || [];
-    const issues = [];
-
-    // 简单的静态分析示例
-    if (category === 'inputValidation') {
-      if (codeSnippet.includes('innerHTML') && !codeSnippet.includes('sanitize')) {
-        issues.push('可能存在XSS风险：使用innerHTML但未进行清理');
-      }
-
-      if (codeSnippet.includes('eval(') || codeSnippet.includes('Function(')) {
-        issues.push('代码注入风险：使用eval或Function构造器');
-      }
-    }
-
-    if (category === 'dataProtection') {
-      if (codeSnippet.includes('localStorage') && codeSnippet.includes('password')) {
-        issues.push('敏感数据风险：密码存储在localStorage中');
-      }
-    }
-
-    return {
-      category,
-      checklist,
-      issues,
-      passed: issues.length === 0
-    };
-  }
-}
-
-// 2. 安全测试自动化
-class SecurityTestSuite {
+// 依赖安全检查工具
+class DependencySecurityChecker {
   constructor() {
-    this.tests = [];
+    this.vulnerabilityDB = new Map(); // 简化的漏洞数据库
   }
 
-  addTest(name, testFunction) {
-    this.tests.push({ name, test: testFunction });
-  }
+  // 检查package.json中的依赖
+  async checkDependencies(packageJson) {
+    const dependencies = {
+      ...packageJson.dependencies,
+      ...packageJson.devDependencies
+    };
 
-  async runAllTests() {
     const results = [];
 
-    for (const { name, test } of this.tests) {
-      try {
-        const result = await test();
-        results.push({
-          name,
-          passed: result.passed,
-          message: result.message,
-          details: result.details
-        });
-      } catch (error) {
-        results.push({
-          name,
-          passed: false,
-          message: error.message,
-          error: true
-        });
-      }
+    for (const [name, version] of Object.entries(dependencies)) {
+      const result = await this.checkSingleDependency(name, version);
+      results.push(result);
     }
+
+    return this.generateDependencyReport(results);
+  }
+
+  async checkSingleDependency(name, version) {
+    // 模拟依赖检查
+    const vulnerabilities = await this.getVulnerabilities(name, version);
+    const maintenance = await this.getMaintenanceInfo(name);
+    const license = await this.getLicenseInfo(name);
+
+    return {
+      name,
+      version,
+      vulnerabilities,
+      maintenance,
+      license,
+      riskScore: this.calculateRiskScore(vulnerabilities, maintenance)
+    };
+  }
+
+  calculateRiskScore(vulnerabilities, maintenance) {
+    let score = 0;
+
+    // 漏洞风险
+    vulnerabilities.forEach(vuln => {
+      switch (vuln.severity) {
+        case 'critical': score += 10; break;
+        case 'high': score += 7; break;
+        case 'medium': score += 4; break;
+        case 'low': score += 1; break;
+      }
+    });
+
+    // 维护风险
+    if (maintenance.lastUpdate > 365) score += 5; // 超过1年未更新
+    if (maintenance.weeklyDownloads < 1000) score += 3; // 使用量低
+
+    return Math.min(score, 100);
+  }
+
+  generateDependencyReport(results) {
+    const highRiskDeps = results.filter(r => r.riskScore >= 7);
+    const mediumRiskDeps = results.filter(r => r.riskScore >= 4 && r.riskScore < 7);
+    const totalVulns = results.reduce((sum, r) => sum + r.vulnerabilities.length, 0);
+
+    return {
+      summary: {
+        totalDependencies: results.length,
+        highRisk: highRiskDeps.length,
+        mediumRisk: mediumRiskDeps.length,
+        totalVulnerabilities: totalVulns
+      },
+      recommendations: this.generateRecommendations(highRiskDeps),
+      details: results
+    };
+  }
+
+  generateRecommendations(highRiskDeps) {
+    const recommendations = [];
+
+    highRiskDeps.forEach(dep => {
+      if (dep.vulnerabilities.length > 0) {
+        recommendations.push(`更新 ${dep.name} 以修复安全漏洞`);
+      }
+      if (dep.maintenance.lastUpdate > 365) {
+        recommendations.push(`考虑替换长期未维护的依赖 ${dep.name}`);
+      }
+    });
+
+    return recommendations;
+  }
+
+  // 模拟方法
+  async getVulnerabilities(name, version) {
+    // 实际应用中应查询真实的漏洞数据库
+    return [];
+  }
+
+  async getMaintenanceInfo(name) {
+    // 实际应用中应查询npm registry
+    return {
+      lastUpdate: Math.floor(Math.random() * 1000),
+      weeklyDownloads: Math.floor(Math.random() * 100000)
+    };
+  }
+
+  async getLicenseInfo(name) {
+    // 实际应用中应查询包的许可证信息
+    return { license: 'MIT', compatible: true };
+  }
+}
+```
+
+### 安全测试策略
+
+#### 测试类型与覆盖范围
+
+| 测试类型 | 测试内容 | 工具 | 执行频率 |
+|----------|----------|------|----------|
+| **单元测试** | 输入验证、边界条件 | Jest, Mocha | 每次提交 |
+| **集成测试** | API安全、认证流程 | Cypress, Playwright | 每日构建 |
+| **安全扫描** | 静态代码分析 | ESLint Security, SonarQube | 每次提交 |
+| **渗透测试** | 模拟攻击场景 | OWASP ZAP, Burp Suite | 每月 |
+
+#### 安全测试自动化
+
+```javascript
+// 安全测试套件
+class SecurityTestSuite {
+  constructor() {
+    this.testResults = [];
+  }
+
+  // XSS防护测试
+  testXSSProtection() {
+    const testCases = [
+      '<script>alert("xss")</script>',
+      'javascript:alert("xss")',
+      '<img src="x" onerror="alert(\'xss\')">',
+      '"><script>alert("xss")</script>',
+      '\';alert("xss");//'
+    ];
+
+    const results = testCases.map(payload => {
+      try {
+        // 测试输入过滤
+        const filtered = this.filterXSS(payload);
+        const isBlocked = !filtered.includes('<script>') &&
+                         !filtered.includes('javascript:') &&
+                         !filtered.includes('onerror=');
+
+        return {
+          payload,
+          filtered,
+          blocked: isBlocked,
+          passed: isBlocked
+        };
+      } catch (error) {
+        return {
+          payload,
+          error: error.message,
+          passed: false
+        };
+      }
+    });
+
+    this.testResults.push({
+      test: 'XSS Protection',
+      results,
+      passed: results.every(r => r.passed)
+    });
 
     return results;
   }
 
-  // XSS测试
-  testXSSProtection() {
-    return new Promise((resolve) => {
-      const testPayloads = [
-        '<script>alert("xss")</script>',
-        'javascript:alert("xss")',
-        '<img src="x" onerror="alert(\'xss\')">'
-      ];
-
-      const vulnerabilities = [];
-
-      testPayloads.forEach(payload => {
-        const div = document.createElement('div');
-        div.innerHTML = payload;
-
-        if (div.querySelector('script') || div.innerHTML.includes('javascript:')) {
-          vulnerabilities.push(payload);
-        }
-      });
-
-      resolve({
-        passed: vulnerabilities.length === 0,
-        message: vulnerabilities.length === 0 ?
-          'XSS protection working' :
-          `Found ${vulnerabilities.length} XSS vulnerabilities`,
-        details: vulnerabilities
-      });
-    });
-  }
-
-  // CSRF测试
+  // CSRF防护测试
   testCSRFProtection() {
-    return new Promise((resolve) => {
-      const hasCSRFToken = document.querySelector('meta[name="csrf-token"]') !== null;
-      const hasCSRFHeader = fetch.toString().includes('X-CSRF-Token');
+    const testCases = [
+      { method: 'POST', hasToken: false, expected: false },
+      { method: 'POST', hasToken: true, validToken: false, expected: false },
+      { method: 'POST', hasToken: true, validToken: true, expected: true },
+      { method: 'GET', hasToken: false, expected: true } // GET请求通常不需要CSRF token
+    ];
 
-      resolve({
-        passed: hasCSRFToken || hasCSRFHeader,
-        message: hasCSRFToken || hasCSRFHeader ?
-          'CSRF protection detected' :
-          'No CSRF protection found',
-        details: {
-          metaToken: hasCSRFToken,
-          headerProtection: hasCSRFHeader
-        }
-      });
+    const results = testCases.map(testCase => {
+      const passed = this.validateCSRFToken(testCase) === testCase.expected;
+      return { ...testCase, passed };
     });
-  }
 
-  // HTTPS测试
-  testHTTPSEnforcement() {
-    return new Promise((resolve) => {
-      const isHTTPS = location.protocol === 'https:';
-      const hasHSTS = document.querySelector('meta[http-equiv="Strict-Transport-Security"]') !== null;
-
-      resolve({
-        passed: isHTTPS,
-        message: isHTTPS ?
-          'HTTPS enforced' :
-          'Not using HTTPS',
-        details: {
-          protocol: location.protocol,
-          hasHSTS
-        }
-      });
+    this.testResults.push({
+      test: 'CSRF Protection',
+      results,
+      passed: results.every(r => r.passed)
     });
-  }
-}
 
-// 3. 安全监控和告警
-class SecurityMonitor {
-  constructor() {
-    this.alerts = [];
-    this.setupMonitoring();
+    return results;
   }
 
-  setupMonitoring() {
-    // 监控可疑活动
-    this.monitorSuspiciousActivity();
+  // 输入验证测试
+  testInputValidation() {
+    const testCases = [
+      { input: 'normal@email.com', type: 'email', expected: true },
+      { input: 'invalid-email', type: 'email', expected: false },
+      { input: '12345', type: 'number', expected: true },
+      { input: 'abc', type: 'number', expected: false },
+      { input: 'a'.repeat(1000), type: 'text', maxLength: 100, expected: false }
+    ];
 
-    // 监控安全头
-    this.monitorSecurityHeaders();
+    const results = testCases.map(testCase => {
+      const isValid = this.validateInput(testCase.input, testCase.type, testCase);
+      return {
+        ...testCase,
+        valid: isValid,
+        passed: isValid === testCase.expected
+      };
+    });
 
-    // 监控CSP违规
-    this.monitorCSPViolations();
+    this.testResults.push({
+      test: 'Input Validation',
+      results,
+      passed: results.every(r => r.passed)
+    });
+
+    return results;
   }
 
-  monitorSuspiciousActivity() {
-    let failedAttempts = 0;
-    const maxAttempts = 5;
-    const timeWindow = 5 * 60 * 1000; // 5分钟
+  // 生成测试报告
+  generateReport() {
+    const totalTests = this.testResults.length;
+    const passedTests = this.testResults.filter(t => t.passed).length;
+    const failedTests = totalTests - passedTests;
 
-    document.addEventListener('submit', (event) => {
-      const form = event.target;
-      if (form.action.includes('/login') || form.action.includes('/auth')) {
-        // 模拟登录失败检测
-        setTimeout(() => {
-          if (document.querySelector('.error')) {
-            failedAttempts++;
+    return {
+      summary: {
+        total: totalTests,
+        passed: passedTests,
+        failed: failedTests,
+        passRate: totalTests > 0 ? (passedTests / totalTests * 100).toFixed(2) : 0
+      },
+      details: this.testResults,
+      recommendations: this.generateTestRecommendations()
+    };
+  }
 
-            if (failedAttempts >= maxAttempts) {
-              this.createAlert('security', 'Multiple failed login attempts detected', {
-                attempts: failedAttempts,
-                timeWindow: timeWindow,
-                userAgent: navigator.userAgent,
-                ip: 'client-side' // 实际应该从服务器获取
-              });
-            }
-          }
-        }, 1000);
+  generateTestRecommendations() {
+    const recommendations = [];
+
+    this.testResults.forEach(test => {
+      if (!test.passed) {
+        switch (test.test) {
+          case 'XSS Protection':
+            recommendations.push('加强XSS防护，检查输入过滤和输出编码');
+            break;
+          case 'CSRF Protection':
+            recommendations.push('实施CSRF Token验证或SameSite Cookie');
+            break;
+          case 'Input Validation':
+            recommendations.push('完善输入验证规则，确保数据格式和长度限制');
+            break;
+        }
       }
     });
 
-    // 重置计数器
-    setInterval(() => {
-      failedAttempts = 0;
-    }, timeWindow);
+    return recommendations;
   }
 
-  monitorSecurityHeaders() {
-    const requiredHeaders = [
-      'Content-Security-Policy',
-      'X-Frame-Options',
-      'X-Content-Type-Options',
-      'Strict-Transport-Security'
-    ];
-
-    fetch(window.location.href, { method: 'HEAD' })
-      .then(response => {
-        const missingHeaders = requiredHeaders.filter(header =>
-          !response.headers.has(header)
-        );
-
-        if (missingHeaders.length > 0) {
-          this.createAlert('configuration', 'Missing security headers', {
-            missingHeaders,
-            url: window.location.href
-          });
-        }
-      })
-      .catch(error => {
-        console.error('Failed to check security headers:', error);
-      });
+  // 辅助方法（简化实现）
+  filterXSS(input) {
+    return input
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+\s*=/gi, '');
   }
 
-  monitorCSPViolations() {
-    document.addEventListener('securitypolicyviolation', (event) => {
-      this.createAlert('csp', 'CSP violation detected', {
-        violatedDirective: event.violatedDirective,
-        blockedURI: event.blockedURI,
-        documentURI: event.documentURI,
-        lineNumber: event.lineNumber
-      });
-    });
+  validateCSRFToken(testCase) {
+    if (testCase.method === 'GET') return true;
+    if (!testCase.hasToken) return false;
+    return testCase.validToken === true;
   }
 
-  createAlert(type, message, details = {}) {
-    const alert = {
-      id: Math.random().toString(36).substr(2, 9),
-      type,
-      message,
-      details,
-      timestamp: new Date().toISOString(),
-      severity: this.calculateSeverity(type, details)
-    };
-
-    this.alerts.push(alert);
-    this.sendAlert(alert);
-
-    return alert;
-  }
-
-  calculateSeverity(type, details) {
+  validateInput(input, type, options = {}) {
     switch (type) {
-      case 'security':
-        return details.attempts >= 10 ? 'critical' : 'high';
-      case 'csp':
-        return 'medium';
-      case 'configuration':
-        return 'low';
+      case 'email':
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
+      case 'number':
+        return !isNaN(input) && !isNaN(parseFloat(input));
+      case 'text':
+        return options.maxLength ? input.length <= options.maxLength : true;
       default:
-        return 'info';
+        return true;
     }
-  }
-
-  async sendAlert(alert) {
-    try {
-      await fetch('/api/security/alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alert)
-      });
-    } catch (error) {
-      console.error('Failed to send security alert:', error);
-    }
-  }
-
-  getAlerts(type = null) {
-    return type ?
-      this.alerts.filter(alert => alert.type === type) :
-      this.alerts;
   }
 }
-
-// 使用示例
-// 初始化安全监控
-const securityMonitor = new SecurityMonitor();
-
-// 运行安全测试
-const testSuite = new SecurityTestSuite();
-testSuite.addTest('XSS Protection', () => testSuite.testXSSProtection());
-testSuite.addTest('CSRF Protection', () => testSuite.testCSRFProtection());
-testSuite.addTest('HTTPS Enforcement', () => testSuite.testHTTPSEnforcement());
-
-testSuite.runAllTests().then(results => {
-  console.log('Security test results:', results);
-});
-
-// 代码审查
-const codeSnippet = `
-  const userInput = document.getElementById('input').value;
-  document.getElementById('output').innerHTML = userInput;
-`;
-
-const reviewResult = SecurityCodeReview.reviewCode(codeSnippet, 'inputValidation');
-console.log('Code review result:', reviewResult);
 ```
 
 ---
 
 <Callout type="success">
-前端安全需要多层防护，包括输入验证、输出编码、CSP配置等。安全是一个持续的过程，需要定期评估和更新防护措施。
+前端安全是一个持续的过程，需要在开发的每个阶段都考虑安全因素，建立完善的安全防护体系。
 </Callout>
 
 ---
@@ -1619,17 +1440,18 @@ console.log('Code review result:', reviewResult);
 
 ### 📖 官方文档
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/) - Web应用安全风险
-- [MDN Web Security](https://developer.mozilla.org/en-US/docs/Web/Security) - MDN Web安全指南
-- [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) - CSP官方文档
-- [Web.dev Security](https://web.dev/secure/) - Google Web安全指南
+- [MDN Web Security](https://developer.mozilla.org/en-US/docs/Web/Security) - Web安全指南
+- [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) - CSP文档
+- [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) - Web加密API
 
 ### 🎓 优质教程
 - [Frontend Security](https://frontendmasters.com/courses/web-security/) - Frontend Masters安全课程
-- [Web Security Academy](https://portswigger.net/web-security) - PortSwigger安全学院
-- [OWASP WebGoat](https://owasp.org/www-project-webgoat/) - Web安全实践平台
+- [XSS Prevention](https://excess-xss.com/) - XSS防护指南
+- [CSRF Protection](https://portswigger.net/web-security/csrf) - CSRF防护教程
 
 ### 🛠️ 实践项目
-- [Security Headers](https://securityheaders.com/) - 安全头检测工具
+- [OWASP WebGoat](https://owasp.org/www-project-webgoat/) - Web安全学习平台
+- [DVWA](http://www.dvwa.co.uk/) - 故意存在漏洞的Web应用
 - [OWASP ZAP](https://www.zaproxy.org/) - Web应用安全测试工具
 - [Security Checklist](https://github.com/FallibleInc/security-guide-for-developers) - 开发者安全指南
 
@@ -1647,3 +1469,5 @@ console.log('Code review result:', reviewResult);
 <Callout type="tip">
 💡 **学习建议**：建议从OWASP Top 10开始了解常见安全威胁，学习XSS和CSRF防护技术，然后掌握CSP配置，最后建立完整的安全开发流程。
 </Callout>
+
+---

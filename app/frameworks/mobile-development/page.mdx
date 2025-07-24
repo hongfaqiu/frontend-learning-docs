@@ -19,131 +19,62 @@ import { Callout } from 'nextra/components'
 
 ### 移动端技术方案对比
 
-```javascript
-// 移动端开发技术对比
-const mobileTechnologies = {
-  // 原生开发
-  native: {
-    ios: {
-      语言: 'Swift/Objective-C',
-      IDE: 'Xcode',
-      优势: ['最佳性能', '完整平台特性', '最新API支持'],
-      劣势: ['开发成本高', '维护复杂', '技能要求高'],
-      适用场景: '高性能应用、平台特定功能'
-    },
-    android: {
-      语言: 'Kotlin/Java',
-      IDE: 'Android Studio',
-      优势: ['最佳性能', '完整平台特性', '灵活定制'],
-      劣势: ['碎片化严重', '开发成本高', '维护复杂'],
-      适用场景: '高性能应用、深度定制'
-    }
-  },
-  
-  // 跨平台框架
-  crossPlatform: {
-    reactNative: {
-      技术栈: 'React + JavaScript/TypeScript',
-      渲染方式: '原生组件',
-      优势: [
-        'React生态丰富',
-        '热重载开发体验',
-        '代码复用率高',
-        '社区活跃'
-      ],
-      劣势: [
-        '性能不如原生',
-        '平台差异处理',
-        '第三方库依赖'
-      ],
-      知名应用: ['Facebook', 'Instagram', 'Uber Eats'],
-      适用场景: '快速开发、内容展示类应用'
-    },
-    
-    flutter: {
-      技术栈: 'Dart + Flutter',
-      渲染方式: '自绘引擎',
-      优势: [
-        '高性能渲染',
-        '一致的UI体验',
-        '热重载',
-        'Google支持'
-      ],
-      劣势: [
-        '学习成本高',
-        '生态相对较小',
-        '应用体积大'
-      ],
-      知名应用: ['Google Pay', 'Alibaba', 'BMW'],
-      适用场景: '复杂UI、高性能要求'
-    },
-    
-    ionic: {
-      技术栈: 'Web技术 + Cordova/Capacitor',
-      渲染方式: 'WebView',
-      优势: [
-        'Web技术栈',
-        '快速开发',
-        '插件丰富'
-      ],
-      劣势: [
-        '性能较差',
-        'WebView限制',
-        '用户体验差异'
-      ],
-      适用场景: '简单应用、快速原型'
-    }
-  }
-};
+#### 主流移动端开发技术对比
 
-// 技术选择决策
+| 技术方案 | 语言/技术栈 | 渲染方式 | 性能 | 开发效率 | 学习成本 | 适用场景 |
+|----------|-------------|----------|------|----------|----------|----------|
+| **iOS原生** | Swift/Objective-C | 原生 | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | 高性能iOS应用 |
+| **Android原生** | Kotlin/Java | 原生 | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | 高性能Android应用 |
+| **React Native** | React + JS/TS | 原生组件 | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | 快速跨平台开发 |
+| **Flutter** | Dart | 自绘引擎 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 复杂UI、高性能 |
+| **Ionic** | Web技术 | WebView | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ | 简单应用、快速原型 |
+
+#### 技术选择指南
+
+| 项目特征 | 推荐技术 | 理由 |
+|----------|----------|------|
+| **高性能要求** | 原生开发 | 最佳性能和平台集成 |
+| **React团队** | React Native | 技能复用，快速开发 |
+| **复杂UI** | Flutter | 优秀的UI性能和一致性 |
+| **预算有限** | Ionic | 低成本，快速上线 |
+| **快速原型** | React Native/Ionic | 开发效率高 |
+
+#### 知名应用案例
+
+| 技术 | 知名应用 | 特点 |
+|------|----------|------|
+| **React Native** | Facebook, Instagram, Uber Eats | 内容展示、社交应用 |
+| **Flutter** | Google Pay, Alibaba, BMW | 复杂交互、金融应用 |
+| **原生** | 微信, 支付宝, 王者荣耀 | 高性能、平台特定功能 |
+
+#### 技术选择决策流程
+
+```javascript
+// 简化的技术选择逻辑
 function chooseMobileTechnology(requirements) {
-  const {
-    teamSkills,
-    performanceRequirements,
-    developmentTime,
-    budget,
-    platformPriority,
-    uiComplexity
-  } = requirements;
-  
-  // 高性能要求或平台特定功能
-  if (performanceRequirements === 'critical' || platformPriority === 'single') {
-    return {
-      recommendation: 'Native',
-      reason: '最佳性能和平台集成'
-    };
+  const { teamSkills, performance, timeline, budget } = requirements;
+
+  // 高性能要求
+  if (performance === 'critical') {
+    return 'Native Development';
   }
-  
-  // React技术栈团队
-  if (teamSkills.includes('react') && developmentTime === 'short') {
-    return {
-      recommendation: 'React Native',
-      reason: '快速开发，技能复用'
-    };
+
+  // React技术栈
+  if (teamSkills.includes('react') && timeline === 'short') {
+    return 'React Native';
   }
-  
-  // 复杂UI或高性能要求
-  if (uiComplexity === 'high' || performanceRequirements === 'high') {
-    return {
-      recommendation: 'Flutter',
-      reason: '优秀的UI性能和一致性'
-    };
+
+  // 复杂UI需求
+  if (requirements.uiComplexity === 'high') {
+    return 'Flutter';
   }
-  
-  // 预算有限，快速开发
-  if (budget === 'limited' && teamSkills.includes('web')) {
-    return {
-      recommendation: 'Ionic',
-      reason: '低成本，快速上线'
-    };
+
+  // 预算有限
+  if (budget === 'limited') {
+    return 'Ionic';
   }
-  
-  // 默认推荐
-  return {
-    recommendation: 'React Native',
-    reason: '平衡了开发效率和性能'
-  };
+
+  return 'React Native'; // 默认推荐
 }
 ```
 

@@ -19,184 +19,79 @@ import { Callout } from 'nextra/components'
 
 ### 状态管理的核心概念
 
-```javascript
-// 状态管理的基本模式
+#### 状态分类
 
-// 1. 单向数据流
-/*
-Action → Dispatcher → Store → View → Action
-*/
+| 状态类型 | 作用域 | 示例 | 管理方式 |
+|----------|--------|------|----------|
+| **本地状态** | 组件内部 | 表单数据、模态框状态 | useState, useReducer |
+| **全局状态** | 应用级别 | 用户信息、主题设置 | Redux, Zustand, Context |
+| **服务端状态** | 远程数据 | API数据、缓存 | React Query, SWR |
+| **URL状态** | 路由相关 | 页面参数、查询条件 | React Router, Next.js |
 
-// 2. 状态的分类
-const stateTypes = {
-  // 本地状态（组件内部状态）
-  local: {
-    formData: {},
-    isModalOpen: false,
-    inputValue: ''
-  },
-  
-  // 全局状态（应用级状态）
-  global: {
-    user: null,
-    theme: 'light',
-    language: 'zh-CN'
-  },
-  
-  // 服务端状态（远程数据）
-  server: {
-    users: [],
-    posts: [],
-    loading: false,
-    error: null
-  },
-  
-  // URL状态（路由状态）
-  url: {
-    pathname: '/users',
-    search: '?page=1&limit=10',
-    hash: '#section1'
-  }
-};
+#### 状态管理挑战
 
-// 3. 状态管理的挑战
-const challenges = {
-  // 状态同步
-  synchronization: '多个组件需要访问同一状态',
-  
-  // 状态持久化
-  persistence: '状态需要在页面刷新后保持',
-  
-  // 状态预测性
-  predictability: '状态变化需要可预测和可调试',
-  
-  // 性能优化
-  performance: '避免不必要的重新渲染',
-  
-  // 开发体验
-  devExperience: '良好的调试工具和开发体验'
-};
+| 挑战 | 问题描述 | 解决方案 |
+|------|----------|----------|
+| **状态同步** | 多组件共享状态 | 全局状态管理 |
+| **状态持久化** | 页面刷新后保持状态 | localStorage, sessionStorage |
+| **状态预测性** | 状态变化可追踪 | 不可变更新、时间旅行调试 |
+| **性能优化** | 避免不必要重渲染 | 选择器、记忆化 |
+| **开发体验** | 调试和开发工具 | DevTools、类型安全 |
+
+#### 单向数据流模式
+
 ```
+Action → Dispatcher → Store → View → Action
+```
+
+这是现代状态管理的核心模式，确保数据流向可预测。
 
 ### 状态管理模式
 
+#### 常见状态管理模式
+
+| 模式 | 特点 | 适用场景 | 代表方案 |
+|------|------|----------|----------|
+| **Flux模式** | 单向数据流，可预测 | 复杂应用状态管理 | Redux, Zustand |
+| **Observer模式** | 观察者订阅状态变化 | 响应式更新 | MobX, Vue |
+| **发布订阅模式** | 事件驱动的状态更新 | 松耦合组件通信 | EventBus |
+| **原子化模式** | 状态拆分为最小单位 | 细粒度状态管理 | Jotai, Recoil |
+
+#### 简化的状态管理实现
+
 ```javascript
-// 1. Flux模式
-class FluxStore {
-  constructor() {
-    this.state = {};
+// 简单的状态管理器
+class SimpleStateManager {
+  constructor(initialState = {}) {
+    this.state = initialState;
     this.listeners = [];
   }
-  
+
   getState() {
     return this.state;
   }
-  
+
+  setState(updates) {
+    this.state = { ...this.state, ...updates };
+    this.listeners.forEach(listener => listener(this.state));
+  }
+
   subscribe(listener) {
     this.listeners.push(listener);
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
   }
-  
-  emit() {
-    this.listeners.forEach(listener => listener());
-  }
-  
-  reduce(action) {
-    // 子类实现
-    throw new Error('reduce method must be implemented');
-  }
-}
-
-class UserStore extends FluxStore {
-  constructor() {
-    super();
-    this.state = {
-      users: [],
-      loading: false,
-      error: null
-    };
-  }
-  
-  reduce(action) {
-    switch (action.type) {
-      case 'FETCH_USERS_START':
-        this.state = {
-          ...this.state,
-          loading: true,
-          error: null
-        };
-        break;
-        
-      case 'FETCH_USERS_SUCCESS':
-        this.state = {
-          ...this.state,
-          users: action.payload,
-          loading: false
-        };
-        break;
-        
-      case 'FETCH_USERS_ERROR':
-        this.state = {
-          ...this.state,
-          loading: false,
-          error: action.payload
-        };
-        break;
-    }
-    
-    this.emit();
-  }
-}
-
-// 2. 观察者模式
-class Observable {
-  constructor(initialValue) {
-    this.value = initialValue;
-    this.observers = [];
-  }
-  
-  subscribe(observer) {
-    this.observers.push(observer);
-    return () => {
-      this.observers = this.observers.filter(obs => obs !== observer);
-    };
-  }
-  
-  next(newValue) {
-    this.value = newValue;
-    this.observers.forEach(observer => observer(newValue));
-  }
-  
-  map(fn) {
-    const mapped = new Observable(fn(this.value));
-    this.subscribe(value => mapped.next(fn(value)));
-    return mapped;
-  }
-  
-  filter(predicate) {
-    const filtered = new Observable(
-      predicate(this.value) ? this.value : undefined
-    );
-    this.subscribe(value => {
-      if (predicate(value)) {
-        filtered.next(value);
-      }
-    });
-    return filtered;
-  }
 }
 
 // 使用示例
-const userCount$ = new Observable(0);
-const evenUserCount$ = userCount$.filter(count => count % 2 === 0);
+const store = new SimpleStateManager({ count: 0 });
 
-userCount$.subscribe(count => console.log('用户数量:', count));
-evenUserCount$.subscribe(count => console.log('偶数用户数量:', count));
+store.subscribe((state) => {
+  console.log('State updated:', state);
+});
 
-userCount$.next(1); // 输出: 用户数量: 1
-userCount$.next(2); // 输出: 用户数量: 2, 偶数用户数量: 2
+store.setState({ count: 1 }); // 触发更新
 ```
 
 ## Redux生态系统
@@ -207,44 +102,27 @@ userCount$.next(2); // 输出: 用户数量: 2, 偶数用户数量: 2
 Redux Toolkit是Redux官方推荐的现代化工具集，大大简化了Redux的使用复杂度。
 </Callout>
 
+#### Redux Toolkit核心特性
+
+| 特性 | 说明 | 优势 |
+|------|------|------|
+| **createSlice** | 自动生成actions和reducers | 减少样板代码 |
+| **createAsyncThunk** | 处理异步逻辑 | 统一异步状态管理 |
+| **Immer集成** | 支持"可变"更新语法 | 简化状态更新 |
+| **RTK Query** | 数据获取和缓存 | 替代手写API逻辑 |
+
+#### 简化的Redux Toolkit示例
+
 ```javascript
-// 1. 使用createSlice创建状态切片
-import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
+// 1. 创建状态切片
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 // 异步thunk
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
-  async (params, { rejectWithValue }) => {
-    try {
-      const response = await fetch(`/api/users?${new URLSearchParams(params)}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-export const createUser = createAsyncThunk(
-  'users/createUser',
-  async (userData, { rejectWithValue }) => {
-    try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create user');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
+  async (params) => {
+    const response = await fetch(`/api/users?${new URLSearchParams(params)}`);
+    return response.json();
   }
 );
 
@@ -254,150 +132,63 @@ const usersSlice = createSlice({
   initialState: {
     items: [],
     loading: false,
-    error: null,
-    filters: {
-      search: '',
-      role: 'all',
-      status: 'all'
-    },
-    pagination: {
-      page: 1,
-      limit: 10,
-      total: 0
-    }
+    error: null
   },
   reducers: {
-    setFilters: (state, action) => {
-      state.filters = { ...state.filters, ...action.payload };
-      state.pagination.page = 1; // 重置页码
-    },
-    
-    setPagination: (state, action) => {
-      state.pagination = { ...state.pagination, ...action.payload };
-    },
-    
     clearError: (state) => {
       state.error = null;
-    },
-    
-    updateUser: (state, action) => {
-      const { id, updates } = action.payload;
-      const userIndex = state.items.findIndex(user => user.id === id);
-      if (userIndex !== -1) {
-        state.items[userIndex] = { ...state.items[userIndex], ...updates };
-      }
-    },
-    
-    removeUser: (state, action) => {
-      state.items = state.items.filter(user => user.id !== action.payload);
     }
   },
   extraReducers: (builder) => {
     builder
-      // fetchUsers
       .addCase(fetchUsers.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.data;
-        state.pagination.total = action.payload.total;
+        state.items = action.payload;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
-      })
-      
-      // createUser
-      .addCase(createUser.fulfilled, (state, action) => {
-        state.items.unshift(action.payload);
-        state.pagination.total += 1;
+        state.error = action.error.message;
       });
   }
 });
 
-export const { setFilters, setPagination, clearError, updateUser, removeUser } = usersSlice.actions;
+export const { clearError } = usersSlice.actions;
 export default usersSlice.reducer;
+```
 
-// 2. Selectors
-export const selectUsers = (state) => state.users.items;
-export const selectUsersLoading = (state) => state.users.loading;
-export const selectUsersError = (state) => state.users.error;
-export const selectUsersFilters = (state) => state.users.filters;
-export const selectUsersPagination = (state) => state.users.pagination;
+#### Redux Toolkit最佳实践
 
-// 记忆化选择器
-export const selectFilteredUsers = createSelector(
-  [selectUsers, selectUsersFilters],
-  (users, filters) => {
-    return users.filter(user => {
-      const matchesSearch = !filters.search || 
-        user.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        user.email.toLowerCase().includes(filters.search.toLowerCase());
-      
-      const matchesRole = filters.role === 'all' || user.role === filters.role;
-      const matchesStatus = filters.status === 'all' || user.status === filters.status;
-      
-      return matchesSearch && matchesRole && matchesStatus;
-    });
-  }
-);
+| 实践 | 说明 | 示例 |
+|------|------|------|
+| **状态规范化** | 使用扁平化结构存储数据 | `{ byId: {}, allIds: [] }` |
+| **选择器复用** | 使用createSelector创建记忆化选择器 | `selectFilteredUsers` |
+| **异步处理** | 使用createAsyncThunk处理异步逻辑 | API调用、数据获取 |
+| **中间件配置** | 合理配置开发和生产环境中间件 | logger、devTools |
 
-export const selectUserById = createSelector(
-  [selectUsers, (state, userId) => userId],
-  (users, userId) => users.find(user => user.id === userId)
-);
+#### Store配置示例
 
-export const selectUsersStats = createSelector(
-  [selectUsers],
-  (users) => ({
-    total: users.length,
-    active: users.filter(user => user.status === 'active').length,
-    inactive: users.filter(user => user.status === 'inactive').length,
-    admins: users.filter(user => user.role === 'admin').length
-  })
-);
-
-// 3. Store配置
+```javascript
+// 完整的store配置
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
 
-const persistConfig = {
-  key: 'root',
-  storage,
-  whitelist: ['auth', 'settings'] // 只持久化这些reducer
-};
-
-const persistedReducer = persistReducer(persistConfig, rootReducer);
-
-export const store = configureStore({
-  reducer: persistedReducer,
+const store = configureStore({
+  reducer: {
+    users: usersReducer,
+    auth: authReducer,
+    settings: settingsReducer
+  },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE']
       }
-    }).concat(
-      // 自定义中间件
-      loggerMiddleware,
-      errorMiddleware
-    ),
+    }),
   devTools: process.env.NODE_ENV !== 'production'
 });
-
-export const persistor = persistStore(store);
-
-// 4. 自定义中间件
-const loggerMiddleware = (store) => (next) => (action) => {
-  console.group(action.type);
-  console.info('dispatching', action);
-  const result = next(action);
-  console.log('next state', store.getState());
-  console.groupEnd();
-  return result;
-};
 
 const errorMiddleware = (store) => (next) => (action) => {
   try {
@@ -465,110 +256,87 @@ function UserList() {
 
 ### Zustand - 轻量级状态管理
 
+#### Zustand核心特性
+
+| 特性 | 说明 | 优势 |
+|------|------|------|
+| **轻量级** | 包体积小，API简洁 | 学习成本低，性能好 |
+| **TypeScript友好** | 原生TypeScript支持 | 类型安全，开发体验好 |
+| **中间件丰富** | persist、devtools、immer等 | 功能扩展灵活 |
+| **无样板代码** | 不需要providers和reducers | 代码简洁 |
+
+#### 基础用法示例
+
 ```javascript
-// 1. 基础Zustand store
+// 1. 创建简单store
 import { create } from 'zustand';
-import { devtools, persist, subscribeWithSelector } from 'zustand/middleware';
+
+const useUserStore = create((set, get) => ({
+  // 状态
+  users: [],
+  loading: false,
+
+  // 动作
+  addUser: (user) => set((state) => ({
+    users: [...state.users, user]
+  })),
+
+  removeUser: (id) => set((state) => ({
+    users: state.users.filter(u => u.id !== id)
+  })),
+
+  // 异步动作
+  fetchUsers: async () => {
+    set({ loading: true });
+    try {
+      const response = await fetch('/api/users');
+      const users = await response.json();
+      set({ users, loading: false });
+    } catch (error) {
+      set({ loading: false });
+    }
+  }
+}));
+```
+
+#### 中间件使用
+
+```javascript
+// 2. 使用中间件增强store
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 const useUserStore = create()(
   devtools(
     persist(
-      subscribeWithSelector(
-        immer((set, get) => ({
-          // 状态
-          users: [],
-          loading: false,
-          error: null,
-          filters: {
-            search: '',
-            role: 'all'
-          },
-          
-          // 动作
-          setUsers: (users) => set((state) => {
-            state.users = users;
-          }),
-          
-          addUser: (user) => set((state) => {
-            state.users.push(user);
-          }),
-          
-          updateUser: (id, updates) => set((state) => {
-            const userIndex = state.users.findIndex(u => u.id === id);
-            if (userIndex !== -1) {
-              Object.assign(state.users[userIndex], updates);
-            }
-          }),
-          
-          removeUser: (id) => set((state) => {
-            state.users = state.users.filter(u => u.id !== id);
-          }),
-          
-          setFilters: (filters) => set((state) => {
-            Object.assign(state.filters, filters);
-          }),
-          
-          setLoading: (loading) => set({ loading }),
-          setError: (error) => set({ error }),
-          
-          // 异步动作
-          fetchUsers: async () => {
-            const { setLoading, setError, setUsers } = get();
-            
-            setLoading(true);
-            setError(null);
-            
-            try {
-              const response = await fetch('/api/users');
-              const users = await response.json();
-              setUsers(users);
-            } catch (error) {
-              setError(error.message);
-            } finally {
-              setLoading(false);
-            }
-          },
-          
-          // 计算属性
-          get filteredUsers() {
-            const { users, filters } = get();
-            return users.filter(user => {
-              const matchesSearch = !filters.search || 
-                user.name.toLowerCase().includes(filters.search.toLowerCase());
-              const matchesRole = filters.role === 'all' || user.role === filters.role;
-              return matchesSearch && matchesRole;
-            });
-          }
-        }))
-      ),
-      {
-        name: 'user-store',
-        partialize: (state) => ({ 
-          filters: state.filters 
+      immer((set) => ({
+        users: [],
+        addUser: (user) => set((state) => {
+          state.users.push(user); // 使用immer可以直接"修改"
+        }),
+        setFilters: (filters) => set((state) => {
+          Object.assign(state.filters, filters);
         })
-      }
+      })),
+      { name: 'user-store' } // 持久化配置
     ),
-    {
-      name: 'user-store'
-    }
+    { name: 'user-store' } // devtools配置
   )
 );
+```
 
-// 2. 分片store模式
+#### 分片store模式
+
+```javascript
+// 3. 大型应用的分片模式
 const createUserSlice = (set, get) => ({
   users: [],
-  addUser: (user) => set((state) => ({ 
-    users: [...state.users, user] 
-  })),
-  removeUser: (id) => set((state) => ({ 
-    users: state.users.filter(u => u.id !== id) 
-  }))
+  addUser: (user) => set((state) => ({ users: [...state.users, user] }))
 });
 
 const createAuthSlice = (set, get) => ({
   user: null,
-  token: null,
   login: async (credentials) => {
     const response = await fetch('/api/login', {
       method: 'POST',
@@ -576,29 +344,43 @@ const createAuthSlice = (set, get) => ({
     });
     const { user, token } = await response.json();
     set({ user, token });
-  },
-  logout: () => set({ user: null, token: null })
+  }
 });
 
 const useAppStore = create()(
-  devtools(
-    (...args) => ({
-      ...createUserSlice(...args),
-      ...createAuthSlice(...args)
-    })
-  )
+  devtools((...args) => ({
+    ...createUserSlice(...args),
+    ...createAuthSlice(...args)
+  }))
 );
+```
 
-// 3. 选择器和订阅
+#### 组件中使用
+
+```javascript
+// 4. 在React组件中使用
 import { useShallow } from 'zustand/react/shallow';
 
 function UserComponent() {
-  // 浅比较选择器
-  const { users, addUser, removeUser } = useUserStore(
+  // 选择特定状态，避免不必要的重渲染
+  const { users, addUser } = useUserStore(
     useShallow((state) => ({
       users: state.users,
-      addUser: state.addUser,
-      removeUser: state.removeUser
+      addUser: state.addUser
+    }))
+  );
+
+  return (
+    <div>
+      {users.map(user => (
+        <div key={user.id}>{user.name}</div>
+      ))}
+      <button onClick={() => addUser({ id: Date.now(), name: 'New User' })}>
+        Add User
+      </button>
+    </div>
+  );
+}
     }))
   );
   
@@ -630,166 +412,116 @@ function UserComponent() {
 
 ### Jotai - 原子化状态管理
 
+#### Jotai核心概念
+
+| 概念 | 说明 | 特点 |
+|------|------|------|
+| **Atom** | 状态的最小单位 | 可读可写，自动依赖追踪 |
+| **Derived Atom** | 派生状态 | 基于其他atom计算得出 |
+| **Write-only Atom** | 只写原子 | 用于处理副作用和异步操作 |
+| **Provider** | 状态作用域 | 可选，用于隔离状态 |
+
+#### 基础用法示例
+
 ```javascript
-// 1. 原子定义
-import { atom, selector } from 'jotai';
+// 1. 定义原子
+import { atom } from 'jotai';
 
 // 基础原子
 export const usersAtom = atom([]);
 export const loadingAtom = atom(false);
-export const errorAtom = atom(null);
 export const searchAtom = atom('');
-export const roleFilterAtom = atom('all');
 
 // 派生原子
 export const filteredUsersAtom = atom((get) => {
   const users = get(usersAtom);
   const search = get(searchAtom);
-  const roleFilter = get(roleFilterAtom);
-  
-  return users.filter(user => {
-    const matchesSearch = !search || 
-      user.name.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-});
 
-export const userStatsAtom = atom((get) => {
-  const users = get(usersAtom);
-  return {
-    total: users.length,
-    active: users.filter(u => u.status === 'active').length,
-    admins: users.filter(u => u.role === 'admin').length
-  };
+  return users.filter(user =>
+    user.name.toLowerCase().includes(search.toLowerCase())
+  );
 });
 
 // 异步原子
 export const fetchUsersAtom = atom(
-  null,
-  async (get, set) => {
+  null, // 读取值（不使用）
+  async (get, set) => { // 写入函数
     set(loadingAtom, true);
-    set(errorAtom, null);
-    
     try {
       const response = await fetch('/api/users');
       const users = await response.json();
       set(usersAtom, users);
-    } catch (error) {
-      set(errorAtom, error.message);
     } finally {
       set(loadingAtom, false);
     }
   }
 );
+```
 
-export const addUserAtom = atom(
-  null,
-  async (get, set, newUser) => {
-    try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser)
-      });
-      const user = await response.json();
-      
-      const currentUsers = get(usersAtom);
-      set(usersAtom, [...currentUsers, user]);
-      
-      return user;
-    } catch (error) {
-      set(errorAtom, error.message);
-      throw error;
-    }
-  }
-);
+#### 组件中使用
 
-// 2. 组件中使用
+```javascript
+// 2. 在组件中使用原子
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 
 function UserList() {
-  const [users, setUsers] = useAtom(usersAtom);
+  // 只读取值
   const filteredUsers = useAtomValue(filteredUsersAtom);
   const loading = useAtomValue(loadingAtom);
-  const error = useAtomValue(errorAtom);
-  const stats = useAtomValue(userStatsAtom);
-  
+
+  // 只设置值
   const fetchUsers = useSetAtom(fetchUsersAtom);
-  const addUser = useSetAtom(addUserAtom);
-  
+
+  // 读取和设置
+  const [search, setSearch] = useAtom(searchAtom);
+
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-  
-  const handleAddUser = async (userData) => {
-    try {
-      await addUser(userData);
-      console.log('用户添加成功');
-    } catch (error) {
-      console.error('添加用户失败:', error);
-    }
-  };
-  
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-  
-  return (
-    <div>
-      <UserStats stats={stats} />
-      <UserFilters />
-      <div>
-        {filteredUsers.map(user => (
-          <UserCard key={user.id} user={user} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function UserFilters() {
-  const [search, setSearch] = useAtom(searchAtom);
-  const [roleFilter, setRoleFilter] = useAtom(roleFilterAtom);
-  
   return (
     <div>
       <input
-        type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="搜索用户..."
       />
-      <select
-        value={roleFilter}
-        onChange={(e) => setRoleFilter(e.target.value)}
-      >
-        <option value="all">所有角色</option>
-        <option value="admin">管理员</option>
-        <option value="user">普通用户</option>
-      </select>
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        filteredUsers.map(user => (
+          <div key={user.id}>{user.name}</div>
+        ))
+      )}
     </div>
   );
 }
+```
 
-// 3. 原子的持久化
-import { atomWithStorage } from 'jotai/utils';
+#### 高级特性
 
+```javascript
+// 3. 持久化和工具函数
+import { atomWithStorage, RESET } from 'jotai/utils';
+
+// 持久化原子
 export const themeAtom = atomWithStorage('theme', 'light');
-export const settingsAtom = atomWithStorage('settings', {
-  language: 'zh-CN',
-  notifications: true
-});
 
-// 4. 原子的重置
-import { RESET } from 'jotai/utils';
-
+// 重置原子
 export const resetUsersAtom = atom(null, (get, set) => {
   set(usersAtom, RESET);
   set(searchAtom, RESET);
-  set(roleFilterAtom, RESET);
-  set(errorAtom, RESET);
 });
 ```
+
+#### Jotai vs 其他方案
+
+| 特性 | Jotai | Zustand | Redux |
+|------|-------|---------|-------|
+| **心智模型** | 原子化 | 单一store | 单一store |
+| **样板代码** | 最少 | 少 | 多 |
+| **性能** | 优秀 | 优秀 | 良好 |
+| **适用场景** | 复杂状态依赖 | 简单全局状态 | 大型应用 |
 
 ## 状态管理方案对比
 
@@ -807,119 +539,37 @@ export const resetUsersAtom = atom(null, (get, set) => {
 
 ### 选择指南
 
-```javascript
-// 选择决策树
-const stateManagementDecision = {
-  // 1. 应用规模
-  applicationSize: {
-    small: {
-      recommendation: 'useState + useContext',
-      reason: '简单状态管理足够，避免过度工程化'
-    },
-    medium: {
-      recommendation: 'Zustand',
-      reason: '轻量级，易于使用，性能良好'
-    },
-    large: {
-      recommendation: 'Redux Toolkit',
-      reason: '成熟的生态系统，强大的开发工具'
-    }
-  },
-  
-  // 2. 团队经验
-  teamExperience: {
-    beginner: {
-      recommendation: 'Zustand',
-      reason: '学习曲线平缓，概念简单'
-    },
-    intermediate: {
-      recommendation: 'Jotai 或 Zustand',
-      reason: '可以处理更复杂的状态逻辑'
-    },
-    expert: {
-      recommendation: 'Redux Toolkit',
-      reason: '可以充分利用Redux的强大功能'
-    }
-  },
-  
-  // 3. 状态复杂度
-  stateComplexity: {
-    simple: {
-      recommendation: 'useState + useContext',
-      reason: '内置解决方案足够'
-    },
-    moderate: {
-      recommendation: 'Zustand',
-      reason: '平衡了简单性和功能性'
-    },
-    complex: {
-      recommendation: 'Redux Toolkit 或 Jotai',
-      reason: '强大的状态管理能力'
-    }
-  },
-  
-  // 4. 性能要求
-  performanceRequirements: {
-    low: {
-      recommendation: '任何方案',
-      reason: '性能不是主要考虑因素'
-    },
-    high: {
-      recommendation: 'Jotai 或 Valtio',
-      reason: '细粒度更新，避免不必要的重渲染'
-    }
-  }
-};
+#### 基于应用规模的选择
 
-// 实际选择示例
-function chooseStateManagement(requirements) {
-  const {
-    appSize,
-    teamSize,
-    complexity,
-    performance,
-    timeline
-  } = requirements;
-  
-  // 快速原型或小项目
-  if (timeline === 'short' && appSize === 'small') {
-    return {
-      solution: 'useState + useContext',
-      reason: '快速开发，无需额外依赖'
-    };
-  }
-  
-  // 中型项目，注重开发体验
-  if (appSize === 'medium' && teamSize <= 5) {
-    return {
-      solution: 'Zustand',
-      reason: '简单易用，性能良好，学习成本低'
-    };
-  }
-  
-  // 大型企业应用
-  if (appSize === 'large' && teamSize > 5) {
-    return {
-      solution: 'Redux Toolkit',
-      reason: '成熟稳定，工具链完善，团队协作友好'
-    };
-  }
-  
-  // 高性能要求
-  if (performance === 'critical') {
-    return {
-      solution: 'Jotai',
-      reason: '原子化状态，精确控制重渲染'
-    };
-  }
-  
-  // 默认推荐
-  return {
-    solution: 'Zustand',
-    reason: '平衡了所有方面的需求'
-  };
-}
-```
+| 应用规模 | 推荐方案 | 理由 | 适用场景 |
+|----------|----------|------|----------|
+| **小型** | useState + useContext | 简单够用，避免过度工程化 | 个人项目、原型开发 |
+| **中型** | Zustand | 轻量级，易于使用，性能良好 | 初创公司、中小团队 |
+| **大型** | Redux Toolkit | 成熟生态，强大开发工具 | 企业级应用、大团队 |
+
+#### 基于团队经验的选择
+
+| 团队经验 | 推荐方案 | 学习成本 | 上手时间 |
+|----------|----------|----------|----------|
+| **初级** | Zustand | 低 | 1-2天 |
+| **中级** | Jotai 或 Zustand | 中等 | 3-5天 |
+| **高级** | Redux Toolkit | 高 | 1-2周 |
+
+#### 基于性能要求的选择
+
+| 性能要求 | 推荐方案 | 特点 | 适用场景 |
+|----------|----------|------|----------|
+| **一般** | 任何方案 | 满足基本需求 | 常规业务应用 |
+| **高性能** | Jotai 或 Valtio | 细粒度更新，精确控制重渲染 | 数据密集型应用 |
+
+#### 快速决策指南
+
+**选择流程**：
+1. **项目规模小** → useState + useContext
+2. **团队新手多** → Zustand
+3. **需要高性能** → Jotai
+4. **大型企业项目** → Redux Toolkit
+5. **不确定时** → Zustand（平衡选择）
 
 ## 最佳实践和选择指南
 
@@ -929,104 +579,52 @@ function chooseStateManagement(requirements) {
 
 ### 选择决策树
 
-```javascript
-// 状态管理方案选择指南
-function chooseStateManagement(appContext) {
-  const {
-    teamSize,
-    appComplexity,
-    performanceRequirements,
-    teamExperience,
-    framework
-  } = appContext;
+#### 基于团队和项目特征的选择
 
-  // 小型应用
-  if (appComplexity === 'simple' && teamSize <= 3) {
-    return framework === 'react'
-      ? 'useState + useContext'
-      : 'Vue reactive + provide/inject';
-  }
-
-  // 中型应用
-  if (appComplexity === 'medium' && teamSize <= 10) {
-    return framework === 'react'
-      ? ['Zustand', 'Jotai', 'Valtio']
-      : ['Pinia', 'Vuex'];
-  }
-
-  // 大型应用
-  if (appComplexity === 'complex' || teamSize > 10) {
-    return framework === 'react'
-      ? ['Redux Toolkit', 'MobX']
-      : ['Pinia', 'Vuex'];
-  }
-
-  // 高性能要求
-  if (performanceRequirements === 'high') {
-    return ['Valtio', 'Jotai', 'MobX'];
-  }
-}
-```
+| 项目特征 | 团队规模 | 推荐方案 | 备选方案 |
+|----------|----------|----------|----------|
+| **简单应用** | ≤3人 | useState + useContext | Zustand |
+| **中型应用** | 4-10人 | Zustand | Jotai, Valtio |
+| **复杂应用** | >10人 | Redux Toolkit | MobX |
+| **高性能要求** | 任意 | Jotai, Valtio | MobX |
 
 ### 最佳实践原则
 
+#### 状态结构设计原则
+
+| 原则 | 说明 | 示例 |
+|------|------|------|
+| **扁平化结构** | 避免深度嵌套，便于更新和查询 | `{ byId: {}, allIds: [] }` |
+| **状态分离** | 区分UI状态和业务状态 | `{ data: {}, ui: {} }` |
+| **规范化数据** | 使用ID作为键值，避免重复数据 | `users.byId['123']` |
+| **单一职责** | 每个状态片段只负责一个功能域 | 用户状态、认证状态分离 |
+
+#### 性能优化技巧
+
 ```javascript
-// 1. 状态结构设计
-const goodStateStructure = {
-  // 扁平化结构
-  users: {
-    byId: {
-      '1': { id: '1', name: 'John' },
-      '2': { id: '2', name: 'Jane' }
-    },
-    allIds: ['1', '2']
-  },
-
-  // 分离UI状态和业务状态
-  ui: {
-    loading: false,
-    selectedUserId: '1',
-    filters: {
-      status: 'active',
-      role: 'admin'
-    }
-  }
-};
-
-// 2. 避免深度嵌套
-const badStateStructure = {
-  users: [
-    {
-      id: '1',
-      profile: {
-        personal: {
-          name: 'John',
-          address: {
-            street: '123 Main St',
-            city: 'New York'
-          }
-        }
-      }
-    }
-  ]
-};
-
-// 3. 使用选择器优化性能
-import { createSelector } from '@reduxjs/toolkit';
-
-const selectUsers = (state) => state.users.byId;
-const selectUserIds = (state) => state.users.allIds;
-const selectActiveFilter = (state) => state.ui.filters.status;
-
+// ✅ 好的做法：使用选择器
 const selectActiveUsers = createSelector(
-  [selectUsers, selectUserIds, selectActiveFilter],
-  (users, userIds, activeFilter) => {
-    return userIds
-      .map(id => users[id])
-      .filter(user => user.status === activeFilter);
-  }
+  [selectUsers, selectFilters],
+  (users, filters) => users.filter(u => u.status === filters.status)
 );
+
+// ❌ 避免：在组件中直接计算
+function UserList() {
+  const users = useSelector(state => state.users);
+  const filters = useSelector(state => state.filters);
+
+  // 每次渲染都会重新计算
+  const activeUsers = users.filter(u => u.status === filters.status);
+}
 ```
+
+#### 状态更新模式
+
+| 模式 | 适用场景 | 示例 |
+|------|----------|------|
+| **不可变更新** | Redux, 纯函数组件 | `{ ...state, users: [...state.users, newUser] }` |
+| **可变更新** | Immer, MobX | `state.users.push(newUser)` |
+| **原子更新** | Jotai, Recoil | `set(usersAtom, [...users, newUser])` |
 
 ## 服务端状态管理
 
@@ -1036,75 +634,82 @@ const selectActiveUsers = createSelector(
 
 ### React Query / TanStack Query
 
-```javascript
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+#### 核心特性
 
-// 数据获取
+| 特性 | 说明 | 优势 |
+|------|------|------|
+| **自动缓存** | 智能缓存管理，减少重复请求 | 提升性能，减少网络开销 |
+| **后台更新** | 数据过期时自动重新获取 | 保持数据新鲜度 |
+| **乐观更新** | 先更新UI，再同步服务器 | 提升用户体验 |
+| **错误重试** | 自动重试失败的请求 | 提高可靠性 |
+
+#### 基础用法
+
+```javascript
+// 数据查询
+import { useQuery } from '@tanstack/react-query';
+
 function UserProfile({ userId }) {
-  const {
-    data: user,
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
+  const { data: user, isLoading, error } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => fetchUser(userId),
-    staleTime: 5 * 60 * 1000, // 5分钟内数据被认为是新鲜的
-    cacheTime: 10 * 60 * 1000, // 10分钟后清除缓存
-    retry: 3,
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
+    staleTime: 5 * 60 * 1000, // 5分钟缓存
+    retry: 3
   });
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
-
   return <div>{user.name}</div>;
 }
 
 // 数据变更
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
 function UpdateUserForm({ userId }) {
   const queryClient = useQueryClient();
 
-  const updateUserMutation = useMutation({
-    mutationFn: updateUser,
+  const updateUser = useMutation({
+    mutationFn: (userData) => updateUserAPI(userData),
     onSuccess: (data) => {
       // 更新缓存
       queryClient.setQueryData(['user', userId], data);
-
-      // 或者重新获取
-      queryClient.invalidateQueries(['user', userId]);
-
-      // 乐观更新
-      queryClient.setQueryData(['users'], (oldData) => {
-        return oldData.map(user =>
-          user.id === userId ? { ...user, ...data } : user
-        );
-      });
-    },
-    onError: (error) => {
-      console.error('Update failed:', error);
+      // 重新获取相关数据
+      queryClient.invalidateQueries(['users']);
     }
   });
 
-  const handleSubmit = (formData) => {
-    updateUserMutation.mutate({ userId, ...formData });
-  };
-
   return (
-    <form onSubmit={handleSubmit}>
-      {/* 表单内容 */}
-      <button
-        type="submit"
-        disabled={updateUserMutation.isLoading}
-      >
-        {updateUserMutation.isLoading ? 'Updating...' : 'Update'}
-      </button>
-    </form>
+    <button
+      onClick={() => updateUser.mutate({ name: 'New Name' })}
+      disabled={updateUser.isLoading}
+    >
+      {updateUser.isLoading ? 'Updating...' : 'Update'}
+    </button>
   );
 }
 ```
 
+#### 配置选项
+
+| 选项 | 默认值 | 说明 |
+|------|--------|------|
+| `staleTime` | 0 | 数据被认为过期的时间 |
+| `cacheTime` | 5分钟 | 缓存保留时间 |
+| `retry` | 3 | 失败重试次数 |
+| `refetchOnWindowFocus` | true | 窗口聚焦时重新获取 |
+
 ### SWR
+
+#### SWR特性对比
+
+| 特性 | SWR | React Query | 说明 |
+|------|-----|-------------|------|
+| **包大小** | 更小 | 较大 | SWR更轻量 |
+| **API设计** | 简洁 | 功能丰富 | SWR更易上手 |
+| **缓存策略** | 基础 | 高级 | React Query更灵活 |
+| **开发工具** | 基础 | 完善 | React Query工具更强 |
+
+#### 基础用法
 
 ```javascript
 import useSWR, { mutate } from 'swr';
@@ -1114,9 +719,8 @@ const fetcher = (url) => fetch(url).then(res => res.json());
 function UserList() {
   const { data: users, error, isLoading } = useSWR('/api/users', fetcher, {
     refreshInterval: 30000, // 30秒自动刷新
-    revalidateOnFocus: true, // 窗口获得焦点时重新验证
-    revalidateOnReconnect: true, // 网络重连时重新验证
-    dedupingInterval: 2000, // 2秒内的重复请求会被去重
+    revalidateOnFocus: true, // 窗口聚焦时重新验证
+    dedupingInterval: 2000, // 去重间隔
   });
 
   const deleteUser = async (userId) => {
@@ -1126,16 +730,13 @@ function UserList() {
 
     try {
       await fetch(`/api/users/${userId}`, { method: 'DELETE' });
-      // 重新验证数据
-      mutate('/api/users');
+      mutate('/api/users'); // 重新验证
     } catch (error) {
-      // 回滚乐观更新
-      mutate('/api/users');
-      console.error('Delete failed:', error);
+      mutate('/api/users'); // 回滚
     }
   };
 
-  if (error) return <div>Failed to load users</div>;
+  if (error) return <div>Failed to load</div>;
   if (isLoading) return <div>Loading...</div>;
 
   return (
@@ -1153,9 +754,21 @@ function UserList() {
 
 ### Apollo Client (GraphQL)
 
+#### Apollo Client优势
+
+| 特性 | 说明 | 适用场景 |
+|------|------|----------|
+| **GraphQL原生支持** | 完整的GraphQL客户端解决方案 | GraphQL API项目 |
+| **智能缓存** | 基于字段级别的缓存系统 | 复杂数据关系 |
+| **实时订阅** | 支持GraphQL订阅 | 实时数据更新 |
+| **开发工具** | 强大的Apollo DevTools | 调试和性能分析 |
+
+#### 基础用法
+
 ```javascript
 import { useQuery, useMutation, gql } from '@apollo/client';
 
+// 定义查询
 const GET_USERS = gql`
   query GetUsers($filter: UserFilter) {
     users(filter: $filter) {
@@ -1167,6 +780,7 @@ const GET_USERS = gql`
   }
 `;
 
+// 定义变更
 const UPDATE_USER = gql`
   mutation UpdateUser($id: ID!, $input: UserInput!) {
     updateUser(id: $id, input: $input) {
@@ -1179,35 +793,27 @@ const UPDATE_USER = gql`
 `;
 
 function UserManagement() {
-  const { loading, error, data, refetch } = useQuery(GET_USERS, {
+  // 查询数据
+  const { loading, error, data } = useQuery(GET_USERS, {
     variables: { filter: { status: 'ACTIVE' } },
-    pollInterval: 30000, // 30秒轮询
-    errorPolicy: 'partial', // 部分数据也显示
-    fetchPolicy: 'cache-and-network' // 先显示缓存，然后网络请求
+    pollInterval: 30000, // 轮询
+    fetchPolicy: 'cache-and-network'
   });
 
+  // 变更数据
   const [updateUser] = useMutation(UPDATE_USER, {
     update(cache, { data: { updateUser } }) {
-      // 更新Apollo缓存
+      // 更新缓存
       cache.modify({
         fields: {
           users(existingUsers = []) {
             return existingUsers.map(user =>
-              user.__ref === cache.identify(updateUser)
-                ? updateUser
-                : user
+              user.__ref === cache.identify(updateUser) ? updateUser : user
             );
           }
         }
       });
-    },
-    optimisticResponse: (variables) => ({
-      updateUser: {
-        __typename: 'User',
-        id: variables.id,
-        ...variables.input
-      }
-    })
+    }
   });
 
   if (loading) return <div>Loading...</div>;
@@ -1216,16 +822,21 @@ function UserManagement() {
   return (
     <div>
       {data.users.map(user => (
-        <UserCard
-          key={user.id}
-          user={user}
-          onUpdate={updateUser}
-        />
+        <UserCard key={user.id} user={user} onUpdate={updateUser} />
       ))}
     </div>
   );
 }
 ```
+
+#### 服务端状态管理方案对比
+
+| 方案 | 适用场景 | 学习成本 | 生态系统 |
+|------|----------|----------|----------|
+| **React Query** | REST API，复杂缓存需求 | 中等 | 丰富 |
+| **SWR** | 简单数据获取，轻量级项目 | 低 | 中等 |
+| **Apollo Client** | GraphQL项目 | 高 | 完善 |
+| **Relay** | 大型GraphQL应用 | 很高 | Facebook生态 |
 
 ---
 

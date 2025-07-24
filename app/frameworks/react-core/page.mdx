@@ -19,17 +19,25 @@ import { Callout } from 'nextra/components'
 
 ### React核心概念
 
-```jsx
-// React的核心思想：UI = f(state)
-// 组件就是函数，接收props和state，返回JSX
+#### React设计理念
 
+| 概念 | 说明 | 特点 | 优势 |
+|------|------|------|------|
+| **UI = f(state)** | UI是状态的纯函数 | 声明式编程 | 可预测、易调试 |
+| **组件化** | 将UI拆分为独立组件 | 可复用、可组合 | 提高开发效率 |
+| **Virtual DOM** | 虚拟DOM抽象层 | 内存中的JS对象 | 性能优化、跨平台 |
+| **单向数据流** | 数据从上到下流动 | 数据流清晰 | 易于理解和维护 |
+
+#### 核心概念示例
+
+```jsx
 // 1. 函数式组件的本质
 function MyComponent(props) {
-  // 这就是一个纯函数
+  // 这就是一个纯函数：相同输入 -> 相同输出
   return <div>{props.children}</div>;
 }
 
-// 2. JSX的本质
+// 2. JSX编译过程
 // JSX语法糖
 const element = <h1 className="greeting">Hello, world!</h1>;
 
@@ -40,7 +48,7 @@ const element = React.createElement(
   'Hello, world!'
 );
 
-// 3. Virtual DOM的结构
+// 3. Virtual DOM结构
 const virtualDOM = {
   type: 'h1',
   props: {
@@ -50,12 +58,14 @@ const virtualDOM = {
   key: null,
   ref: null
 };
-
-// 4. React元素的不可变性
-const element1 = <div>Hello</div>;
-const element2 = <div>Hello</div>;
-console.log(element1 === element2); // false，每次都是新对象
 ```
+
+#### React核心特性
+
+- **声明式**：描述UI应该是什么样子，而不是如何操作DOM
+- **组件化**：将复杂UI拆分为简单、可复用的组件
+- **一次学习，随处编写**：React Native、React Server Components等
+- **虚拟DOM**：提供性能优化和跨平台能力
 
 ### React渲染流程
 
@@ -63,75 +73,55 @@ console.log(element1 === element2); // false，每次都是新对象
 理解React的渲染流程对于编写高性能的React应用至关重要。React的渲染过程分为三个主要阶段。
 </Callout>
 
-```javascript
-// React渲染的三个阶段
-/*
-1. Render Phase (可中断)
-   - 构建Fiber树
-   - 执行组件函数
-   - 计算state和props的变化
-   - 标记副作用
+#### React渲染三阶段
 
-2. Commit Phase (不可中断)
-   - DOM操作
-   - 执行副作用
-   - 调用生命周期方法
+| 阶段 | 特性 | 主要工作 | 可中断性 |
+|------|------|----------|----------|
+| **Render Phase** | 纯函数，无副作用 | 构建Fiber树、执行组件函数、Diffing | ✅ 可中断 |
+| **Commit Phase** | 操作DOM | DOM更新、生命周期、useLayoutEffect | ❌ 不可中断 |
+| **Passive Effects** | 异步执行 | useEffect回调 | ✅ 可延迟 |
 
-3. Passive Effects Phase
-   - 执行useEffect
-*/
-```
+#### 更新触发方式
 
-#### 渲染流程详解
+| 触发方式 | 说明 | 示例 |
+|----------|------|------|
+| **首次渲染** | 组件首次挂载 | `ReactDOM.render()` |
+| **状态更新** | setState/useState | `setCount(count + 1)` |
+| **强制更新** | 跳过shouldComponentUpdate | `forceUpdate()` |
+| **父组件更新** | 父组件重新渲染 | props变化 |
 
-1. **触发更新**：
-   - 首次渲染
-   - setState/useState更新
-   - forceUpdate
-   - 父组件重新渲染
-
-2. **Render阶段**：
-   - 执行组件函数/render方法
-   - 生成Virtual DOM
-   - Diffing算法比较变化
-   - 收集副作用
-
-3. **Commit阶段**：
-   - 应用DOM更新
-   - 执行DOM相关副作用
-   - 调用生命周期方法/useLayoutEffect
-
-4. **Passive Effects阶段**：
-   - 执行useEffect回调
+#### 渲染流程示例
 
 ```jsx
 // 渲染流程示例
 function Counter() {
   console.log("1. 组件函数执行"); // Render阶段
-  
+
   const [count, setCount] = useState(0);
-  
+
+  useLayoutEffect(() => {
+    console.log("3. useLayoutEffect执行"); // Commit阶段
+  });
+
   useEffect(() => {
     console.log("4. useEffect执行"); // Passive Effects阶段
-    return () => {
-      console.log("清除上一次的Effect");
-    };
-  }, [count]);
-  
-  useLayoutEffect(() => {
-    console.log("3. useLayoutEffect执行"); // Commit阶段结束
-  }, [count]);
-  
-  console.log("2. 渲染JSX"); // Render阶段
+  });
+
   return (
     <div>
-      <p>Count: {count}</p>
+      <p>{count}</p>
       <button onClick={() => setCount(count + 1)}>
-        Increment
+        增加
       </button>
     </div>
   );
 }
+
+// 执行顺序：
+// 1. 组件函数执行 (Render)
+// 2. DOM更新 (Commit)
+// 3. useLayoutEffect执行 (Commit)
+// 4. useEffect执行 (Passive Effects)
 ```
 
 ## Fiber架构和调度机制
@@ -140,47 +130,44 @@ function Counter() {
 Fiber架构是React 16引入的重大架构升级，它使React能够实现可中断的渲染和优先级调度。
 </Callout>
 
-### Fiber节点结构
+#### Fiber架构优势
+
+| 特性 | React 15 (Stack) | React 16+ (Fiber) | 优势 |
+|------|------------------|-------------------|------|
+| **渲染方式** | 同步递归 | 可中断渲染 | 避免长时间阻塞 |
+| **优先级调度** | 无 | 支持优先级 | 重要更新优先处理 |
+| **错误边界** | 有限支持 | 完整支持 | 更好的错误处理 |
+| **并发特性** | 不支持 | 支持 | Suspense、并发渲染 |
+
+#### Fiber节点结构
 
 ```javascript
-// Fiber节点的数据结构
+// Fiber节点的核心结构
 const FiberNode = {
-  // 节点类型信息
-  type: null,          // 组件类型（函数、类、DOM标签）
+  // 节点信息
+  type: null,          // 组件类型
   key: null,           // React key
-  elementType: null,   // 元素类型
-  
-  // 节点实例
-  stateNode: null,     // 对应的DOM节点或组件实例
-  
-  // Fiber树结构
-  return: null,        // 父Fiber节点
-  child: null,         // 第一个子Fiber节点
-  sibling: null,       // 下一个兄弟Fiber节点
-  index: 0,            // 在父节点中的索引
-  
-  // 工作相关
-  ref: null,           // ref引用
-  pendingProps: null,  // 新的props
-  memoizedProps: null, // 上次渲染的props
+  stateNode: null,     // DOM节点或组件实例
+
+  // 树结构
+  return: null,        // 父节点
+  child: null,         // 第一个子节点
+  sibling: null,       // 兄弟节点
+
+  // 状态管理
+  pendingProps: null,  // 新props
+  memoizedProps: null, // 旧props
+  memoizedState: null, // 旧state
   updateQueue: null,   // 更新队列
-  memoizedState: null, // 上次渲染的state
-  
-  // 副作用
-  flags: NoFlags,      // 副作用标记
-  subtreeFlags: NoFlags, // 子树副作用标记
-  deletions: null,     // 需要删除的子节点
-  
+
   // 调度相关
-  lanes: NoLanes,      // 优先级车道
-  childLanes: NoLanes, // 子节点优先级车道
-  
-  // 双缓存
-  alternate: null      // 指向另一个Fiber树中对应的节点
+  lanes: NoLanes,      // 优先级
+  flags: NoFlags,      // 副作用标记
+  alternate: null      // 双缓存指针
 };
 ```
 
-### 时间切片和优先级调度
+#### 时间切片机制
 
 ```javascript
 // 时间切片示例
@@ -195,16 +182,18 @@ function shouldYield() {
   // 检查是否应该让出控制权
   return getCurrentTime() >= deadline;
 }
-
-// 优先级调度示例
-const priorities = {
-  ImmediatePriority: 1,    // 立即执行（如用户输入）
-  UserBlockingPriority: 2, // 用户阻塞（如点击、滚动）
-  NormalPriority: 3,       // 正常优先级（如网络请求）
-  LowPriority: 4,          // 低优先级（如分析统计）
-  IdlePriority: 5          // 空闲时执行
-};
 ```
+```
+
+#### 优先级调度
+
+| 优先级 | 值 | 使用场景 | 示例 |
+|--------|----|---------|----- |
+| **Immediate** | 1 | 立即执行 | 用户输入、focus事件 |
+| **UserBlocking** | 2 | 用户阻塞 | 点击、滚动、拖拽 |
+| **Normal** | 3 | 正常优先级 | 网络请求、数据更新 |
+| **Low** | 4 | 低优先级 | 分析统计、日志 |
+| **Idle** | 5 | 空闲时执行 | 预加载、缓存清理 |
 
 ## Hooks原理和最佳实践
 
@@ -214,78 +203,97 @@ const priorities = {
 Hooks的实现基于链表结构，这就是为什么Hooks必须在组件顶层调用，不能在条件语句中使用。
 </Callout>
 
+#### Hooks规则
+
+| 规则 | 说明 | 原因 | 正确示例 |
+|------|------|------|----------|
+| **顶层调用** | 只在函数顶层调用Hooks | 保证调用顺序一致 | `const [state, setState] = useState()` |
+| **React函数中调用** | 只在React函数组件或自定义Hook中调用 | 确保在React上下文中 | 函数组件、自定义Hook |
+| **不在循环/条件中** | 不在循环、条件或嵌套函数中调用 | 保证每次渲染调用顺序相同 | 避免`if (condition) useState()` |
+
+#### Hooks实现原理
+
 ```javascript
-// useState的简化实现
+// useState简化实现
 let hookIndex = 0;
 let hooks = [];
 
 function useState(initialValue) {
   const currentIndex = hookIndex;
-  
-  // 初始化或获取已有的hook
+
+  // 初始化hook
   if (hooks[currentIndex] === undefined) {
     hooks[currentIndex] = {
       state: initialValue,
       queue: []
     };
   }
-  
+
   const hook = hooks[currentIndex];
-  
+
   // 处理更新队列
   hook.queue.forEach(action => {
     hook.state = typeof action === 'function' ? action(hook.state) : action;
   });
   hook.queue = [];
-  
+
   const setState = (action) => {
     hook.queue.push(action);
-    // 触发重新渲染
-    rerender();
+    rerender(); // 触发重新渲染
   };
-  
+
   hookIndex++;
   return [hook.state, setState];
 }
 
-// useEffect的简化实现
+// useEffect简化实现
 function useEffect(callback, deps) {
   const currentIndex = hookIndex;
-  
+
   if (hooks[currentIndex] === undefined) {
-    hooks[currentIndex] = {
-      callback,
-      deps,
-      cleanup: null
-    };
-    
-    // 首次执行
-    hooks[currentIndex].cleanup = callback();
+    hooks[currentIndex] = { callback, deps, cleanup: null };
+    hooks[currentIndex].cleanup = callback(); // 首次执行
   } else {
     const hook = hooks[currentIndex];
-    
-    // 检查依赖是否变化
-    const depsChanged = deps ? 
-      !deps.every((dep, i) => dep === hook.deps[i]) : 
-      true;
-    
+
+    // 检查依赖变化
+    const depsChanged = deps ?
+      !deps.every((dep, i) => dep === hook.deps[i]) : true;
+
     if (depsChanged) {
-      // 清理上一次的副作用
-      if (hook.cleanup) {
-        hook.cleanup();
-      }
-      
-      // 执行新的副作用
-      hook.cleanup = callback();
+      if (hook.cleanup) hook.cleanup(); // 清理
+      hook.cleanup = callback(); // 执行新副作用
       hook.deps = deps;
     }
   }
-  
+
   hookIndex++;
 }
 ```
 
+#### 常用Hooks对比
+
+| Hook | 用途 | 返回值 | 使用场景 |
+|------|------|--------|----------|
+| **useState** | 状态管理 | `[state, setState]` | 组件内部状态 |
+| **useEffect** | 副作用处理 | `undefined` | 数据获取、订阅、DOM操作 |
+| **useContext** | 上下文消费 | `contextValue` | 跨组件数据传递 |
+| **useReducer** | 复杂状态管理 | `[state, dispatch]` | 复杂状态逻辑 |
+| **useMemo** | 值缓存 | `memoizedValue` | 昂贵计算优化 |
+| **useCallback** | 函数缓存 | `memoizedCallback` | 函数引用优化 |
+
 ### 自定义Hooks最佳实践
+
+#### 常用自定义Hooks
+
+| Hook名称 | 功能 | 返回值 | 使用场景 |
+|----------|------|--------|----------|
+| **useLocalStorage** | 本地存储同步 | `[value, setValue]` | 用户偏好设置 |
+| **useDebounce** | 防抖处理 | `debouncedValue` | 搜索输入 |
+| **useAsync** | 异步状态管理 | `{data, loading, error}` | API调用 |
+| **useToggle** | 布尔值切换 | `[value, toggle]` | 开关状态 |
+
+#### 自定义Hooks示例
 
 ```javascript
 // 1. useLocalStorage - 本地存储Hook
@@ -295,7 +303,6 @@ function useLocalStorage(key, initialValue) {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
   });
@@ -306,7 +313,7 @@ function useLocalStorage(key, initialValue) {
       setStoredValue(valueToStore);
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
     } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
+      console.error(`Error setting localStorage:`, error);
     }
   }, [key, storedValue]);
 
@@ -318,13 +325,8 @@ function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
   }, [value, delay]);
 
   return debouncedValue;
@@ -340,83 +342,41 @@ function useAsync(asyncFunction, dependencies = []) {
 
   useEffect(() => {
     let cancelled = false;
-    
     setState({ data: null, loading: true, error: null });
-    
-    asyncFunction()
-      .then(data => {
-        if (!cancelled) {
-          setState({ data, loading: false, error: null });
-        }
-      })
-      .catch(error => {
-        if (!cancelled) {
-          setState({ data: null, loading: false, error });
-        }
-      });
 
-    return () => {
-      cancelled = true;
-    };
+    asyncFunction()
+      .then(data => !cancelled && setState({ data, loading: false, error: null }))
+      .catch(error => !cancelled && setState({ data: null, loading: false, error }));
+
+    return () => { cancelled = true; };
   }, dependencies);
 
   return state;
 }
-
-// 4. useIntersectionObserver - 交叉观察器Hook
-function useIntersectionObserver(ref, options = {}) {
-  const [isIntersecting, setIsIntersecting] = useState(false);
-
-  useEffect(() => {
-    if (!ref.current) return;
-
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsIntersecting(entry.isIntersecting);
-    }, options);
-
-    observer.observe(ref.current);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [ref, options]);
-
-  return isIntersecting;
-}
-
-// 使用示例
-function ExampleComponent() {
-  const [name, setName] = useLocalStorage('name', '');
-  const debouncedName = useDebounce(name, 500);
-  const elementRef = useRef();
-  const isVisible = useIntersectionObserver(elementRef);
-  
-  const { data, loading, error } = useAsync(
-    () => fetch('/api/data').then(res => res.json()),
-    [debouncedName]
-  );
-
-  return (
-    <div>
-      <input 
-        value={name} 
-        onChange={(e) => setName(e.target.value)}
-        placeholder="输入姓名"
-      />
-      
-      <div ref={elementRef}>
-        {isVisible && <p>元素可见！</p>}
-      </div>
-      
-      {loading && <p>加载中...</p>}
-      {error && <p>错误: {error.message}</p>}
-      {data && <pre>{JSON.stringify(data, null, 2)}</pre>}
-    </div>
-  );
-}
 ```
 
+#### 自定义Hooks设计原则
+
+- **单一职责**：每个Hook只负责一个功能
+- **可复用性**：设计通用的参数接口
+- **错误处理**：提供完善的错误处理机制
+- **性能优化**：使用useMemo和useCallback优化性能
+- **清理资源**：在useEffect中正确清理副作用
+
 ## 状态管理方案对比
+
+### React内置状态管理
+
+#### useState vs useReducer
+
+| 特性 | useState | useReducer | 适用场景 |
+|------|----------|------------|----------|
+| **复杂度** | 简单 | 复杂 | useState适合简单状态，useReducer适合复杂状态逻辑 |
+| **状态更新** | 直接设置 | 通过action | useReducer更适合多种状态变更方式 |
+| **可预测性** | 一般 | 高 | useReducer的状态变更更可预测 |
+| **调试** | 简单 | 容易追踪 | useReducer便于调试状态变更 |
+
+
 
 ### Redux vs Zustand vs Jotai
 

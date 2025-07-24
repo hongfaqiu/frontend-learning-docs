@@ -19,31 +19,31 @@ import { Callout } from 'nextra/components'
 
 ### Vue3 vs Vue2 核心差异
 
+#### API风格对比
+
+| 特性 | Vue2 Options API | Vue3 Composition API | 优势 |
+|------|------------------|---------------------|------|
+| **代码组织** | 按选项类型分组 | 按逻辑功能分组 | 更好的代码复用和维护 |
+| **TypeScript支持** | 有限 | 原生支持 | 更好的类型推断 |
+| **Tree-shaking** | 不支持 | 完全支持 | 更小的打包体积 |
+| **逻辑复用** | Mixins | Composables | 避免命名冲突 |
+
+#### 代码风格对比
+
 ```javascript
 // Vue2 Options API
 export default {
   data() {
-    return {
-      count: 0,
-      user: null
-    }
+    return { count: 0, user: null }
   },
   computed: {
-    doubleCount() {
-      return this.count * 2
-    }
+    doubleCount() { return this.count * 2 }
   },
   methods: {
-    increment() {
-      this.count++
-    },
-    async fetchUser() {
-      this.user = await api.getUser()
-    }
+    increment() { this.count++ },
+    async fetchUser() { this.user = await api.getUser() }
   },
-  mounted() {
-    this.fetchUser()
-  }
+  mounted() { this.fetchUser() }
 }
 
 // Vue3 Composition API
@@ -53,73 +53,89 @@ export default {
   setup() {
     const count = ref(0)
     const user = ref(null)
-    
+
     const doubleCount = computed(() => count.value * 2)
-    
-    const increment = () => {
-      count.value++
-    }
-    
-    const fetchUser = async () => {
-      user.value = await api.getUser()
-    }
-    
-    onMounted(() => {
-      fetchUser()
-    })
-    
-    return {
-      count,
-      user,
-      doubleCount,
-      increment,
-      fetchUser
-    }
+    const increment = () => count.value++
+    const fetchUser = async () => user.value = await api.getUser()
+
+    onMounted(fetchUser)
+
+    return { count, user, doubleCount, increment, fetchUser }
   }
 }
+
+// Vue3 <script setup> 语法糖（推荐）
+import { ref, computed, onMounted } from 'vue'
+
+const count = ref(0)
+const user = ref(null)
+const doubleCount = computed(() => count.value * 2)
+const increment = () => count.value++
+const fetchUser = async () => user.value = await api.getUser()
+
+onMounted(fetchUser)
 ```
 
 ### Vue3新特性概览
 
+#### 核心新特性
+
+| 特性 | 说明 | 优势 | 使用场景 |
+|------|------|------|----------|
+| **Fragment** | 支持多个根节点 | 更灵活的模板结构 | 布局组件 |
+| **Teleport** | 将内容传送到DOM其他位置 | 解决样式层级问题 | 模态框、提示框 |
+| **Suspense** | 异步组件加载状态管理 | 更好的加载体验 | 代码分割、异步数据 |
+| **`<script setup>`** | 更简洁的组合式API语法 | 减少样板代码 | 所有组件 |
+
+#### 新特性示例
+
 ```vue
-<!-- Vue3 新特性示例 -->
+<!-- Fragment：多个根节点 -->
 <template>
-  <!-- 1. Fragment - 多个根节点 -->
-  <header>头部内容</header>
-  <main>主要内容</main>
-  <footer>底部内容</footer>
-  
-  <!-- 2. Teleport - 传送门 -->
-  <Teleport to="body">
-    <div class="modal">模态框内容</div>
-  </Teleport>
-  
-  <!-- 3. Suspense - 异步组件 -->
+  <header>头部</header>
+  <main>内容</main>
+  <footer>底部</footer>
+</template>
+
+<!-- Teleport：传送门 -->
+<template>
+  <div>
+    <button @click="showModal = true">打开模态框</button>
+    <Teleport to="body">
+      <div v-if="showModal" class="modal">
+        <p>模态框内容</p>
+        <button @click="showModal = false">关闭</button>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<!-- Suspense：异步组件 -->
+<template>
   <Suspense>
     <template #default>
-      <AsyncComponent />
+      <AsyncUserProfile :user-id="userId" />
     </template>
     <template #fallback>
-      <div>加载中...</div>
+      <div class="loading">加载用户信息中...</div>
     </template>
   </Suspense>
 </template>
 
+<!-- <script setup>：语法糖 -->
 <script setup>
-// 4. <script setup> 语法糖
 import { ref, computed, watch, onMounted } from 'vue'
-import AsyncComponent from './AsyncComponent.vue'
 
 // 响应式数据
 const count = ref(0)
-const message = ref('Hello Vue3!')
+const showModal = ref(false)
 
 // 计算属性
 const doubleCount = computed(() => count.value * 2)
 
 // 侦听器
-watch(count, (newVal, oldVal) => {
-  console.log(`count changed from ${oldVal} to ${newVal}`)
+watch(count, (newVal) => {
+  console.log(`count: ${newVal}`)
 })
 
 // 生命周期
@@ -127,16 +143,8 @@ onMounted(() => {
   console.log('组件已挂载')
 })
 
-// 方法
-const increment = () => {
-  count.value++
-}
-
-// 自动暴露给模板
-defineExpose({
-  increment,
-  count
-})
+// 方法（自动暴露给模板）
+const increment = () => count.value++
 </script>
 ```
 
@@ -148,110 +156,85 @@ defineExpose({
 Vue3使用Proxy替代了Vue2的Object.defineProperty，解决了数组和对象属性动态添加的响应式问题。
 </Callout>
 
+#### 技术对比
+
+| 特性 | Vue2 Object.defineProperty | Vue3 Proxy | 优势 |
+|------|---------------------------|-------------|------|
+| **数组监听** | 需要特殊处理 | 原生支持 | 更完整的数组响应式 |
+| **属性添加** | 需要Vue.set | 自动监听 | 动态属性响应式 |
+| **属性删除** | 需要Vue.delete | 自动监听 | 完整的删除监听 |
+| **性能** | 初始化时遍历所有属性 | 懒代理 | 更好的初始化性能 |
+| **浏览器支持** | IE8+ | IE11+ | 现代浏览器特性 |
+
+#### 核心实现原理
+
 ```javascript
-// Vue2 响应式实现（简化版）
+// Vue2 响应式（简化）
 function defineReactive(obj, key, val) {
   Object.defineProperty(obj, key, {
     get() {
-      // 依赖收集
-      if (Dep.target) {
-        dep.depend()
-      }
+      if (Dep.target) dep.depend() // 依赖收集
       return val
     },
     set(newVal) {
       if (newVal === val) return
       val = newVal
-      // 通知更新
-      dep.notify()
+      dep.notify() // 通知更新
     }
   })
 }
 
-// Vue3 响应式实现（简化版）
+// Vue3 响应式（简化）
 function reactive(target) {
   return new Proxy(target, {
     get(target, key, receiver) {
       const result = Reflect.get(target, key, receiver)
-      
-      // 依赖收集
-      track(target, key)
-      
-      // 如果是对象，递归代理
+      track(target, key) // 依赖收集
+
+      // 深度响应式
       if (typeof result === 'object' && result !== null) {
         return reactive(result)
       }
-      
       return result
     },
-    
+
     set(target, key, value, receiver) {
       const oldValue = target[key]
       const result = Reflect.set(target, key, value, receiver)
-      
-      // 触发更新
+
       if (oldValue !== value) {
-        trigger(target, key)
+        trigger(target, key) // 触发更新
       }
-      
-      return result
-    },
-    
-    deleteProperty(target, key) {
-      const hadKey = hasOwn(target, key)
-      const result = Reflect.deleteProperty(target, key)
-      
-      if (result && hadKey) {
-        trigger(target, key)
-      }
-      
       return result
     }
   })
 }
-
-// 依赖收集和触发更新
-let activeEffect = null
-const targetMap = new WeakMap()
-
-function track(target, key) {
-  if (!activeEffect) return
-  
-  let depsMap = targetMap.get(target)
-  if (!depsMap) {
-    targetMap.set(target, (depsMap = new Map()))
-  }
-  
-  let dep = depsMap.get(key)
-  if (!dep) {
-    depsMap.set(key, (dep = new Set()))
-  }
-  
-  dep.add(activeEffect)
-}
-
-function trigger(target, key) {
-  const depsMap = targetMap.get(target)
-  if (!depsMap) return
-  
-  const dep = depsMap.get(key)
-  if (dep) {
-    dep.forEach(effect => effect())
-  }
-}
-
-function effect(fn) {
-  activeEffect = fn
-  fn()
-  activeEffect = null
-}
 ```
+
+#### 响应式系统优势
+
+- **更完整的拦截**：Proxy可以拦截13种操作
+- **更好的性能**：懒代理，按需创建响应式对象
+- **更简洁的API**：不需要特殊的set/delete方法
+- **更好的数组支持**：原生支持数组索引和length变化
 
 ### 响应式API详解
 
+#### 响应式API对比
+
+| API | 用途 | 适用场景 | 特点 |
+|-----|------|----------|------|
+| **ref** | 基本类型响应式 | 数字、字符串、布尔值 | 需要.value访问 |
+| **reactive** | 对象响应式 | 对象、数组 | 深度响应式，直接访问属性 |
+| **computed** | 计算属性 | 基于其他响应式数据的派生值 | 缓存结果，依赖变化时重新计算 |
+| **watch** | 侦听器 | 监听特定数据变化 | 可访问新旧值 |
+| **watchEffect** | 副作用侦听器 | 自动追踪依赖的副作用 | 立即执行，自动收集依赖 |
+
+#### 基础用法示例
+
 ```javascript
 // 1. ref - 基本类型响应式
-import { ref, isRef, unref, toRef, toRefs } from 'vue'
+import { ref, isRef, unref } from 'vue'
 
 const count = ref(0)
 const message = ref('hello')
@@ -259,35 +242,21 @@ const message = ref('hello')
 console.log(count.value) // 0
 count.value++ // 触发响应式更新
 
-// ref 判断和解包
+// 工具函数
 console.log(isRef(count)) // true
 console.log(unref(count)) // 1，等同于 count.value
 
 // 2. reactive - 对象响应式
-import { reactive, isReactive, toRaw, markRaw } from 'vue'
+import { reactive, isReactive, toRaw } from 'vue'
 
 const state = reactive({
   count: 0,
-  nested: {
-    message: 'hello'
-  }
+  nested: { message: 'hello' }
 })
 
 // 深度响应式
 state.nested.message = 'world' // 触发更新
-
-// 响应式判断
-console.log(isReactive(state)) // true
 console.log(isReactive(state.nested)) // true
-
-// 获取原始对象
-const raw = toRaw(state)
-console.log(raw === state) // false
-
-// 标记为非响应式
-const nonReactive = markRaw({ foo: 'bar' })
-const reactiveObj = reactive({ nonReactive })
-console.log(isReactive(reactiveObj.nonReactive)) // false
 
 // 3. computed - 计算属性
 import { computed } from 'vue'
@@ -295,25 +264,14 @@ import { computed } from 'vue'
 const count = ref(1)
 const plusOne = computed(() => count.value + 1)
 
-console.log(plusOne.value) // 2
-count.value++
-console.log(plusOne.value) // 3
-
 // 可写计算属性
 const writableComputed = computed({
   get: () => count.value + 1,
-  set: (val) => {
-    count.value = val - 1
-  }
+  set: (val) => count.value = val - 1
 })
-
-writableComputed.value = 10
-console.log(count.value) // 9
 
 // 4. watch 和 watchEffect
 import { watch, watchEffect } from 'vue'
-
-const state = reactive({ count: 0 })
 
 // 侦听单个源
 watch(() => state.count, (newVal, oldVal) => {
@@ -321,23 +279,28 @@ watch(() => state.count, (newVal, oldVal) => {
 })
 
 // 侦听多个源
-watch([() => state.count, () => state.name], ([newCount, newName], [oldCount, oldName]) => {
+watch([() => state.count, () => state.name], ([newCount, newName]) => {
   console.log('多个值发生变化')
 })
 
 // 立即执行的侦听器
-watchEffect(() => {
-  console.log(`count is ${state.count}`)
-})
-
-// 停止侦听
 const stop = watchEffect(() => {
-  console.log('这个侦听器可以被停止')
+  console.log(`count is ${state.count}`)
 })
 
 // 停止侦听
 stop()
 ```
+
+#### 最佳实践
+
+| 场景 | 推荐API | 理由 |
+|------|---------|------|
+| **基本类型** | ref | 简单直接，类型安全 |
+| **对象/数组** | reactive | 使用更自然，无需.value |
+| **派生数据** | computed | 自动缓存，性能更好 |
+| **副作用** | watchEffect | 自动依赖收集 |
+| **精确控制** | watch | 可访问新旧值，更灵活 |
 
 ## Composition API深入
 
@@ -347,42 +310,52 @@ stop()
 组合式函数是Vue3的核心特性，它允许我们将相关的逻辑组合在一起，提高代码的复用性和可维护性。
 </Callout>
 
+#### 常用组合式函数
+
+| 函数名 | 功能 | 返回值 | 使用场景 |
+|--------|------|--------|----------|
+| **useCounter** | 计数器逻辑 | count, increment, decrement | 数量控制、分页 |
+| **useFetch** | 数据获取 | data, loading, error | API调用 |
+| **useLocalStorage** | 本地存储 | 响应式存储值 | 用户偏好设置 |
+| **useEventListener** | 事件监听 | 无 | DOM事件处理 |
+| **useIntersectionObserver** | 交叉观察 | isIntersecting, entries | 懒加载、无限滚动 |
+
+#### 组合式函数示例
+
 ```javascript
-// 1. useCounter - 计数器组合式函数
-import { ref, computed } from 'vue'
+// 1. useCounter - 计数器
+import { ref, computed, readonly } from 'vue'
 
 export function useCounter(initialValue = 0) {
   const count = ref(initialValue)
-  
+
   const increment = () => count.value++
   const decrement = () => count.value--
   const reset = () => count.value = initialValue
-  
+
   const isEven = computed(() => count.value % 2 === 0)
-  const isPositive = computed(() => count.value > 0)
-  
+
   return {
-    count: readonly(count), // 只读，防止外部直接修改
+    count: readonly(count),
     increment,
     decrement,
     reset,
-    isEven,
-    isPositive
+    isEven
   }
 }
 
-// 2. useFetch - 数据获取组合式函数
-import { ref, watchEffect } from 'vue'
+// 2. useFetch - 数据获取
+import { ref, watchEffect, readonly } from 'vue'
 
 export function useFetch(url) {
   const data = ref(null)
   const error = ref(null)
   const loading = ref(false)
-  
+
   const fetchData = async () => {
     loading.value = true
     error.value = null
-    
+
     try {
       const response = await fetch(url.value || url)
       data.value = await response.json()
@@ -392,14 +365,14 @@ export function useFetch(url) {
       loading.value = false
     }
   }
-  
-  // 如果url是响应式的，自动重新获取
+
+  // 响应式URL自动重新获取
   if (isRef(url)) {
     watchEffect(fetchData)
   } else {
     fetchData()
   }
-  
+
   return {
     data: readonly(data),
     error: readonly(error),
@@ -408,96 +381,41 @@ export function useFetch(url) {
   }
 }
 
-// 3. useLocalStorage - 本地存储组合式函数
+// 3. useLocalStorage - 本地存储
 import { ref, watch } from 'vue'
 
 export function useLocalStorage(key, defaultValue) {
   const storedValue = localStorage.getItem(key)
   const initialValue = storedValue ? JSON.parse(storedValue) : defaultValue
-  
   const value = ref(initialValue)
-  
-  // 监听值的变化，同步到localStorage
+
+  // 同步到localStorage
   watch(value, (newValue) => {
     localStorage.setItem(key, JSON.stringify(newValue))
   }, { deep: true })
-  
-  // 监听localStorage的变化（其他标签页修改）
-  window.addEventListener('storage', (e) => {
-    if (e.key === key && e.newValue) {
-      value.value = JSON.parse(e.newValue)
-    }
-  })
-  
+
   return value
 }
+```
 
-// 4. useEventListener - 事件监听组合式函数
-import { onMounted, onUnmounted } from 'vue'
+#### 组合式函数使用
 
-export function useEventListener(target, event, handler, options) {
-  onMounted(() => {
-    target.addEventListener(event, handler, options)
-  })
-  
-  onUnmounted(() => {
-    target.removeEventListener(event, handler, options)
-  })
-}
-
-// 5. useIntersectionObserver - 交叉观察器组合式函数
-import { ref, onMounted, onUnmounted } from 'vue'
-
-export function useIntersectionObserver(target, options = {}) {
-  const isIntersecting = ref(false)
-  const entries = ref([])
-  
-  let observer = null
-  
-  onMounted(() => {
-    observer = new IntersectionObserver((observerEntries) => {
-      entries.value = observerEntries
-      isIntersecting.value = observerEntries.some(entry => entry.isIntersecting)
-    }, options)
-    
-    if (target.value) {
-      observer.observe(target.value)
-    }
-  })
-  
-  onUnmounted(() => {
-    if (observer) {
-      observer.disconnect()
-    }
-  })
-  
-  return {
-    isIntersecting: readonly(isIntersecting),
-    entries: readonly(entries)
-  }
-}
-
-// 使用示例
+```javascript
+// 在组件中使用
 export default {
   setup() {
-    // 使用计数器
-    const { count, increment, decrement, isEven } = useCounter(10)
-    
-    // 使用数据获取
+    // 计数器功能
+    const { count, increment, isEven } = useCounter(10)
+
+    // 数据获取
     const { data: users, loading, error } = useFetch('/api/users')
-    
-    // 使用本地存储
+
+    // 本地存储
     const theme = useLocalStorage('theme', 'light')
-    
-    // 使用事件监听
-    useEventListener(window, 'resize', () => {
-      console.log('窗口大小改变')
-    })
-    
+
     return {
       count,
       increment,
-      decrement,
       isEven,
       users,
       loading,
@@ -510,28 +428,35 @@ export default {
 
 ### 高级组合模式
 
+#### 高级组合式函数
+
+| 函数名 | 功能 | 适用场景 | 复杂度 |
+|--------|------|----------|--------|
+| **useStateMachine** | 状态机管理 | 复杂状态流转 | 高 |
+| **useFormValidation** | 表单验证 | 表单处理 | 中 |
+| **useInfiniteScroll** | 无限滚动 | 列表加载 | 中 |
+| **useDebounce** | 防抖处理 | 搜索输入 | 低 |
+
+#### 实现示例
+
 ```javascript
 // 1. 状态机组合式函数
 export function useStateMachine(initialState, transitions) {
   const state = ref(initialState)
-  
+
   const transition = (action) => {
     const currentTransitions = transitions[state.value]
-    if (currentTransitions && currentTransitions[action]) {
+    if (currentTransitions?.[action]) {
       state.value = currentTransitions[action]
     }
   }
-  
+
   const can = (action) => {
     const currentTransitions = transitions[state.value]
-    return currentTransitions && currentTransitions[action] !== undefined
+    return currentTransitions?.[action] !== undefined
   }
-  
-  return {
-    state: readonly(state),
-    transition,
-    can
-  }
+
+  return { state: readonly(state), transition, can }
 }
 
 // 使用状态机
@@ -546,111 +471,88 @@ const { state, transition, can } = useStateMachine('idle', {
 export function useFormValidation(rules) {
   const errors = ref({})
   const isValid = computed(() => Object.keys(errors.value).length === 0)
-  
+
   const validate = (field, value) => {
     const fieldRules = rules[field]
     if (!fieldRules) return true
-    
+
     for (const rule of fieldRules) {
-      const result = rule.validator(value)
-      if (!result) {
+      if (!rule.validator(value)) {
         errors.value[field] = rule.message
         return false
       }
     }
-    
+
     delete errors.value[field]
     return true
   }
-  
-  const validateAll = (values) => {
-    let allValid = true
-    for (const [field, value] of Object.entries(values)) {
-      if (!validate(field, value)) {
-        allValid = false
-      }
-    }
-    return allValid
-  }
-  
-  const clearErrors = () => {
-    errors.value = {}
-  }
-  
+
   return {
     errors: readonly(errors),
     isValid,
     validate,
-    validateAll,
-    clearErrors
+    validateAll: (values) => {
+      return Object.entries(values).every(([field, value]) => validate(field, value))
+    }
   }
 }
 
-// 3. 无限滚动组合式函数
-export function useInfiniteScroll(fetchMore, options = {}) {
-  const {
-    distance = 100,
-    disabled = false
-  } = options
-  
-  const loading = ref(false)
-  const finished = ref(false)
-  
-  const checkScroll = () => {
-    if (loading.value || finished.value || disabled) return
-    
-    const { scrollTop, scrollHeight, clientHeight } = document.documentElement
-    
-    if (scrollTop + clientHeight >= scrollHeight - distance) {
-      loading.value = true
-      
-      fetchMore()
-        .then((hasMore) => {
-          if (!hasMore) {
-            finished.value = true
-          }
-        })
-        .finally(() => {
-          loading.value = false
-        })
-    }
+// 3. 防抖组合式函数
+export function useDebounce(fn, delay = 300) {
+  let timeoutId = null
+
+  const debouncedFn = (...args) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
   }
-  
-  useEventListener(window, 'scroll', checkScroll)
-  
-  return {
-    loading: readonly(loading),
-    finished: readonly(finished)
-  }
+
+  const cancel = () => clearTimeout(timeoutId)
+
+  return { debouncedFn, cancel }
 }
 ```
+
+#### 组合式函数最佳实践
+
+- **单一职责**：每个函数只负责一个功能域
+- **返回只读状态**：使用readonly()防止外部修改
+- **提供清理机制**：在onUnmounted中清理副作用
+- **支持响应式参数**：参数可以是ref或reactive
+- **错误处理**：提供完善的错误处理机制
 
 ## 组件通信和状态管理
 
 ### 组件通信方式
 
+#### 通信方式对比
+
+| 方式 | 适用场景 | 数据流向 | 复杂度 |
+|------|----------|----------|--------|
+| **Props/Emits** | 父子组件 | 双向 | 低 |
+| **Provide/Inject** | 跨层级组件 | 单向 | 中 |
+| **模板引用** | 直接访问子组件 | 双向 | 低 |
+| **Pinia** | 全局状态 | 双向 | 中 |
+| **Event Bus** | 任意组件 | 双向 | 高 |
+
+#### 基础通信示例
+
 ```vue
-<!-- 1. Props 和 Emits -->
+<!-- 1. Props/Emits 父子通信 -->
 <!-- 父组件 -->
 <template>
-  <ChildComponent 
+  <ChildComponent
     :message="parentMessage"
     :count="count"
-    @update:count="handleCountUpdate"
+    @update:count="count = $event"
     @custom-event="handleCustomEvent"
   />
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import ChildComponent from './ChildComponent.vue'
 
 const parentMessage = ref('来自父组件的消息')
 const count = ref(0)
-
-const handleCountUpdate = (newCount) => {
-  count.value = newCount
-}
 
 const handleCustomEvent = (data) => {
   console.log('收到自定义事件:', data)
@@ -658,321 +560,70 @@ const handleCustomEvent = (data) => {
 </script>
 
 <!-- 子组件 -->
-<template>
-  <div>
-    <p>{{ message }}</p>
-    <p>Count: {{ count }}</p>
-    <button @click="updateCount">更新计数</button>
-    <button @click="emitCustomEvent">发送自定义事件</button>
-  </div>
-</template>
-
 <script setup>
-import { defineProps, defineEmits } from 'vue'
-
-// 定义props
 const props = defineProps({
-  message: {
-    type: String,
-    required: true
-  },
-  count: {
-    type: Number,
-    default: 0
-  }
+  message: String,
+  count: { type: Number, default: 0 }
 })
 
-// 定义emits
 const emit = defineEmits(['update:count', 'custom-event'])
 
-const updateCount = () => {
-  emit('update:count', props.count + 1)
-}
-
-const emitCustomEvent = () => {
-  emit('custom-event', { timestamp: Date.now() })
-}
+const updateCount = () => emit('update:count', props.count + 1)
+const emitCustomEvent = () => emit('custom-event', { timestamp: Date.now() })
 </script>
 
-<!-- 2. Provide/Inject -->
+<!-- 2. Provide/Inject 跨层级通信 -->
 <!-- 祖先组件 -->
 <script setup>
-import { provide, ref } from 'vue'
+import { provide, ref, readonly } from 'vue'
 
 const theme = ref('dark')
 const user = ref({ name: 'John', role: 'admin' })
 
-// 提供数据
 provide('theme', theme)
 provide('user', readonly(user))
-
-// 提供方法
-provide('updateTheme', (newTheme) => {
-  theme.value = newTheme
-})
+provide('updateTheme', (newTheme) => theme.value = newTheme)
 </script>
 
 <!-- 后代组件 -->
 <script setup>
 import { inject } from 'vue'
 
-// 注入数据
 const theme = inject('theme')
 const user = inject('user')
 const updateTheme = inject('updateTheme')
-
-// 使用默认值
-const config = inject('config', { api: '/api' })
+const config = inject('config', { api: '/api' }) // 默认值
 </script>
 
 <!-- 3. 模板引用 -->
 <template>
   <ChildComponent ref="childRef" />
-  <button @click="callChildMethod">调用子组件方法</button>
+  <button @click="childRef?.someMethod()">调用子组件方法</button>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
 const childRef = ref()
-
-const callChildMethod = () => {
-  childRef.value.someMethod()
-}
-
-onMounted(() => {
-  console.log(childRef.value) // 子组件实例
-})
 </script>
 ```
 
 ### Pinia状态管理
 
-```javascript
-// stores/counter.js
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+#### Pinia vs Vuex
 
-// Option Store
-export const useCounterStore = defineStore('counter', {
-  state: () => ({
-    count: 0,
-    name: 'Eduardo'
-  }),
-  
-  getters: {
-    doubleCount: (state) => state.count * 2,
-    doubleCountPlusOne() {
-      return this.doubleCount + 1
-    }
-  },
-  
-  actions: {
-    increment() {
-      this.count++
-    },
-    
-    async fetchUserData() {
-      const userData = await api.getUser()
-      this.name = userData.name
-    }
-  }
-})
+| 特性 | Pinia | Vuex | 优势 |
+|------|-------|------|------|
+| **TypeScript支持** | 原生支持 | 需要额外配置 | 更好的类型推断 |
+| **代码分割** | 自动支持 | 需要手动配置 | 更好的Tree-shaking |
+| **DevTools** | 完整支持 | 完整支持 | 调试体验相当 |
+| **学习曲线** | 更简单 | 相对复杂 | 更容易上手 |
+| **包大小** | 更小 | 较大 | 更轻量 |
 
-// Composition Store
-export const useCounterStore = defineStore('counter', () => {
-  // state
-  const count = ref(0)
-  const name = ref('Eduardo')
-  
-  // getters
-  const doubleCount = computed(() => count.value * 2)
-  
-  // actions
-  function increment() {
-    count.value++
-  }
-  
-  async function fetchUserData() {
-    const userData = await api.getUser()
-    name.value = userData.name
-  }
-  
-  return {
-    count,
-    name,
-    doubleCount,
-    increment,
-    fetchUserData
-  }
-})
-
-// 在组件中使用
-<script setup>
-import { useCounterStore } from '@/stores/counter'
-import { storeToRefs } from 'pinia'
-
-const store = useCounterStore()
-
-// 解构响应式数据
-const { count, name, doubleCount } = storeToRefs(store)
-
-// 解构actions（不需要storeToRefs）
-const { increment, fetchUserData } = store
-
-// 直接使用
-store.count++
-store.$patch({ count: store.count + 1 })
-store.$patch((state) => {
-  state.count++
-  state.name = 'New Name'
-})
-</script>
-```
-
-## Vue3性能优化
-
-<Callout type="info">
-Vue3在性能方面有显著提升，包括更小的包体积、更快的渲染速度和更好的Tree-shaking支持。
-</Callout>
-
-### 编译时优化
-
-```vue
-<template>
-  <!-- 静态提升 - 静态元素会被提升到渲染函数外部 -->
-  <div class="static-class">
-    <h1>静态标题</h1>
-    <!-- 动态内容 -->
-    <p>{{ message }}</p>
-
-    <!-- 补丁标记 - Vue3会标记动态内容 -->
-    <div :class="dynamicClass">{{ count }}</div>
-  </div>
-</template>
-
-<script setup>
-import { ref, computed } from 'vue'
-
-const message = ref('Hello Vue3')
-const count = ref(0)
-const dynamicClass = computed(() => count.value > 10 ? 'large' : 'small')
-</script>
-```
-
-### 响应式优化
+#### Store定义方式
 
 ```javascript
-// 使用shallowRef减少深度响应式开销
-import { shallowRef, triggerRef } from 'vue'
-
-const state = shallowRef({
-  count: 0,
-  nested: {
-    value: 'hello'
-  }
-})
-
-// 手动触发更新
-function updateNested() {
-  state.value.nested.value = 'world'
-  triggerRef(state) // 手动触发响应式更新
-}
-
-// 使用markRaw避免响应式转换
-import { markRaw, reactive } from 'vue'
-
-const state = reactive({
-  foo: markRaw({
-    // 这个对象不会被转换为响应式
-    nestedProperty: 'value'
-  })
-})
-```
-
-### 组件优化
-
-```vue
-<!-- 使用v-memo缓存子树 -->
-<template>
-  <div v-for="item in list" :key="item.id" v-memo="[item.id, item.selected]">
-    <p>{{ item.name }}</p>
-    <p>{{ item.description }}</p>
-  </div>
-</template>
-
-<script setup>
-// 使用defineAsyncComponent异步加载组件
-import { defineAsyncComponent } from 'vue'
-
-const AsyncComponent = defineAsyncComponent({
-  loader: () => import('./HeavyComponent.vue'),
-  loadingComponent: LoadingComponent,
-  errorComponent: ErrorComponent,
-  delay: 200,
-  timeout: 3000
-})
-</script>
-```
-
-## Vue3生态系统
-
-<Callout type="info">
-Vue3拥有丰富的生态系统，包括官方工具、第三方库和开发工具。
-</Callout>
-
-### 官方工具链
-
-```bash
-# Vite - 官方构建工具
-npm create vue@latest my-vue-app
-cd my-vue-app
-npm install
-npm run dev
-
-# Vue CLI (传统方式)
-npm install -g @vue/cli
-vue create my-project
-```
-
-### 路由管理
-
-```javascript
-// Vue Router 4
-import { createRouter, createWebHistory } from 'vue-router'
-import { defineAsyncComponent } from 'vue'
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [
-    {
-      path: '/',
-      name: 'Home',
-      component: () => import('./views/Home.vue')
-    },
-    {
-      path: '/about',
-      name: 'About',
-      component: defineAsyncComponent(() => import('./views/About.vue'))
-    },
-    {
-      path: '/user/:id',
-      name: 'User',
-      component: () => import('./views/User.vue'),
-      props: true
-    }
-  ]
-})
-
-export default router
-```
-
-### 状态管理
-
-```javascript
-// Pinia - 官方状态管理库
-import { defineStore } from 'pinia'
-
+// 1. Option Store（类似Vuex）
 export const useCounterStore = defineStore('counter', {
   state: () => ({
     count: 0,
@@ -988,66 +639,234 @@ export const useCounterStore = defineStore('counter', {
       this.count++
     },
 
-    async fetchUserData(userId) {
-      try {
-        const userData = await api.getUser(userId)
-        this.name = userData.name
-      } catch (error) {
-        console.error('Failed to fetch user:', error)
-      }
+    async fetchUserData() {
+      const userData = await api.getUser()
+      this.name = userData.name
     }
   }
 })
 
-// 在组件中使用
-import { useCounterStore } from '@/stores/counter'
+// 2. Composition Store（推荐）
+export const useCounterStore = defineStore('counter', () => {
+  // state
+  const count = ref(0)
+  const name = ref('Eduardo')
 
-const counter = useCounterStore()
-counter.increment()
+  // getters
+  const doubleCount = computed(() => count.value * 2)
+
+  // actions
+  const increment = () => count.value++
+
+  const fetchUserData = async () => {
+    const userData = await api.getUser()
+    name.value = userData.name
+  }
+
+  return { count, name, doubleCount, increment, fetchUserData }
+})
 ```
 
-### UI组件库
+#### 组件中使用
 
 ```javascript
-// Element Plus
-import { createApp } from 'vue'
+// 在组件中使用Pinia
+import { useCounterStore } from '@/stores/counter'
+import { storeToRefs } from 'pinia'
+
+const store = useCounterStore()
+
+// 解构响应式数据（需要storeToRefs）
+const { count, name, doubleCount } = storeToRefs(store)
+
+// 解构actions（不需要storeToRefs）
+const { increment, fetchUserData } = store
+
+// 批量更新
+store.$patch({ count: 10, name: 'New Name' })
+```
+
+## Vue3性能优化
+
+<Callout type="info">
+Vue3在性能方面有显著提升，包括更小的包体积、更快的渲染速度和更好的Tree-shaking支持。
+</Callout>
+
+### Vue3性能优化策略
+
+#### 性能优化对比
+
+| 优化类型 | Vue2 | Vue3 | 提升效果 |
+|----------|------|------|----------|
+| **包体积** | 34KB | 13.5KB | 60%减少 |
+| **初始渲染** | 基准 | 55%提升 | 更快的首屏 |
+| **更新性能** | 基准 | 133%提升 | 更快的重渲染 |
+| **内存使用** | 基准 | 54%减少 | 更少的内存占用 |
+
+#### 编译时优化
+
+```vue
+<template>
+  <!-- 静态提升：静态元素提升到渲染函数外部 -->
+  <div class="static-class">
+    <h1>静态标题</h1>
+    <!-- 只有动态内容会重新渲染 -->
+    <p>{{ message }}</p>
+    <div :class="dynamicClass">{{ count }}</div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+
+const message = ref('Hello Vue3')
+const count = ref(0)
+const dynamicClass = computed(() => count.value > 10 ? 'large' : 'small')
+</script>
+```
+
+#### 响应式优化技巧
+
+```javascript
+// 1. 使用shallowRef减少深度响应式开销
+import { shallowRef, triggerRef, markRaw } from 'vue'
+
+const state = shallowRef({
+  count: 0,
+  nested: { value: 'hello' }
+})
+
+// 手动触发更新
+const updateNested = () => {
+  state.value.nested.value = 'world'
+  triggerRef(state) // 手动触发响应式更新
+}
+
+// 2. 使用markRaw避免响应式转换
+const state = reactive({
+  foo: markRaw({
+    // 这个对象不会被转换为响应式
+    nestedProperty: 'value'
+  })
+})
+```
+
+#### 组件优化技巧
+
+```vue
+<!-- 1. 使用v-memo缓存子树 -->
+<template>
+  <div v-for="item in list" :key="item.id" v-memo="[item.id, item.selected]">
+    <p>{{ item.name }}</p>
+    <p>{{ item.description }}</p>
+  </div>
+</template>
+
+<script setup>
+// 2. 异步组件加载
+import { defineAsyncComponent } from 'vue'
+
+const AsyncComponent = defineAsyncComponent({
+  loader: () => import('./HeavyComponent.vue'),
+  loadingComponent: LoadingComponent,
+  delay: 200,
+  timeout: 3000
+})
+</script>
+```
+
+#### 性能优化清单
+
+- ✅ 使用`shallowRef`和`shallowReactive`减少深度响应式
+- ✅ 使用`markRaw`标记不需要响应式的对象
+- ✅ 使用`v-memo`缓存复杂的列表项
+- ✅ 使用异步组件进行代码分割
+- ✅ 合理使用`computed`缓存计算结果
+- ✅ 避免在模板中使用复杂表达式
+
+## Vue3生态系统
+
+<Callout type="info">
+Vue3拥有丰富的生态系统，包括官方工具、第三方库和开发工具。
+</Callout>
+
+### Vue3生态系统概览
+
+#### 核心工具对比
+
+| 工具类型 | Vue3推荐 | 特点 | 适用场景 |
+|----------|----------|------|----------|
+| **构建工具** | Vite | 快速热更新、原生ESM | 现代项目 |
+| **脚手架** | create-vue | 官方模板、TypeScript支持 | 新项目 |
+| **路由** | Vue Router 4 | Composition API支持 | SPA应用 |
+| **状态管理** | Pinia | 轻量、TypeScript友好 | 全局状态 |
+| **UI库** | Element Plus, Vuetify 3 | Vue3原生支持 | 企业应用 |
+
+#### 快速开始
+
+```bash
+# 创建Vue3项目
+npm create vue@latest my-vue-app
+cd my-vue-app
+npm install
+npm run dev
+```
+
+#### 路由配置
+
+```javascript
+// Vue Router 4 基础配置
+import { createRouter, createWebHistory } from 'vue-router'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/',
+      name: 'Home',
+      component: () => import('./views/Home.vue')
+    },
+    {
+      path: '/user/:id',
+      name: 'User',
+      component: () => import('./views/User.vue'),
+      props: true
+    }
+  ]
+})
+```
+
+#### 主要UI组件库
+
+```javascript
+// Element Plus（推荐）
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 
-const app = createApp(App)
 app.use(ElementPlus)
 
 // Ant Design Vue
-import { createApp } from 'vue'
 import Antd from 'ant-design-vue'
 import 'ant-design-vue/dist/antd.css'
 
-const app = createApp(App)
 app.use(Antd)
-
-// Vuetify 3
-import { createApp } from 'vue'
-import { createVuetify } from 'vuetify'
-import 'vuetify/styles'
-
-const vuetify = createVuetify()
-const app = createApp(App)
-app.use(vuetify)
 ```
 
-### 开发工具
+#### 开发工具推荐
+
+| 工具 | 功能 | 安装方式 |
+|------|------|----------|
+| **Vue DevTools** | 调试Vue组件和状态 | 浏览器扩展 |
+| **Volar** | VS Code Vue3支持 | VS Code扩展 |
+| **Vitest** | 单元测试框架 | `npm install vitest` |
+| **Vue Test Utils** | Vue组件测试工具 | `npm install @vue/test-utils` |
+
+#### 测试示例
 
 ```javascript
-// Vue DevTools
-// 浏览器扩展，支持Vue3的Composition API调试
-
-// Volar - VS Code扩展
-// 提供Vue3和TypeScript的完整支持
-
-// 测试工具
+// Vitest + Vue Test Utils
 import { mount } from '@vue/test-utils'
 import { describe, it, expect } from 'vitest'
-import MyComponent from './MyComponent.vue'
 
 describe('MyComponent', () => {
   it('renders properly', () => {

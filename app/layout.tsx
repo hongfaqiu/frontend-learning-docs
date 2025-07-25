@@ -44,7 +44,7 @@ const footer = (
       MIT {new Date().getFullYear()} © 前端学习指南
     </div>
     <div>
-      <a href="https://github.com/hongfaqiu/frontend-learning-guide" target="_blank" rel="noopener noreferrer">
+      <a href="https://github.com/hongfaqiu/frontend-learning-docs" target="_blank" rel="noopener noreferrer">
         GitHub
       </a>
     </div>
@@ -68,7 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           banner={banner}
           navbar={navbar}
           pageMap={await getPageMap()}
-          docsRepositoryBase="https://github.com/hongfaqiu/frontend-learning-guide/tree/main/frontend-learning-docs"
+          docsRepositoryBase="https://github.com/hongfaqiu/frontend-learning-docs/tree/main"
           footer={footer}
           sidebar={{
             defaultMenuCollapseLevel: 1,
